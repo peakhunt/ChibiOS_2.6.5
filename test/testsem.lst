@@ -1,0 +1,1512 @@
+   1               		.file	"testsem.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  11               	sem3_setup:
+  12               	.LFB13:
+  13               		.file 1 "../../test/testsem.c"
+   1:../../test/testsem.c **** /*
+   2:../../test/testsem.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testsem.c **** 
+   4:../../test/testsem.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testsem.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testsem.c ****     You may obtain a copy of the License at
+   7:../../test/testsem.c **** 
+   8:../../test/testsem.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testsem.c **** 
+  10:../../test/testsem.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testsem.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testsem.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testsem.c ****     See the License for the specific language governing permissions and
+  14:../../test/testsem.c ****     limitations under the License.
+  15:../../test/testsem.c **** */
+  16:../../test/testsem.c **** 
+  17:../../test/testsem.c **** #include "ch.h"
+  18:../../test/testsem.c **** #include "test.h"
+  19:../../test/testsem.c **** 
+  20:../../test/testsem.c **** /**
+  21:../../test/testsem.c ****  * @page test_sem Semaphores test
+  22:../../test/testsem.c ****  *
+  23:../../test/testsem.c ****  * File: @ref testsem.c
+  24:../../test/testsem.c ****  *
+  25:../../test/testsem.c ****  * <h2>Description</h2>
+  26:../../test/testsem.c ****  * This module implements the test sequence for the @ref semaphores subsystem.
+  27:../../test/testsem.c ****  *
+  28:../../test/testsem.c ****  * <h2>Objective</h2>
+  29:../../test/testsem.c ****  * Objective of the test module is to cover 100% of the @ref semaphores code.
+  30:../../test/testsem.c ****  *
+  31:../../test/testsem.c ****  * <h2>Preconditions</h2>
+  32:../../test/testsem.c ****  * The module requires the following kernel options:
+  33:../../test/testsem.c ****  * - @p CH_USE_SEMAPHORES
+  34:../../test/testsem.c ****  * .
+  35:../../test/testsem.c ****  * In case some of the required options are not enabled then some or all tests
+  36:../../test/testsem.c ****  * may be skipped.
+  37:../../test/testsem.c ****  *
+  38:../../test/testsem.c ****  * <h2>Test Cases</h2>
+  39:../../test/testsem.c ****  * - @subpage test_sem_001
+  40:../../test/testsem.c ****  * - @subpage test_sem_002
+  41:../../test/testsem.c ****  * - @subpage test_sem_003
+  42:../../test/testsem.c ****  * - @subpage test_sem_004
+  43:../../test/testsem.c ****  * .
+  44:../../test/testsem.c ****  * @file testsem.c
+  45:../../test/testsem.c ****  * @brief Semaphores test source file
+  46:../../test/testsem.c ****  * @file testsem.h
+  47:../../test/testsem.c ****  * @brief Semaphores test header file
+  48:../../test/testsem.c ****  */
+  49:../../test/testsem.c **** 
+  50:../../test/testsem.c **** #if CH_USE_SEMAPHORES || defined(__DOXYGEN__)
+  51:../../test/testsem.c **** 
+  52:../../test/testsem.c **** #define ALLOWED_DELAY MS2ST(5)
+  53:../../test/testsem.c **** 
+  54:../../test/testsem.c **** /*
+  55:../../test/testsem.c ****  * Note, the static initializers are not really required because the
+  56:../../test/testsem.c ****  * variables are explicitly initialized in each test case. It is done in order
+  57:../../test/testsem.c ****  * to test the macros.
+  58:../../test/testsem.c ****  */
+  59:../../test/testsem.c **** static SEMAPHORE_DECL(sem1, 0);
+  60:../../test/testsem.c **** 
+  61:../../test/testsem.c **** /**
+  62:../../test/testsem.c ****  * @page test_sem_001 Enqueuing test
+  63:../../test/testsem.c ****  *
+  64:../../test/testsem.c ****  * <h2>Description</h2>
+  65:../../test/testsem.c ****  * Five threads with randomized priorities are enqueued to a semaphore then
+  66:../../test/testsem.c ****  * awakened one at time.<br>
+  67:../../test/testsem.c ****  * The test expects that the threads reach their goal in FIFO order or
+  68:../../test/testsem.c ****  * priority order depending on the CH_USE_SEMAPHORES_PRIORITY configuration
+  69:../../test/testsem.c ****  * setting.
+  70:../../test/testsem.c ****  */
+  71:../../test/testsem.c **** 
+  72:../../test/testsem.c **** static void sem1_setup(void) {
+  73:../../test/testsem.c **** 
+  74:../../test/testsem.c ****   chSemInit(&sem1, 0);
+  75:../../test/testsem.c **** }
+  76:../../test/testsem.c **** 
+  77:../../test/testsem.c **** static msg_t thread1(void *p) {
+  78:../../test/testsem.c **** 
+  79:../../test/testsem.c ****   chSemWait(&sem1);
+  80:../../test/testsem.c ****   test_emit_token(*(char *)p);
+  81:../../test/testsem.c ****   return 0;
+  82:../../test/testsem.c **** }
+  83:../../test/testsem.c **** 
+  84:../../test/testsem.c **** static void sem1_execute(void) {
+  85:../../test/testsem.c **** 
+  86:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+5, thread1, "A");
+  87:../../test/testsem.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()+1, thread1, "B");
+  88:../../test/testsem.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()+3, thread1, "C");
+  89:../../test/testsem.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()+4, thread1, "D");
+  90:../../test/testsem.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()+2, thread1, "E");
+  91:../../test/testsem.c ****   chSemSignal(&sem1);
+  92:../../test/testsem.c ****   chSemSignal(&sem1);
+  93:../../test/testsem.c ****   chSemSignal(&sem1);
+  94:../../test/testsem.c ****   chSemSignal(&sem1);
+  95:../../test/testsem.c ****   chSemSignal(&sem1);
+  96:../../test/testsem.c ****   test_wait_threads();
+  97:../../test/testsem.c **** #if CH_USE_SEMAPHORES_PRIORITY
+  98:../../test/testsem.c ****   test_assert_sequence(1, "ADCEB");
+  99:../../test/testsem.c **** #else
+ 100:../../test/testsem.c ****   test_assert_sequence(1, "ABCDE");
+ 101:../../test/testsem.c **** #endif
+ 102:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+5, thread1, "A");
+ 103:../../test/testsem.c ****   chSysLock();
+ 104:../../test/testsem.c ****   chSemAddCounterI(&sem1, 2);
+ 105:../../test/testsem.c ****   chSchRescheduleS();
+ 106:../../test/testsem.c ****   chSysUnlock();
+ 107:../../test/testsem.c ****   test_wait_threads();
+ 108:../../test/testsem.c ****   test_assert(2, chSemGetCounterI(&sem1) == 1, "invalid counter");
+ 109:../../test/testsem.c **** }
+ 110:../../test/testsem.c **** 
+ 111:../../test/testsem.c **** ROMCONST struct testcase testsem1 = {
+ 112:../../test/testsem.c ****   "Semaphores, enqueuing",
+ 113:../../test/testsem.c ****   sem1_setup,
+ 114:../../test/testsem.c ****   NULL,
+ 115:../../test/testsem.c ****   sem1_execute
+ 116:../../test/testsem.c **** };
+ 117:../../test/testsem.c **** 
+ 118:../../test/testsem.c **** /**
+ 119:../../test/testsem.c ****  * @page test_sem_002 Timeout test
+ 120:../../test/testsem.c ****  *
+ 121:../../test/testsem.c ****  * <h2>Description</h2>
+ 122:../../test/testsem.c ****  * The three possible semaphore waiting modes (do not wait, wait with timeout,
+ 123:../../test/testsem.c ****  * wait without timeout) are explored.<br>
+ 124:../../test/testsem.c ****  * The test expects that the semaphore wait function returns the correct value
+ 125:../../test/testsem.c ****  * in each of the above scenario and that the semaphore structure status is
+ 126:../../test/testsem.c ****  * correct after each operation.
+ 127:../../test/testsem.c ****  */
+ 128:../../test/testsem.c **** 
+ 129:../../test/testsem.c **** static void sem2_setup(void) {
+ 130:../../test/testsem.c **** 
+ 131:../../test/testsem.c ****   chSemInit(&sem1, 0);
+ 132:../../test/testsem.c **** }
+ 133:../../test/testsem.c **** 
+ 134:../../test/testsem.c **** static msg_t thread2(void *p) {
+ 135:../../test/testsem.c **** 
+ 136:../../test/testsem.c ****   (void)p;
+ 137:../../test/testsem.c ****   chThdSleepMilliseconds(50);
+ 138:../../test/testsem.c ****   chSysLock();
+ 139:../../test/testsem.c ****   chSemSignalI(&sem1); /* For coverage reasons */
+ 140:../../test/testsem.c ****   chSchRescheduleS();
+ 141:../../test/testsem.c ****   chSysUnlock();
+ 142:../../test/testsem.c ****   return 0;
+ 143:../../test/testsem.c **** }
+ 144:../../test/testsem.c **** 
+ 145:../../test/testsem.c **** static void sem2_execute(void) {
+ 146:../../test/testsem.c ****   int i;
+ 147:../../test/testsem.c ****   systime_t target_time;
+ 148:../../test/testsem.c ****   msg_t msg;
+ 149:../../test/testsem.c **** 
+ 150:../../test/testsem.c ****   /*
+ 151:../../test/testsem.c ****    * Testing special case TIME_IMMEDIATE.
+ 152:../../test/testsem.c ****    */
+ 153:../../test/testsem.c ****   msg = chSemWaitTimeout(&sem1, TIME_IMMEDIATE);
+ 154:../../test/testsem.c ****   test_assert(1, msg == RDY_TIMEOUT, "wrong wake-up message");
+ 155:../../test/testsem.c ****   test_assert(2, isempty(&sem1.s_queue), "queue not empty");
+ 156:../../test/testsem.c ****   test_assert(3, sem1.s_cnt == 0, "counter not zero");
+ 157:../../test/testsem.c **** 
+ 158:../../test/testsem.c ****   /*
+ 159:../../test/testsem.c ****    * Testing not timeout condition.
+ 160:../../test/testsem.c ****    */
+ 161:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 162:../../test/testsem.c ****                                  thread2, 0);
+ 163:../../test/testsem.c ****   msg = chSemWaitTimeout(&sem1, MS2ST(500));
+ 164:../../test/testsem.c ****   test_wait_threads();
+ 165:../../test/testsem.c ****   test_assert(4, msg == RDY_OK, "wrong wake-up message");
+ 166:../../test/testsem.c ****   test_assert(5, isempty(&sem1.s_queue), "queue not empty");
+ 167:../../test/testsem.c ****   test_assert(6, sem1.s_cnt == 0, "counter not zero");
+ 168:../../test/testsem.c **** 
+ 169:../../test/testsem.c ****   /*
+ 170:../../test/testsem.c ****    * Testing timeout condition.
+ 171:../../test/testsem.c ****    */
+ 172:../../test/testsem.c ****   test_wait_tick();
+ 173:../../test/testsem.c ****   target_time = chTimeNow() + MS2ST(5 * 500);
+ 174:../../test/testsem.c ****   for (i = 0; i < 5; i++) {
+ 175:../../test/testsem.c ****     test_emit_token('A' + i);
+ 176:../../test/testsem.c ****     msg = chSemWaitTimeout(&sem1, MS2ST(500));
+ 177:../../test/testsem.c ****     test_assert(7, msg == RDY_TIMEOUT, "wrong wake-up message");
+ 178:../../test/testsem.c ****     test_assert(8, isempty(&sem1.s_queue), "queue not empty");
+ 179:../../test/testsem.c ****     test_assert(9, sem1.s_cnt == 0, "counter not zero");
+ 180:../../test/testsem.c ****   }
+ 181:../../test/testsem.c ****   test_assert_sequence(10, "ABCDE");
+ 182:../../test/testsem.c ****   test_assert_time_window(11, target_time, target_time + ALLOWED_DELAY);
+ 183:../../test/testsem.c **** }
+ 184:../../test/testsem.c **** 
+ 185:../../test/testsem.c **** ROMCONST struct testcase testsem2 = {
+ 186:../../test/testsem.c ****   "Semaphores, timeout",
+ 187:../../test/testsem.c ****   sem2_setup,
+ 188:../../test/testsem.c ****   NULL,
+ 189:../../test/testsem.c ****   sem2_execute
+ 190:../../test/testsem.c **** };
+ 191:../../test/testsem.c **** 
+ 192:../../test/testsem.c **** #if CH_USE_SEMSW || defined(__DOXYGEN__)
+ 193:../../test/testsem.c **** /**
+ 194:../../test/testsem.c ****  * @page test_sem_003 Atomic signal-wait test
+ 195:../../test/testsem.c ****  *
+ 196:../../test/testsem.c ****  * <h2>Description</h2>
+ 197:../../test/testsem.c ****  * This test case explicitly addresses the @p chSemWaitSignal() function. A
+ 198:../../test/testsem.c ****  * thread is created that performs a wait and a signal operations.
+ 199:../../test/testsem.c ****  * The tester thread is awakened from an atomic wait/signal operation.<br>
+ 200:../../test/testsem.c ****  * The test expects that the semaphore wait function returns the correct value
+ 201:../../test/testsem.c ****  * in each of the above scenario and that the semaphore structure status is
+ 202:../../test/testsem.c ****  * correct after each operation.
+ 203:../../test/testsem.c ****  */
+ 204:../../test/testsem.c **** 
+ 205:../../test/testsem.c **** static void sem3_setup(void) {
+  14               		.loc 1 205 0
+  15               	/* prologue: function */
+  16               	/* frame size = 0 */
+  17               	/* stack size = 0 */
+  18               	.L__stack_usage = 0
+ 206:../../test/testsem.c **** 
+ 207:../../test/testsem.c ****   chSemInit(&sem1, 0);
+  19               		.loc 1 207 0
+  20 0000 60E0      		ldi r22,0
+  21 0002 80E0      		ldi r24,lo8(sem1)
+  22 0004 90E0      		ldi r25,hi8(sem1)
+  23 0006 0C94 0000 		jmp chSemInit
+  24               	.LVL0:
+  25               	.LFE13:
+  28               	sem2_setup:
+  29               	.LFB10:
+ 129:../../test/testsem.c **** static void sem2_setup(void) {
+  30               		.loc 1 129 0
+  31               	/* prologue: function */
+  32               	/* frame size = 0 */
+  33               	/* stack size = 0 */
+  34               	.L__stack_usage = 0
+ 131:../../test/testsem.c ****   chSemInit(&sem1, 0);
+  35               		.loc 1 131 0
+  36 000a 60E0      		ldi r22,0
+  37 000c 80E0      		ldi r24,lo8(sem1)
+  38 000e 90E0      		ldi r25,hi8(sem1)
+  39 0010 0C94 0000 		jmp chSemInit
+  40               	.LVL1:
+  41               	.LFE10:
+  44               	sem1_setup:
+  45               	.LFB7:
+  72:../../test/testsem.c **** static void sem1_setup(void) {
+  46               		.loc 1 72 0
+  47               	/* prologue: function */
+  48               	/* frame size = 0 */
+  49               	/* stack size = 0 */
+  50               	.L__stack_usage = 0
+  74:../../test/testsem.c ****   chSemInit(&sem1, 0);
+  51               		.loc 1 74 0
+  52 0014 60E0      		ldi r22,0
+  53 0016 80E0      		ldi r24,lo8(sem1)
+  54 0018 90E0      		ldi r25,hi8(sem1)
+  55 001a 0C94 0000 		jmp chSemInit
+  56               	.LVL2:
+  57               	.LFE7:
+  60               	sem4_execute:
+  61               	.LFB17:
+ 208:../../test/testsem.c **** }
+ 209:../../test/testsem.c **** 
+ 210:../../test/testsem.c **** static msg_t thread3(void *p) {
+ 211:../../test/testsem.c **** 
+ 212:../../test/testsem.c ****   (void)p;
+ 213:../../test/testsem.c ****   chSemWait(&sem1);
+ 214:../../test/testsem.c ****   chSemSignal(&sem1);
+ 215:../../test/testsem.c ****   return 0;
+ 216:../../test/testsem.c **** }
+ 217:../../test/testsem.c **** 
+ 218:../../test/testsem.c **** static void sem3_execute(void) {
+ 219:../../test/testsem.c **** 
+ 220:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread3, 0);
+ 221:../../test/testsem.c ****   chSemSignalWait(&sem1, &sem1);
+ 222:../../test/testsem.c ****   test_assert(1, isempty(&sem1.s_queue), "queue not empty");
+ 223:../../test/testsem.c ****   test_assert(2, sem1.s_cnt == 0, "counter not zero");
+ 224:../../test/testsem.c **** 
+ 225:../../test/testsem.c ****   chSemSignalWait(&sem1, &sem1);
+ 226:../../test/testsem.c ****   test_assert(3, isempty(&sem1.s_queue), "queue not empty");
+ 227:../../test/testsem.c ****   test_assert(4, sem1.s_cnt == 0, "counter not zero");
+ 228:../../test/testsem.c **** }
+ 229:../../test/testsem.c **** 
+ 230:../../test/testsem.c **** ROMCONST struct testcase testsem3 = {
+ 231:../../test/testsem.c ****   "Semaphores, atomic signal-wait",
+ 232:../../test/testsem.c ****   sem3_setup,
+ 233:../../test/testsem.c ****   NULL,
+ 234:../../test/testsem.c ****   sem3_execute
+ 235:../../test/testsem.c **** };
+ 236:../../test/testsem.c **** #endif /* CH_USE_SEMSW */
+ 237:../../test/testsem.c **** 
+ 238:../../test/testsem.c **** /**
+ 239:../../test/testsem.c ****  * @page test_sem_004 Binary Wait and Signal
+ 240:../../test/testsem.c ****  *
+ 241:../../test/testsem.c ****  * <h2>Description</h2>
+ 242:../../test/testsem.c ****  * This test case tests the binary semaphores functionality. The test both
+ 243:../../test/testsem.c ****  * checks the binary semaphore status and the expected status of the underlying
+ 244:../../test/testsem.c ****  * counting semaphore.
+ 245:../../test/testsem.c ****  */
+ 246:../../test/testsem.c **** static msg_t thread4(void *p) {
+ 247:../../test/testsem.c **** 
+ 248:../../test/testsem.c ****   chBSemSignal((BinarySemaphore *)p);
+ 249:../../test/testsem.c ****   return 0;
+ 250:../../test/testsem.c **** }
+ 251:../../test/testsem.c **** 
+ 252:../../test/testsem.c **** static void sem4_execute(void) {
+  62               		.loc 1 252 0
+  63 001e 0F93      		push r16
+  64               	.LCFI0:
+  65 0020 1F93      		push r17
+  66               	.LCFI1:
+  67 0022 CF93      		push r28
+  68               	.LCFI2:
+  69 0024 DF93      		push r29
+  70               	.LCFI3:
+  71 0026 00D0      		rcall .
+  72 0028 1F92      		push __zero_reg__
+  73 002a 1F92      		push __zero_reg__
+  74               	.LCFI4:
+  75 002c CDB7      		in r28,__SP_L__
+  76 002e DEB7      		in r29,__SP_H__
+  77               	.LCFI5:
+  78               	/* prologue: function */
+  79               	/* frame size = 5 */
+  80               	/* stack size = 9 */
+  81               	.L__stack_usage = 9
+ 253:../../test/testsem.c ****   BinarySemaphore bsem;
+ 254:../../test/testsem.c ****   
+ 255:../../test/testsem.c ****   /* Creates a taken binary semaphore.*/
+ 256:../../test/testsem.c ****   chBSemInit(&bsem, TRUE);
+  82               		.loc 1 256 0
+  83 0030 60E0      		ldi r22,0
+  84 0032 CE01      		movw r24,r28
+  85 0034 0196      		adiw r24,1
+  86 0036 0E94 0000 		call chSemInit
+  87               	.LVL3:
+ 257:../../test/testsem.c ****   chBSemReset(&bsem, TRUE);
+  88               		.loc 1 257 0
+  89 003a 60E0      		ldi r22,0
+  90 003c CE01      		movw r24,r28
+  91 003e 0196      		adiw r24,1
+  92 0040 0E94 0000 		call chSemReset
+  93               	.LVL4:
+ 258:../../test/testsem.c ****   test_assert(1, chBSemGetStateI(&bsem) == TRUE, "not taken");
+  94               		.loc 1 258 0
+  95 0044 61E0      		ldi r22,lo8(1)
+  96 0046 8D81      		ldd r24,Y+5
+  97 0048 1816      		cp __zero_reg__,r24
+  98 004a 04F4      		brge .L5
+  99 004c 60E0      		ldi r22,0
+ 100               	.L5:
+ 101 004e 81E0      		ldi r24,lo8(1)
+ 102 0050 90E0      		ldi r25,0
+ 103 0052 0E94 0000 		call _test_assert
+ 104               	.LVL5:
+ 105 0056 8823      		tst r24
+ 106 0058 01F0      		breq .L22
+ 107               	.L4:
+ 108               	/* epilogue start */
+ 259:../../test/testsem.c **** 
+ 260:../../test/testsem.c ****   /* Starts a signaler thread at a lower priority.*/
+ 261:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE,
+ 262:../../test/testsem.c ****                                  chThdGetPriority()-1, thread4, &bsem);
+ 263:../../test/testsem.c ****                                  
+ 264:../../test/testsem.c ****   /* Waits to be signaled.*/
+ 265:../../test/testsem.c ****   chBSemWait(&bsem);
+ 266:../../test/testsem.c ****   
+ 267:../../test/testsem.c ****   /* The binary semaphore is expected to be taken.*/
+ 268:../../test/testsem.c ****   test_assert(2, chBSemGetStateI(&bsem) == TRUE, "not taken");
+ 269:../../test/testsem.c ****   
+ 270:../../test/testsem.c ****   /* Releasing it, check both the binary semaphore state and the underlying
+ 271:../../test/testsem.c ****      counter semaphore state..*/
+ 272:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 273:../../test/testsem.c ****   test_assert(3, chBSemGetStateI(&bsem) == FALSE, "still taken");
+ 274:../../test/testsem.c ****   test_assert(4, chSemGetCounterI(&bsem.bs_sem) == 1, "unexpected counter");
+ 275:../../test/testsem.c ****   
+ 276:../../test/testsem.c ****   /* Checking signaling overflow, the counter must not go beyond 1.*/
+ 277:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 278:../../test/testsem.c ****   test_assert(3, chBSemGetStateI(&bsem) == FALSE, "taken");
+ 279:../../test/testsem.c ****   test_assert(5, chSemGetCounterI(&bsem.bs_sem) == 1, "unexpected counter");
+ 280:../../test/testsem.c **** }
+ 109               		.loc 1 280 0
+ 110 005a 0F90      		pop __tmp_reg__
+ 111 005c 0F90      		pop __tmp_reg__
+ 112 005e 0F90      		pop __tmp_reg__
+ 113 0060 0F90      		pop __tmp_reg__
+ 114 0062 0F90      		pop __tmp_reg__
+ 115 0064 DF91      		pop r29
+ 116 0066 CF91      		pop r28
+ 117 0068 1F91      		pop r17
+ 118 006a 0F91      		pop r16
+ 119 006c 0895      		ret
+ 120               	.L22:
+ 262:../../test/testsem.c ****                                  chThdGetPriority()-1, thread4, &bsem);
+ 121               		.loc 1 262 0
+ 122 006e E091 0000 		lds r30,rlist+11
+ 123 0072 F091 0000 		lds r31,rlist+11+1
+ 261:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE,
+ 124               		.loc 1 261 0
+ 125 0076 4481      		ldd r20,Z+4
+ 126 0078 4150      		subi r20,lo8(-(-1))
+ 127 007a 8E01      		movw r16,r28
+ 128 007c 0F5F      		subi r16,-1
+ 129 007e 1F4F      		sbci r17,-1
+ 130 0080 20E0      		ldi r18,lo8(gs(thread4))
+ 131 0082 30E0      		ldi r19,hi8(gs(thread4))
+ 132 0084 67E9      		ldi r22,lo8(-105)
+ 133 0086 70E0      		ldi r23,0
+ 134 0088 8091 0000 		lds r24,wa
+ 135 008c 9091 0000 		lds r25,wa+1
+ 136 0090 0E94 0000 		call chThdCreateStatic
+ 137               	.LVL6:
+ 138 0094 9093 0000 		sts threads+1,r25
+ 139 0098 8093 0000 		sts threads,r24
+ 265:../../test/testsem.c ****   chBSemWait(&bsem);
+ 140               		.loc 1 265 0
+ 141 009c C801      		movw r24,r16
+ 142 009e 0E94 0000 		call chSemWait
+ 143               	.LVL7:
+ 268:../../test/testsem.c ****   test_assert(2, chBSemGetStateI(&bsem) == TRUE, "not taken");
+ 144               		.loc 1 268 0
+ 145 00a2 61E0      		ldi r22,lo8(1)
+ 146 00a4 8D81      		ldd r24,Y+5
+ 147 00a6 1816      		cp __zero_reg__,r24
+ 148 00a8 04F4      		brge .L7
+ 149 00aa 60E0      		ldi r22,0
+ 150               	.L7:
+ 151 00ac 82E0      		ldi r24,lo8(2)
+ 152 00ae 90E0      		ldi r25,0
+ 153 00b0 0E94 0000 		call _test_assert
+ 154               	.LVL8:
+ 155 00b4 8111      		cpse r24,__zero_reg__
+ 156 00b6 00C0      		rjmp .L4
+ 272:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 157               		.loc 1 272 0
+ 158               	/* #APP */
+ 159               	 ;  272 "../../test/testsem.c" 1
+ 160 00b8 F894      		cli
+ 161               	 ;  0 "" 2
+ 162               	/* #NOAPP */
+ 163 00ba 8D81      		ldd r24,Y+5
+ 164 00bc 1816      		cp __zero_reg__,r24
+ 165 00be 04F4      		brge .L23
+ 166               	.L8:
+ 272:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 167               		.loc 1 272 0 is_stmt 0 discriminator 2
+ 168 00c0 0E94 0000 		call chSchRescheduleS
+ 169               	.LVL9:
+ 170               	/* #APP */
+ 171               	 ;  272 "../../test/testsem.c" 1
+ 172 00c4 7894      		sei
+ 173               	 ;  0 "" 2
+ 273:../../test/testsem.c ****   test_assert(3, chBSemGetStateI(&bsem) == FALSE, "still taken");
+ 174               		.loc 1 273 0 is_stmt 1 discriminator 2
+ 175               	/* #NOAPP */
+ 176 00c6 61E0      		ldi r22,lo8(1)
+ 177 00c8 8D81      		ldd r24,Y+5
+ 178 00ca 1816      		cp __zero_reg__,r24
+ 179 00cc 04F4      		brge .L24
+ 180               	.L9:
+ 181 00ce 83E0      		ldi r24,lo8(3)
+ 182 00d0 90E0      		ldi r25,0
+ 183 00d2 0E94 0000 		call _test_assert
+ 184               	.LVL10:
+ 185 00d6 8111      		cpse r24,__zero_reg__
+ 186 00d8 00C0      		rjmp .L4
+ 274:../../test/testsem.c ****   test_assert(4, chSemGetCounterI(&bsem.bs_sem) == 1, "unexpected counter");
+ 187               		.loc 1 274 0
+ 188 00da 61E0      		ldi r22,lo8(1)
+ 189 00dc 8D81      		ldd r24,Y+5
+ 190 00de 8130      		cpi r24,lo8(1)
+ 191 00e0 01F0      		breq .L10
+ 192 00e2 60E0      		ldi r22,0
+ 193               	.L10:
+ 194 00e4 84E0      		ldi r24,lo8(4)
+ 195 00e6 90E0      		ldi r25,0
+ 196 00e8 0E94 0000 		call _test_assert
+ 197               	.LVL11:
+ 198 00ec 8111      		cpse r24,__zero_reg__
+ 199 00ee 00C0      		rjmp .L4
+ 277:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 200               		.loc 1 277 0
+ 201               	/* #APP */
+ 202               	 ;  277 "../../test/testsem.c" 1
+ 203 00f0 F894      		cli
+ 204               	 ;  0 "" 2
+ 205               	/* #NOAPP */
+ 206 00f2 8D81      		ldd r24,Y+5
+ 207 00f4 1816      		cp __zero_reg__,r24
+ 208 00f6 04F4      		brge .L25
+ 209               	.L11:
+ 277:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 210               		.loc 1 277 0 is_stmt 0 discriminator 2
+ 211 00f8 0E94 0000 		call chSchRescheduleS
+ 212               	.LVL12:
+ 213               	/* #APP */
+ 214               	 ;  277 "../../test/testsem.c" 1
+ 215 00fc 7894      		sei
+ 216               	 ;  0 "" 2
+ 278:../../test/testsem.c ****   test_assert(3, chBSemGetStateI(&bsem) == FALSE, "taken");
+ 217               		.loc 1 278 0 is_stmt 1 discriminator 2
+ 218               	/* #NOAPP */
+ 219 00fe 61E0      		ldi r22,lo8(1)
+ 220 0100 8D81      		ldd r24,Y+5
+ 221 0102 1816      		cp __zero_reg__,r24
+ 222 0104 04F4      		brge .L26
+ 223               	.L12:
+ 224 0106 83E0      		ldi r24,lo8(3)
+ 225 0108 90E0      		ldi r25,0
+ 226 010a 0E94 0000 		call _test_assert
+ 227               	.LVL13:
+ 228 010e 8111      		cpse r24,__zero_reg__
+ 229 0110 00C0      		rjmp .L4
+ 279:../../test/testsem.c ****   test_assert(5, chSemGetCounterI(&bsem.bs_sem) == 1, "unexpected counter");
+ 230               		.loc 1 279 0
+ 231 0112 61E0      		ldi r22,lo8(1)
+ 232 0114 8D81      		ldd r24,Y+5
+ 233 0116 8130      		cpi r24,lo8(1)
+ 234 0118 01F0      		breq .L13
+ 235 011a 60E0      		ldi r22,0
+ 236               	.L13:
+ 237 011c 85E0      		ldi r24,lo8(5)
+ 238 011e 90E0      		ldi r25,0
+ 239 0120 0E94 0000 		call _test_assert
+ 240               	.LVL14:
+ 241 0124 00C0      		rjmp .L4
+ 242               	.L24:
+ 273:../../test/testsem.c ****   test_assert(3, chBSemGetStateI(&bsem) == FALSE, "still taken");
+ 243               		.loc 1 273 0 discriminator 2
+ 244 0126 60E0      		ldi r22,0
+ 245 0128 00C0      		rjmp .L9
+ 246               	.L23:
+ 272:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 247               		.loc 1 272 0 discriminator 1
+ 248 012a CE01      		movw r24,r28
+ 249 012c 0196      		adiw r24,1
+ 250 012e 0E94 0000 		call chSemSignalI
+ 251               	.LVL15:
+ 252 0132 00C0      		rjmp .L8
+ 253               	.L26:
+ 278:../../test/testsem.c ****   test_assert(3, chBSemGetStateI(&bsem) == FALSE, "taken");
+ 254               		.loc 1 278 0 discriminator 2
+ 255 0134 60E0      		ldi r22,0
+ 256 0136 00C0      		rjmp .L12
+ 257               	.L25:
+ 277:../../test/testsem.c ****   chBSemSignal(&bsem);
+ 258               		.loc 1 277 0 discriminator 1
+ 259 0138 CE01      		movw r24,r28
+ 260 013a 0196      		adiw r24,1
+ 261 013c 0E94 0000 		call chSemSignalI
+ 262               	.LVL16:
+ 263 0140 00C0      		rjmp .L11
+ 264               	.LFE17:
+ 267               	thread4:
+ 268               	.LFB16:
+ 246:../../test/testsem.c **** static msg_t thread4(void *p) {
+ 269               		.loc 1 246 0
+ 270               	.LVL17:
+ 271               	/* prologue: function */
+ 272               	/* frame size = 0 */
+ 273               	/* stack size = 0 */
+ 274               	.L__stack_usage = 0
+ 248:../../test/testsem.c ****   chBSemSignal((BinarySemaphore *)p);
+ 275               		.loc 1 248 0
+ 276               	/* #APP */
+ 277               	 ;  248 "../../test/testsem.c" 1
+ 278 0142 F894      		cli
+ 279               	 ;  0 "" 2
+ 280               	/* #NOAPP */
+ 281 0144 FC01      		movw r30,r24
+ 282 0146 2481      		ldd r18,Z+4
+ 283 0148 1216      		cp __zero_reg__,r18
+ 284 014a 04F4      		brge .L29
+ 248:../../test/testsem.c ****   chBSemSignal((BinarySemaphore *)p);
+ 285               		.loc 1 248 0 is_stmt 0 discriminator 2
+ 286 014c 0E94 0000 		call chSchRescheduleS
+ 287               	.LVL18:
+ 288               	/* #APP */
+ 289               	 ;  248 "../../test/testsem.c" 1
+ 290 0150 7894      		sei
+ 291               	 ;  0 "" 2
+ 250:../../test/testsem.c **** }
+ 292               		.loc 1 250 0 is_stmt 1 discriminator 2
+ 293               	/* #NOAPP */
+ 294 0152 80E0      		ldi r24,0
+ 295 0154 90E0      		ldi r25,0
+ 296 0156 0895      		ret
+ 297               	.LVL19:
+ 298               	.L29:
+ 248:../../test/testsem.c ****   chBSemSignal((BinarySemaphore *)p);
+ 299               		.loc 1 248 0 discriminator 1
+ 300 0158 0E94 0000 		call chSemSignalI
+ 301               	.LVL20:
+ 302 015c 0E94 0000 		call chSchRescheduleS
+ 303               	.LVL21:
+ 304               	/* #APP */
+ 305               	 ;  248 "../../test/testsem.c" 1
+ 306 0160 7894      		sei
+ 307               	 ;  0 "" 2
+ 250:../../test/testsem.c **** }
+ 308               		.loc 1 250 0 discriminator 1
+ 309               	/* #NOAPP */
+ 310 0162 80E0      		ldi r24,0
+ 311 0164 90E0      		ldi r25,0
+ 312 0166 0895      		ret
+ 313               	.LFE16:
+ 316               	thread3:
+ 317               	.LFB14:
+ 210:../../test/testsem.c **** static msg_t thread3(void *p) {
+ 318               		.loc 1 210 0
+ 319               	.LVL22:
+ 320               	/* prologue: function */
+ 321               	/* frame size = 0 */
+ 322               	/* stack size = 0 */
+ 323               	.L__stack_usage = 0
+ 213:../../test/testsem.c ****   chSemWait(&sem1);
+ 324               		.loc 1 213 0
+ 325 0168 80E0      		ldi r24,lo8(sem1)
+ 326 016a 90E0      		ldi r25,hi8(sem1)
+ 327               	.LVL23:
+ 328 016c 0E94 0000 		call chSemWait
+ 329               	.LVL24:
+ 214:../../test/testsem.c ****   chSemSignal(&sem1);
+ 330               		.loc 1 214 0
+ 331 0170 80E0      		ldi r24,lo8(sem1)
+ 332 0172 90E0      		ldi r25,hi8(sem1)
+ 333 0174 0E94 0000 		call chSemSignal
+ 334               	.LVL25:
+ 216:../../test/testsem.c **** }
+ 335               		.loc 1 216 0
+ 336 0178 80E0      		ldi r24,0
+ 337 017a 90E0      		ldi r25,0
+ 338 017c 0895      		ret
+ 339               	.LFE14:
+ 342               	thread1:
+ 343               	.LFB8:
+  77:../../test/testsem.c **** static msg_t thread1(void *p) {
+ 344               		.loc 1 77 0
+ 345               	.LVL26:
+ 346 017e CF93      		push r28
+ 347               	.LCFI6:
+ 348 0180 DF93      		push r29
+ 349               	.LCFI7:
+ 350               	/* prologue: function */
+ 351               	/* frame size = 0 */
+ 352               	/* stack size = 2 */
+ 353               	.L__stack_usage = 2
+ 354 0182 EC01      		movw r28,r24
+  79:../../test/testsem.c ****   chSemWait(&sem1);
+ 355               		.loc 1 79 0
+ 356 0184 80E0      		ldi r24,lo8(sem1)
+ 357 0186 90E0      		ldi r25,hi8(sem1)
+ 358               	.LVL27:
+ 359 0188 0E94 0000 		call chSemWait
+ 360               	.LVL28:
+  80:../../test/testsem.c ****   test_emit_token(*(char *)p);
+ 361               		.loc 1 80 0
+ 362 018c 8881      		ld r24,Y
+ 363 018e 0E94 0000 		call test_emit_token
+ 364               	.LVL29:
+  82:../../test/testsem.c **** }
+ 365               		.loc 1 82 0
+ 366 0192 80E0      		ldi r24,0
+ 367 0194 90E0      		ldi r25,0
+ 368               	/* epilogue start */
+ 369 0196 DF91      		pop r29
+ 370 0198 CF91      		pop r28
+ 371               	.LVL30:
+ 372 019a 0895      		ret
+ 373               	.LFE8:
+ 376               	thread2:
+ 377               	.LFB11:
+ 134:../../test/testsem.c **** static msg_t thread2(void *p) {
+ 378               		.loc 1 134 0
+ 379               	.LVL31:
+ 380               	/* prologue: function */
+ 381               	/* frame size = 0 */
+ 382               	/* stack size = 0 */
+ 383               	.L__stack_usage = 0
+ 137:../../test/testsem.c ****   chThdSleepMilliseconds(50);
+ 384               		.loc 1 137 0
+ 385 019c 82E3      		ldi r24,lo8(50)
+ 386 019e 90E0      		ldi r25,0
+ 387               	.LVL32:
+ 388 01a0 0E94 0000 		call chThdSleep
+ 389               	.LVL33:
+ 138:../../test/testsem.c ****   chSysLock();
+ 390               		.loc 1 138 0
+ 391               	/* #APP */
+ 392               	 ;  138 "../../test/testsem.c" 1
+ 393 01a4 F894      		cli
+ 394               	 ;  0 "" 2
+ 139:../../test/testsem.c ****   chSemSignalI(&sem1); /* For coverage reasons */
+ 395               		.loc 1 139 0
+ 396               	/* #NOAPP */
+ 397 01a6 80E0      		ldi r24,lo8(sem1)
+ 398 01a8 90E0      		ldi r25,hi8(sem1)
+ 399 01aa 0E94 0000 		call chSemSignalI
+ 400               	.LVL34:
+ 140:../../test/testsem.c ****   chSchRescheduleS();
+ 401               		.loc 1 140 0
+ 402 01ae 0E94 0000 		call chSchRescheduleS
+ 403               	.LVL35:
+ 141:../../test/testsem.c ****   chSysUnlock();
+ 404               		.loc 1 141 0
+ 405               	/* #APP */
+ 406               	 ;  141 "../../test/testsem.c" 1
+ 407 01b2 7894      		sei
+ 408               	 ;  0 "" 2
+ 143:../../test/testsem.c **** }
+ 409               		.loc 1 143 0
+ 410               	/* #NOAPP */
+ 411 01b4 80E0      		ldi r24,0
+ 412 01b6 90E0      		ldi r25,0
+ 413 01b8 0895      		ret
+ 414               	.LFE11:
+ 416               		.section	.rodata.str1.1,"aMS",@progbits,1
+ 417               	.LC0:
+ 418 0000 4100      		.string	"A"
+ 419               	.LC1:
+ 420 0002 4200      		.string	"B"
+ 421               	.LC2:
+ 422 0004 4300      		.string	"C"
+ 423               	.LC3:
+ 424 0006 4400      		.string	"D"
+ 425               	.LC4:
+ 426 0008 4500      		.string	"E"
+ 427               	.LC5:
+ 428 000a 4142 4344 		.string	"ABCDE"
+ 428      4500 
+ 429               		.text
+ 431               	sem1_execute:
+ 432               	.LFB9:
+  84:../../test/testsem.c **** static void sem1_execute(void) {
+ 433               		.loc 1 84 0
+ 434 01ba 0F93      		push r16
+ 435               	.LCFI8:
+ 436 01bc 1F93      		push r17
+ 437               	.LCFI9:
+ 438 01be CF93      		push r28
+ 439               	.LCFI10:
+ 440 01c0 DF93      		push r29
+ 441               	.LCFI11:
+ 442               	/* prologue: function */
+ 443               	/* frame size = 0 */
+ 444               	/* stack size = 4 */
+ 445               	.L__stack_usage = 4
+  86:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+5, thread1, "A");
+ 446               		.loc 1 86 0
+ 447 01c2 C091 0000 		lds r28,wa
+ 448 01c6 D091 0000 		lds r29,wa+1
+ 449 01ca E091 0000 		lds r30,rlist+11
+ 450 01ce F091 0000 		lds r31,rlist+11+1
+ 451 01d2 4481      		ldd r20,Z+4
+ 452 01d4 4B5F      		subi r20,lo8(-(5))
+ 453 01d6 00E0      		ldi r16,lo8(.LC0)
+ 454 01d8 10E0      		ldi r17,hi8(.LC0)
+ 455 01da 20E0      		ldi r18,lo8(gs(thread1))
+ 456 01dc 30E0      		ldi r19,hi8(gs(thread1))
+ 457 01de 67E9      		ldi r22,lo8(-105)
+ 458 01e0 70E0      		ldi r23,0
+ 459 01e2 CE01      		movw r24,r28
+ 460 01e4 0E94 0000 		call chThdCreateStatic
+ 461               	.LVL36:
+ 462 01e8 9093 0000 		sts threads+1,r25
+ 463 01ec 8093 0000 		sts threads,r24
+  87:../../test/testsem.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()+1, thread1, "B");
+ 464               		.loc 1 87 0
+ 465 01f0 E091 0000 		lds r30,rlist+11
+ 466 01f4 F091 0000 		lds r31,rlist+11+1
+ 467 01f8 4481      		ldd r20,Z+4
+ 468 01fa 4F5F      		subi r20,lo8(-(1))
+ 469 01fc 00E0      		ldi r16,lo8(.LC1)
+ 470 01fe 10E0      		ldi r17,hi8(.LC1)
+ 471 0200 20E0      		ldi r18,lo8(gs(thread1))
+ 472 0202 30E0      		ldi r19,hi8(gs(thread1))
+ 473 0204 67E9      		ldi r22,lo8(-105)
+ 474 0206 70E0      		ldi r23,0
+ 475 0208 8091 0000 		lds r24,wa+2
+ 476 020c 9091 0000 		lds r25,wa+2+1
+ 477 0210 0E94 0000 		call chThdCreateStatic
+ 478               	.LVL37:
+ 479 0214 9093 0000 		sts threads+2+1,r25
+ 480 0218 8093 0000 		sts threads+2,r24
+  88:../../test/testsem.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()+3, thread1, "C");
+ 481               		.loc 1 88 0
+ 482 021c E091 0000 		lds r30,rlist+11
+ 483 0220 F091 0000 		lds r31,rlist+11+1
+ 484 0224 4481      		ldd r20,Z+4
+ 485 0226 4D5F      		subi r20,lo8(-(3))
+ 486 0228 00E0      		ldi r16,lo8(.LC2)
+ 487 022a 10E0      		ldi r17,hi8(.LC2)
+ 488 022c 20E0      		ldi r18,lo8(gs(thread1))
+ 489 022e 30E0      		ldi r19,hi8(gs(thread1))
+ 490 0230 67E9      		ldi r22,lo8(-105)
+ 491 0232 70E0      		ldi r23,0
+ 492 0234 8091 0000 		lds r24,wa+4
+ 493 0238 9091 0000 		lds r25,wa+4+1
+ 494 023c 0E94 0000 		call chThdCreateStatic
+ 495               	.LVL38:
+ 496 0240 9093 0000 		sts threads+4+1,r25
+ 497 0244 8093 0000 		sts threads+4,r24
+  89:../../test/testsem.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()+4, thread1, "D");
+ 498               		.loc 1 89 0
+ 499 0248 E091 0000 		lds r30,rlist+11
+ 500 024c F091 0000 		lds r31,rlist+11+1
+ 501 0250 4481      		ldd r20,Z+4
+ 502 0252 4C5F      		subi r20,lo8(-(4))
+ 503 0254 00E0      		ldi r16,lo8(.LC3)
+ 504 0256 10E0      		ldi r17,hi8(.LC3)
+ 505 0258 20E0      		ldi r18,lo8(gs(thread1))
+ 506 025a 30E0      		ldi r19,hi8(gs(thread1))
+ 507 025c 67E9      		ldi r22,lo8(-105)
+ 508 025e 70E0      		ldi r23,0
+ 509 0260 8091 0000 		lds r24,wa+6
+ 510 0264 9091 0000 		lds r25,wa+6+1
+ 511 0268 0E94 0000 		call chThdCreateStatic
+ 512               	.LVL39:
+ 513 026c 9093 0000 		sts threads+6+1,r25
+ 514 0270 8093 0000 		sts threads+6,r24
+  90:../../test/testsem.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()+2, thread1, "E");
+ 515               		.loc 1 90 0
+ 516 0274 E091 0000 		lds r30,rlist+11
+ 517 0278 F091 0000 		lds r31,rlist+11+1
+ 518 027c 4481      		ldd r20,Z+4
+ 519 027e 4E5F      		subi r20,lo8(-(2))
+ 520 0280 00E0      		ldi r16,lo8(.LC4)
+ 521 0282 10E0      		ldi r17,hi8(.LC4)
+ 522 0284 20E0      		ldi r18,lo8(gs(thread1))
+ 523 0286 30E0      		ldi r19,hi8(gs(thread1))
+ 524 0288 67E9      		ldi r22,lo8(-105)
+ 525 028a 70E0      		ldi r23,0
+ 526 028c 8091 0000 		lds r24,wa+8
+ 527 0290 9091 0000 		lds r25,wa+8+1
+ 528 0294 0E94 0000 		call chThdCreateStatic
+ 529               	.LVL40:
+ 530 0298 9093 0000 		sts threads+8+1,r25
+ 531 029c 8093 0000 		sts threads+8,r24
+  91:../../test/testsem.c ****   chSemSignal(&sem1);
+ 532               		.loc 1 91 0
+ 533 02a0 80E0      		ldi r24,lo8(sem1)
+ 534 02a2 90E0      		ldi r25,hi8(sem1)
+ 535 02a4 0E94 0000 		call chSemSignal
+ 536               	.LVL41:
+  92:../../test/testsem.c ****   chSemSignal(&sem1);
+ 537               		.loc 1 92 0
+ 538 02a8 80E0      		ldi r24,lo8(sem1)
+ 539 02aa 90E0      		ldi r25,hi8(sem1)
+ 540 02ac 0E94 0000 		call chSemSignal
+ 541               	.LVL42:
+  93:../../test/testsem.c ****   chSemSignal(&sem1);
+ 542               		.loc 1 93 0
+ 543 02b0 80E0      		ldi r24,lo8(sem1)
+ 544 02b2 90E0      		ldi r25,hi8(sem1)
+ 545 02b4 0E94 0000 		call chSemSignal
+ 546               	.LVL43:
+  94:../../test/testsem.c ****   chSemSignal(&sem1);
+ 547               		.loc 1 94 0
+ 548 02b8 80E0      		ldi r24,lo8(sem1)
+ 549 02ba 90E0      		ldi r25,hi8(sem1)
+ 550 02bc 0E94 0000 		call chSemSignal
+ 551               	.LVL44:
+  95:../../test/testsem.c ****   chSemSignal(&sem1);
+ 552               		.loc 1 95 0
+ 553 02c0 80E0      		ldi r24,lo8(sem1)
+ 554 02c2 90E0      		ldi r25,hi8(sem1)
+ 555 02c4 0E94 0000 		call chSemSignal
+ 556               	.LVL45:
+  96:../../test/testsem.c ****   test_wait_threads();
+ 557               		.loc 1 96 0
+ 558 02c8 0E94 0000 		call test_wait_threads
+ 559               	.LVL46:
+ 100:../../test/testsem.c ****   test_assert_sequence(1, "ABCDE");
+ 560               		.loc 1 100 0
+ 561 02cc 60E0      		ldi r22,lo8(.LC5)
+ 562 02ce 70E0      		ldi r23,hi8(.LC5)
+ 563 02d0 81E0      		ldi r24,lo8(1)
+ 564 02d2 90E0      		ldi r25,0
+ 565 02d4 0E94 0000 		call _test_assert_sequence
+ 566               	.LVL47:
+ 567 02d8 8823      		tst r24
+ 568 02da 01F0      		breq .L39
+ 569               	/* epilogue start */
+ 109:../../test/testsem.c **** }
+ 570               		.loc 1 109 0
+ 571 02dc DF91      		pop r29
+ 572 02de CF91      		pop r28
+ 573 02e0 1F91      		pop r17
+ 574 02e2 0F91      		pop r16
+ 575 02e4 0895      		ret
+ 576               	.L39:
+ 102:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+5, thread1, "A");
+ 577               		.loc 1 102 0
+ 578 02e6 E091 0000 		lds r30,rlist+11
+ 579 02ea F091 0000 		lds r31,rlist+11+1
+ 580 02ee 4481      		ldd r20,Z+4
+ 581 02f0 4B5F      		subi r20,lo8(-(5))
+ 582 02f2 00E0      		ldi r16,lo8(.LC0)
+ 583 02f4 10E0      		ldi r17,hi8(.LC0)
+ 584 02f6 20E0      		ldi r18,lo8(gs(thread1))
+ 585 02f8 30E0      		ldi r19,hi8(gs(thread1))
+ 586 02fa 67E9      		ldi r22,lo8(-105)
+ 587 02fc 70E0      		ldi r23,0
+ 588 02fe CE01      		movw r24,r28
+ 589 0300 0E94 0000 		call chThdCreateStatic
+ 590               	.LVL48:
+ 591 0304 9093 0000 		sts threads+1,r25
+ 592 0308 8093 0000 		sts threads,r24
+ 103:../../test/testsem.c ****   chSysLock();
+ 593               		.loc 1 103 0
+ 594               	/* #APP */
+ 595               	 ;  103 "../../test/testsem.c" 1
+ 596 030c F894      		cli
+ 597               	 ;  0 "" 2
+ 104:../../test/testsem.c ****   chSemAddCounterI(&sem1, 2);
+ 598               		.loc 1 104 0
+ 599               	/* #NOAPP */
+ 600 030e 62E0      		ldi r22,lo8(2)
+ 601 0310 80E0      		ldi r24,lo8(sem1)
+ 602 0312 90E0      		ldi r25,hi8(sem1)
+ 603 0314 0E94 0000 		call chSemAddCounterI
+ 604               	.LVL49:
+ 105:../../test/testsem.c ****   chSchRescheduleS();
+ 605               		.loc 1 105 0
+ 606 0318 0E94 0000 		call chSchRescheduleS
+ 607               	.LVL50:
+ 106:../../test/testsem.c ****   chSysUnlock();
+ 608               		.loc 1 106 0
+ 609               	/* #APP */
+ 610               	 ;  106 "../../test/testsem.c" 1
+ 611 031c 7894      		sei
+ 612               	 ;  0 "" 2
+ 107:../../test/testsem.c ****   test_wait_threads();
+ 613               		.loc 1 107 0
+ 614               	/* #NOAPP */
+ 615 031e 0E94 0000 		call test_wait_threads
+ 616               	.LVL51:
+ 108:../../test/testsem.c ****   test_assert(2, chSemGetCounterI(&sem1) == 1, "invalid counter");
+ 617               		.loc 1 108 0
+ 618 0322 61E0      		ldi r22,lo8(1)
+ 619 0324 8091 0000 		lds r24,sem1+4
+ 620 0328 8130      		cpi r24,lo8(1)
+ 621 032a 01F0      		breq .L35
+ 622 032c 60E0      		ldi r22,0
+ 623               	.L35:
+ 624 032e 82E0      		ldi r24,lo8(2)
+ 625 0330 90E0      		ldi r25,0
+ 626               	/* epilogue start */
+ 109:../../test/testsem.c **** }
+ 627               		.loc 1 109 0
+ 628 0332 DF91      		pop r29
+ 629 0334 CF91      		pop r28
+ 630 0336 1F91      		pop r17
+ 631 0338 0F91      		pop r16
+ 108:../../test/testsem.c ****   test_assert(2, chSemGetCounterI(&sem1) == 1, "invalid counter");
+ 632               		.loc 1 108 0
+ 633 033a 0C94 0000 		jmp _test_assert
+ 634               	.LVL52:
+ 635               	.LFE9:
+ 638               	sem3_execute:
+ 639               	.LFB15:
+ 218:../../test/testsem.c **** static void sem3_execute(void) {
+ 640               		.loc 1 218 0
+ 641 033e 0F93      		push r16
+ 642               	.LCFI12:
+ 643 0340 1F93      		push r17
+ 644               	.LCFI13:
+ 645               	/* prologue: function */
+ 646               	/* frame size = 0 */
+ 647               	/* stack size = 2 */
+ 648               	.L__stack_usage = 2
+ 220:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread3, 0);
+ 649               		.loc 1 220 0
+ 650 0342 E091 0000 		lds r30,rlist+11
+ 651 0346 F091 0000 		lds r31,rlist+11+1
+ 652 034a 4481      		ldd r20,Z+4
+ 653 034c 4F5F      		subi r20,lo8(-(1))
+ 654 034e 00E0      		ldi r16,0
+ 655 0350 10E0      		ldi r17,0
+ 656 0352 20E0      		ldi r18,lo8(gs(thread3))
+ 657 0354 30E0      		ldi r19,hi8(gs(thread3))
+ 658 0356 67E9      		ldi r22,lo8(-105)
+ 659 0358 70E0      		ldi r23,0
+ 660 035a 8091 0000 		lds r24,wa
+ 661 035e 9091 0000 		lds r25,wa+1
+ 662 0362 0E94 0000 		call chThdCreateStatic
+ 663               	.LVL53:
+ 664 0366 9093 0000 		sts threads+1,r25
+ 665 036a 8093 0000 		sts threads,r24
+ 221:../../test/testsem.c ****   chSemSignalWait(&sem1, &sem1);
+ 666               		.loc 1 221 0
+ 667 036e 60E0      		ldi r22,lo8(sem1)
+ 668 0370 70E0      		ldi r23,hi8(sem1)
+ 669 0372 CB01      		movw r24,r22
+ 670 0374 0E94 0000 		call chSemSignalWait
+ 671               	.LVL54:
+ 222:../../test/testsem.c ****   test_assert(1, isempty(&sem1.s_queue), "queue not empty");
+ 672               		.loc 1 222 0
+ 673 0378 61E0      		ldi r22,lo8(1)
+ 674 037a 8091 0000 		lds r24,sem1
+ 675 037e 9091 0000 		lds r25,sem1+1
+ 676 0382 8050      		subi r24,lo8(sem1)
+ 677 0384 9040      		sbci r25,hi8(sem1)
+ 678 0386 01F0      		breq .L41
+ 679 0388 60E0      		ldi r22,0
+ 680               	.L41:
+ 681 038a 81E0      		ldi r24,lo8(1)
+ 682 038c 90E0      		ldi r25,0
+ 683 038e 0E94 0000 		call _test_assert
+ 684               	.LVL55:
+ 685 0392 8823      		tst r24
+ 686 0394 01F0      		breq .L60
+ 687               	.L40:
+ 688               	/* epilogue start */
+ 228:../../test/testsem.c **** }
+ 689               		.loc 1 228 0
+ 690 0396 1F91      		pop r17
+ 691 0398 0F91      		pop r16
+ 692 039a 0895      		ret
+ 693               	.L60:
+ 223:../../test/testsem.c ****   test_assert(2, sem1.s_cnt == 0, "counter not zero");
+ 694               		.loc 1 223 0
+ 695 039c 61E0      		ldi r22,lo8(1)
+ 696 039e 8091 0000 		lds r24,sem1+4
+ 697 03a2 8111      		cpse r24,__zero_reg__
+ 698 03a4 00C0      		rjmp .L61
+ 699 03a6 82E0      		ldi r24,lo8(2)
+ 700 03a8 90E0      		ldi r25,0
+ 701 03aa 0E94 0000 		call _test_assert
+ 702               	.LVL56:
+ 703 03ae 8111      		cpse r24,__zero_reg__
+ 704 03b0 00C0      		rjmp .L40
+ 705               	.L63:
+ 706               	.LBB4:
+ 707               	.LBB5:
+ 225:../../test/testsem.c ****   chSemSignalWait(&sem1, &sem1);
+ 708               		.loc 1 225 0
+ 709 03b2 60E0      		ldi r22,lo8(sem1)
+ 710 03b4 70E0      		ldi r23,hi8(sem1)
+ 711 03b6 CB01      		movw r24,r22
+ 712 03b8 0E94 0000 		call chSemSignalWait
+ 713               	.LVL57:
+ 226:../../test/testsem.c ****   test_assert(3, isempty(&sem1.s_queue), "queue not empty");
+ 714               		.loc 1 226 0
+ 715 03bc 61E0      		ldi r22,lo8(1)
+ 716 03be 8091 0000 		lds r24,sem1
+ 717 03c2 9091 0000 		lds r25,sem1+1
+ 718 03c6 8050      		subi r24,lo8(sem1)
+ 719 03c8 9040      		sbci r25,hi8(sem1)
+ 720 03ca 01F0      		breq .L46
+ 721 03cc 60E0      		ldi r22,0
+ 722               	.L46:
+ 723 03ce 83E0      		ldi r24,lo8(3)
+ 724 03d0 90E0      		ldi r25,0
+ 725 03d2 0E94 0000 		call _test_assert
+ 726               	.LVL58:
+ 727 03d6 8111      		cpse r24,__zero_reg__
+ 728 03d8 00C0      		rjmp .L40
+ 227:../../test/testsem.c ****   test_assert(4, sem1.s_cnt == 0, "counter not zero");
+ 729               		.loc 1 227 0
+ 730 03da 61E0      		ldi r22,lo8(1)
+ 731 03dc 8091 0000 		lds r24,sem1+4
+ 732 03e0 8111      		cpse r24,__zero_reg__
+ 733 03e2 00C0      		rjmp .L62
+ 734               	.L47:
+ 735 03e4 84E0      		ldi r24,lo8(4)
+ 736 03e6 90E0      		ldi r25,0
+ 737               	/* epilogue start */
+ 738               	.LBE5:
+ 739               	.LBE4:
+ 228:../../test/testsem.c **** }
+ 740               		.loc 1 228 0
+ 741 03e8 1F91      		pop r17
+ 742 03ea 0F91      		pop r16
+ 743               	.LBB8:
+ 744               	.LBB6:
+ 227:../../test/testsem.c ****   test_assert(4, sem1.s_cnt == 0, "counter not zero");
+ 745               		.loc 1 227 0
+ 746 03ec 0C94 0000 		jmp _test_assert
+ 747               	.LVL59:
+ 748               	.L61:
+ 749               	.LBE6:
+ 750               	.LBE8:
+ 223:../../test/testsem.c ****   test_assert(2, sem1.s_cnt == 0, "counter not zero");
+ 751               		.loc 1 223 0
+ 752 03f0 60E0      		ldi r22,0
+ 753 03f2 82E0      		ldi r24,lo8(2)
+ 754 03f4 90E0      		ldi r25,0
+ 755 03f6 0E94 0000 		call _test_assert
+ 756               	.LVL60:
+ 757 03fa 8111      		cpse r24,__zero_reg__
+ 758 03fc 00C0      		rjmp .L40
+ 759 03fe 00C0      		rjmp .L63
+ 760               	.L62:
+ 761               	.LBB9:
+ 762               	.LBB7:
+ 227:../../test/testsem.c ****   test_assert(4, sem1.s_cnt == 0, "counter not zero");
+ 763               		.loc 1 227 0
+ 764 0400 60E0      		ldi r22,0
+ 765 0402 00C0      		rjmp .L47
+ 766               	.LBE7:
+ 767               	.LBE9:
+ 768               	.LFE15:
+ 771               	sem2_execute:
+ 772               	.LFB12:
+ 145:../../test/testsem.c **** static void sem2_execute(void) {
+ 773               		.loc 1 145 0
+ 774 0404 0F93      		push r16
+ 775               	.LCFI14:
+ 776 0406 1F93      		push r17
+ 777               	.LCFI15:
+ 778 0408 CF93      		push r28
+ 779               	.LCFI16:
+ 780 040a DF93      		push r29
+ 781               	.LCFI17:
+ 782               	/* prologue: function */
+ 783               	/* frame size = 0 */
+ 784               	/* stack size = 4 */
+ 785               	.L__stack_usage = 4
+ 153:../../test/testsem.c ****   msg = chSemWaitTimeout(&sem1, TIME_IMMEDIATE);
+ 786               		.loc 1 153 0
+ 787 040c 60E0      		ldi r22,0
+ 788 040e 70E0      		ldi r23,0
+ 789 0410 80E0      		ldi r24,lo8(sem1)
+ 790 0412 90E0      		ldi r25,hi8(sem1)
+ 791 0414 0E94 0000 		call chSemWaitTimeout
+ 792               	.LVL61:
+ 154:../../test/testsem.c ****   test_assert(1, msg == RDY_TIMEOUT, "wrong wake-up message");
+ 793               		.loc 1 154 0
+ 794 0418 61E0      		ldi r22,lo8(1)
+ 795 041a 0196      		adiw r24,1
+ 796 041c 01F0      		breq .L65
+ 797 041e 60E0      		ldi r22,0
+ 798               	.L65:
+ 799 0420 81E0      		ldi r24,lo8(1)
+ 800 0422 90E0      		ldi r25,0
+ 801               	.LVL62:
+ 802 0424 0E94 0000 		call _test_assert
+ 803               	.LVL63:
+ 804 0428 8823      		tst r24
+ 805 042a 01F0      		breq .L106
+ 806               	.L64:
+ 807               	/* epilogue start */
+ 183:../../test/testsem.c **** }
+ 808               		.loc 1 183 0
+ 809 042c DF91      		pop r29
+ 810 042e CF91      		pop r28
+ 811 0430 1F91      		pop r17
+ 812 0432 0F91      		pop r16
+ 813 0434 0895      		ret
+ 814               	.L106:
+ 155:../../test/testsem.c ****   test_assert(2, isempty(&sem1.s_queue), "queue not empty");
+ 815               		.loc 1 155 0
+ 816 0436 61E0      		ldi r22,lo8(1)
+ 817 0438 8091 0000 		lds r24,sem1
+ 818 043c 9091 0000 		lds r25,sem1+1
+ 819 0440 8050      		subi r24,lo8(sem1)
+ 820 0442 9040      		sbci r25,hi8(sem1)
+ 821 0444 01F0      		breq .L68
+ 822 0446 60E0      		ldi r22,0
+ 823               	.L68:
+ 824 0448 82E0      		ldi r24,lo8(2)
+ 825 044a 90E0      		ldi r25,0
+ 826 044c 0E94 0000 		call _test_assert
+ 827               	.LVL64:
+ 828 0450 8111      		cpse r24,__zero_reg__
+ 829 0452 00C0      		rjmp .L64
+ 156:../../test/testsem.c ****   test_assert(3, sem1.s_cnt == 0, "counter not zero");
+ 830               		.loc 1 156 0
+ 831 0454 61E0      		ldi r22,lo8(1)
+ 832 0456 8091 0000 		lds r24,sem1+4
+ 833 045a 8111      		cpse r24,__zero_reg__
+ 834 045c 60E0      		ldi r22,0
+ 835               	.L70:
+ 836 045e 83E0      		ldi r24,lo8(3)
+ 837 0460 90E0      		ldi r25,0
+ 838 0462 0E94 0000 		call _test_assert
+ 839               	.LVL65:
+ 840 0466 8111      		cpse r24,__zero_reg__
+ 841 0468 00C0      		rjmp .L64
+ 842               	.LBB12:
+ 843               	.LBB13:
+ 161:../../test/testsem.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 844               		.loc 1 161 0
+ 845 046a E091 0000 		lds r30,rlist+11
+ 846 046e F091 0000 		lds r31,rlist+11+1
+ 847 0472 4481      		ldd r20,Z+4
+ 848 0474 4150      		subi r20,lo8(-(-1))
+ 849 0476 00E0      		ldi r16,0
+ 850 0478 10E0      		ldi r17,0
+ 851 047a 20E0      		ldi r18,lo8(gs(thread2))
+ 852 047c 30E0      		ldi r19,hi8(gs(thread2))
+ 853 047e 67E9      		ldi r22,lo8(-105)
+ 854 0480 70E0      		ldi r23,0
+ 855 0482 8091 0000 		lds r24,wa
+ 856 0486 9091 0000 		lds r25,wa+1
+ 857 048a 0E94 0000 		call chThdCreateStatic
+ 858               	.LVL66:
+ 859 048e 9093 0000 		sts threads+1,r25
+ 860 0492 8093 0000 		sts threads,r24
+ 163:../../test/testsem.c ****   msg = chSemWaitTimeout(&sem1, MS2ST(500));
+ 861               		.loc 1 163 0
+ 862 0496 64EF      		ldi r22,lo8(-12)
+ 863 0498 71E0      		ldi r23,lo8(1)
+ 864 049a 80E0      		ldi r24,lo8(sem1)
+ 865 049c 90E0      		ldi r25,hi8(sem1)
+ 866 049e 0E94 0000 		call chSemWaitTimeout
+ 867               	.LVL67:
+ 868 04a2 EC01      		movw r28,r24
+ 869               	.LVL68:
+ 164:../../test/testsem.c ****   test_wait_threads();
+ 870               		.loc 1 164 0
+ 871 04a4 0E94 0000 		call test_wait_threads
+ 872               	.LVL69:
+ 165:../../test/testsem.c ****   test_assert(4, msg == RDY_OK, "wrong wake-up message");
+ 873               		.loc 1 165 0
+ 874 04a8 61E0      		ldi r22,lo8(1)
+ 875 04aa CD2B      		or r28,r29
+ 876 04ac 01F0      		breq .+2
+ 877 04ae 00C0      		rjmp .L107
+ 878               	.L71:
+ 879 04b0 84E0      		ldi r24,lo8(4)
+ 880 04b2 90E0      		ldi r25,0
+ 881 04b4 0E94 0000 		call _test_assert
+ 882               	.LVL70:
+ 883 04b8 8111      		cpse r24,__zero_reg__
+ 884 04ba 00C0      		rjmp .L64
+ 166:../../test/testsem.c ****   test_assert(5, isempty(&sem1.s_queue), "queue not empty");
+ 885               		.loc 1 166 0
+ 886 04bc 61E0      		ldi r22,lo8(1)
+ 887 04be 8091 0000 		lds r24,sem1
+ 888 04c2 9091 0000 		lds r25,sem1+1
+ 889 04c6 8050      		subi r24,lo8(sem1)
+ 890 04c8 9040      		sbci r25,hi8(sem1)
+ 891 04ca 01F0      		breq .L72
+ 892 04cc 60E0      		ldi r22,0
+ 893               	.L72:
+ 894 04ce 85E0      		ldi r24,lo8(5)
+ 895 04d0 90E0      		ldi r25,0
+ 896 04d2 0E94 0000 		call _test_assert
+ 897               	.LVL71:
+ 898 04d6 8111      		cpse r24,__zero_reg__
+ 899 04d8 00C0      		rjmp .L64
+ 167:../../test/testsem.c ****   test_assert(6, sem1.s_cnt == 0, "counter not zero");
+ 900               		.loc 1 167 0
+ 901 04da 61E0      		ldi r22,lo8(1)
+ 902 04dc 8091 0000 		lds r24,sem1+4
+ 903 04e0 8111      		cpse r24,__zero_reg__
+ 904 04e2 60E0      		ldi r22,0
+ 905               	.L73:
+ 906 04e4 86E0      		ldi r24,lo8(6)
+ 907 04e6 90E0      		ldi r25,0
+ 908 04e8 0E94 0000 		call _test_assert
+ 909               	.LVL72:
+ 910 04ec 8111      		cpse r24,__zero_reg__
+ 911 04ee 00C0      		rjmp .L64
+ 172:../../test/testsem.c ****   test_wait_tick();
+ 912               		.loc 1 172 0
+ 913 04f0 0E94 0000 		call test_wait_tick
+ 914               	.LVL73:
+ 173:../../test/testsem.c ****   target_time = chTimeNow() + MS2ST(5 * 500);
+ 915               		.loc 1 173 0
+ 916 04f4 C091 0000 		lds r28,vtlist+6
+ 917 04f8 D091 0000 		lds r29,vtlist+6+1
+ 918               	.LVL74:
+ 919 04fc 11E4      		ldi r17,lo8(65)
+ 920               	.LVL75:
+ 921               	.L77:
+ 175:../../test/testsem.c ****     test_emit_token('A' + i);
+ 922               		.loc 1 175 0
+ 923 04fe 812F      		mov r24,r17
+ 924 0500 0E94 0000 		call test_emit_token
+ 925               	.LVL76:
+ 176:../../test/testsem.c ****     msg = chSemWaitTimeout(&sem1, MS2ST(500));
+ 926               		.loc 1 176 0
+ 927 0504 64EF      		ldi r22,lo8(-12)
+ 928 0506 71E0      		ldi r23,lo8(1)
+ 929 0508 80E0      		ldi r24,lo8(sem1)
+ 930 050a 90E0      		ldi r25,hi8(sem1)
+ 931 050c 0E94 0000 		call chSemWaitTimeout
+ 932               	.LVL77:
+ 177:../../test/testsem.c ****     test_assert(7, msg == RDY_TIMEOUT, "wrong wake-up message");
+ 933               		.loc 1 177 0
+ 934 0510 61E0      		ldi r22,lo8(1)
+ 935 0512 0196      		adiw r24,1
+ 936 0514 01F0      		breq .L74
+ 937 0516 60E0      		ldi r22,0
+ 938               	.L74:
+ 939 0518 87E0      		ldi r24,lo8(7)
+ 940 051a 90E0      		ldi r25,0
+ 941               	.LVL78:
+ 942 051c 0E94 0000 		call _test_assert
+ 943               	.LVL79:
+ 944 0520 8111      		cpse r24,__zero_reg__
+ 945 0522 00C0      		rjmp .L64
+ 178:../../test/testsem.c ****     test_assert(8, isempty(&sem1.s_queue), "queue not empty");
+ 946               		.loc 1 178 0
+ 947 0524 61E0      		ldi r22,lo8(1)
+ 948 0526 2091 0000 		lds r18,sem1
+ 949 052a 3091 0000 		lds r19,sem1+1
+ 950 052e 2050      		subi r18,lo8(sem1)
+ 951 0530 3040      		sbci r19,hi8(sem1)
+ 952 0532 01F0      		breq .L75
+ 953 0534 60E0      		ldi r22,0
+ 954               	.L75:
+ 955 0536 88E0      		ldi r24,lo8(8)
+ 956 0538 90E0      		ldi r25,0
+ 957 053a 0E94 0000 		call _test_assert
+ 958               	.LVL80:
+ 959 053e 8111      		cpse r24,__zero_reg__
+ 960 0540 00C0      		rjmp .L64
+ 179:../../test/testsem.c ****     test_assert(9, sem1.s_cnt == 0, "counter not zero");
+ 961               		.loc 1 179 0
+ 962 0542 61E0      		ldi r22,lo8(1)
+ 963 0544 8091 0000 		lds r24,sem1+4
+ 964 0548 8111      		cpse r24,__zero_reg__
+ 965 054a 60E0      		ldi r22,0
+ 966               	.L76:
+ 967 054c 89E0      		ldi r24,lo8(9)
+ 968 054e 90E0      		ldi r25,0
+ 969 0550 0E94 0000 		call _test_assert
+ 970               	.LVL81:
+ 971 0554 8111      		cpse r24,__zero_reg__
+ 972 0556 00C0      		rjmp .L64
+ 973 0558 1F5F      		subi r17,lo8(-(1))
+ 174:../../test/testsem.c ****   for (i = 0; i < 5; i++) {
+ 974               		.loc 1 174 0
+ 975 055a 1634      		cpi r17,lo8(70)
+ 976 055c 01F4      		brne .L77
+ 181:../../test/testsem.c ****   test_assert_sequence(10, "ABCDE");
+ 977               		.loc 1 181 0
+ 978 055e 60E0      		ldi r22,lo8(.LC5)
+ 979 0560 70E0      		ldi r23,hi8(.LC5)
+ 980 0562 8AE0      		ldi r24,lo8(10)
+ 981 0564 90E0      		ldi r25,0
+ 982 0566 0E94 0000 		call _test_assert_sequence
+ 983               	.LVL82:
+ 984 056a 8111      		cpse r24,__zero_reg__
+ 985 056c 00C0      		rjmp .L64
+ 182:../../test/testsem.c ****   test_assert_time_window(11, target_time, target_time + ALLOWED_DELAY);
+ 986               		.loc 1 182 0
+ 987 056e AE01      		movw r20,r28
+ 988 0570 4753      		subi r20,55
+ 989 0572 564F      		sbci r21,-10
+ 173:../../test/testsem.c ****   target_time = chTimeNow() + MS2ST(5 * 500);
+ 990               		.loc 1 173 0
+ 991 0574 BE01      		movw r22,r28
+ 992 0576 6C53      		subi r22,60
+ 993 0578 764F      		sbci r23,-10
+ 182:../../test/testsem.c ****   test_assert_time_window(11, target_time, target_time + ALLOWED_DELAY);
+ 994               		.loc 1 182 0
+ 995 057a 8BE0      		ldi r24,lo8(11)
+ 996 057c 90E0      		ldi r25,0
+ 997               	/* epilogue start */
+ 998               	.LBE13:
+ 999               	.LBE12:
+ 183:../../test/testsem.c **** }
+ 1000               		.loc 1 183 0
+ 1001 057e DF91      		pop r29
+ 1002 0580 CF91      		pop r28
+ 1003               	.LVL83:
+ 1004 0582 1F91      		pop r17
+ 1005 0584 0F91      		pop r16
+ 1006               	.LBB15:
+ 1007               	.LBB14:
+ 182:../../test/testsem.c ****   test_assert_time_window(11, target_time, target_time + ALLOWED_DELAY);
+ 1008               		.loc 1 182 0
+ 1009 0586 0C94 0000 		jmp _test_assert_time_window
+ 1010               	.LVL84:
+ 1011               	.L107:
+ 165:../../test/testsem.c ****   test_assert(4, msg == RDY_OK, "wrong wake-up message");
+ 1012               		.loc 1 165 0
+ 1013 058a 60E0      		ldi r22,0
+ 1014 058c 00C0      		rjmp .L71
+ 1015               	.LBE14:
+ 1016               	.LBE15:
+ 1017               	.LFE12:
+ 1019               	.global	patternsem
+ 1020               		.section	.rodata
+ 1023               	patternsem:
+ 1024 0000 0000      		.word	testsem1
+ 1025 0002 0000      		.word	testsem2
+ 1026 0004 0000      		.word	testsem3
+ 1027 0006 0000      		.word	testsem4
+ 1028 0008 0000      		.word	0
+ 1029               	.global	testsem4
+ 1030               		.section	.rodata.str1.1
+ 1031               	.LC6:
+ 1032 0010 4269 6E61 		.string	"Binary Semaphores, functionality"
+ 1032      7279 2053 
+ 1032      656D 6170 
+ 1032      686F 7265 
+ 1032      732C 2066 
+ 1033               		.section	.rodata
+ 1036               	testsem4:
+ 1037 000a 0000      		.word	.LC6
+ 1038 000c 0000      		.word	0
+ 1039 000e 0000      		.word	0
+ 1040 0010 0000      		.word	gs(sem4_execute)
+ 1041               	.global	testsem3
+ 1042               		.section	.rodata.str1.1
+ 1043               	.LC7:
+ 1044 0031 5365 6D61 		.string	"Semaphores, atomic signal-wait"
+ 1044      7068 6F72 
+ 1044      6573 2C20 
+ 1044      6174 6F6D 
+ 1044      6963 2073 
+ 1045               		.section	.rodata
+ 1048               	testsem3:
+ 1049 0012 0000      		.word	.LC7
+ 1050 0014 0000      		.word	gs(sem3_setup)
+ 1051 0016 0000      		.word	0
+ 1052 0018 0000      		.word	gs(sem3_execute)
+ 1053               	.global	testsem2
+ 1054               		.section	.rodata.str1.1
+ 1055               	.LC8:
+ 1056 0050 5365 6D61 		.string	"Semaphores, timeout"
+ 1056      7068 6F72 
+ 1056      6573 2C20 
+ 1056      7469 6D65 
+ 1056      6F75 7400 
+ 1057               		.section	.rodata
+ 1060               	testsem2:
+ 1061 001a 0000      		.word	.LC8
+ 1062 001c 0000      		.word	gs(sem2_setup)
+ 1063 001e 0000      		.word	0
+ 1064 0020 0000      		.word	gs(sem2_execute)
+ 1065               	.global	testsem1
+ 1066               		.section	.rodata.str1.1
+ 1067               	.LC9:
+ 1068 0064 5365 6D61 		.string	"Semaphores, enqueuing"
+ 1068      7068 6F72 
+ 1068      6573 2C20 
+ 1068      656E 7175 
+ 1068      6575 696E 
+ 1069               		.section	.rodata
+ 1072               	testsem1:
+ 1073 0022 0000      		.word	.LC9
+ 1074 0024 0000      		.word	gs(sem1_setup)
+ 1075 0026 0000      		.word	0
+ 1076 0028 0000      		.word	gs(sem1_execute)
+ 1077               		.data
+ 1080               	sem1:
+ 1081 0000 0000      		.word	sem1
+ 1082 0002 0000      		.word	sem1
+ 1083 0004 00        		.byte	0
+ 1294               	.Letext0:
+ 1295               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 1296               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 1297               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 1298               		.file 5 "../../os/kernel/include/chlists.h"
+ 1299               		.file 6 "../../os/kernel/include/chthreads.h"
+ 1300               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 1301               		.file 8 "../../os/kernel/include/chvt.h"
+ 1302               		.file 9 "../../os/kernel/include/chschd.h"
+ 1303               		.file 10 "../../os/kernel/include/chsem.h"
+ 1304               		.file 11 "../../os/kernel/include/chbsem.h"
+ 1305               		.file 12 "../../os/kernel/include/chmtx.h"
+ 1306               		.file 13 "../../test/test.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testsem.c
+     /tmp/cc7pJgjx.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc7pJgjx.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc7pJgjx.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc7pJgjx.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/cc7pJgjx.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc7pJgjx.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc7pJgjx.s:11     .text:0000000000000000 sem3_setup
+     /tmp/cc7pJgjx.s:1080   .data:0000000000000000 sem1
+     /tmp/cc7pJgjx.s:28     .text:000000000000000a sem2_setup
+     /tmp/cc7pJgjx.s:44     .text:0000000000000014 sem1_setup
+     /tmp/cc7pJgjx.s:60     .text:000000000000001e sem4_execute
+     /tmp/cc7pJgjx.s:267    .text:0000000000000142 thread4
+     /tmp/cc7pJgjx.s:316    .text:0000000000000168 thread3
+     /tmp/cc7pJgjx.s:342    .text:000000000000017e thread1
+     /tmp/cc7pJgjx.s:376    .text:000000000000019c thread2
+     /tmp/cc7pJgjx.s:431    .text:00000000000001ba sem1_execute
+     /tmp/cc7pJgjx.s:638    .text:000000000000033e sem3_execute
+     /tmp/cc7pJgjx.s:771    .text:0000000000000404 sem2_execute
+     /tmp/cc7pJgjx.s:1023   .rodata:0000000000000000 patternsem
+     /tmp/cc7pJgjx.s:1072   .rodata:0000000000000022 testsem1
+     /tmp/cc7pJgjx.s:1060   .rodata:000000000000001a testsem2
+     /tmp/cc7pJgjx.s:1048   .rodata:0000000000000012 testsem3
+     /tmp/cc7pJgjx.s:1036   .rodata:000000000000000a testsem4
+
+UNDEFINED SYMBOLS
+chSemInit
+chSemReset
+_test_assert
+rlist
+wa
+chThdCreateStatic
+threads
+chSemWait
+chSchRescheduleS
+chSemSignalI
+chSemSignal
+test_emit_token
+chThdSleep
+test_wait_threads
+_test_assert_sequence
+chSemAddCounterI
+chSemSignalWait
+chSemWaitTimeout
+test_wait_tick
+vtlist
+_test_assert_time_window
+__do_copy_data

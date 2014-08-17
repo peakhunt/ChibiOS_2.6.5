@@ -1,0 +1,2386 @@
+   1               		.file	"test.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  11               	tmr:
+  12               	.LFB21:
+  13               		.file 1 "../../test/test.c"
+   1:../../test/test.c **** /*
+   2:../../test/test.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/test.c **** 
+   4:../../test/test.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/test.c ****     you may not use this file except in compliance with the License.
+   6:../../test/test.c ****     You may obtain a copy of the License at
+   7:../../test/test.c **** 
+   8:../../test/test.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/test.c **** 
+  10:../../test/test.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/test.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/test.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/test.c ****     See the License for the specific language governing permissions and
+  14:../../test/test.c ****     limitations under the License.
+  15:../../test/test.c **** */
+  16:../../test/test.c **** 
+  17:../../test/test.c **** /**
+  18:../../test/test.c ****  * @file    test.c
+  19:../../test/test.c ****  * @brief   Tests support code.
+  20:../../test/test.c ****  *
+  21:../../test/test.c ****  * @addtogroup test
+  22:../../test/test.c ****  * @{
+  23:../../test/test.c ****  */
+  24:../../test/test.c **** 
+  25:../../test/test.c **** #include "ch.h"
+  26:../../test/test.c **** #include "hal.h"
+  27:../../test/test.c **** 
+  28:../../test/test.c **** #include "test.h"
+  29:../../test/test.c **** #include "testthd.h"
+  30:../../test/test.c **** #include "testsem.h"
+  31:../../test/test.c **** #include "testmtx.h"
+  32:../../test/test.c **** #include "testmsg.h"
+  33:../../test/test.c **** #include "testmbox.h"
+  34:../../test/test.c **** #include "testevt.h"
+  35:../../test/test.c **** #include "testheap.h"
+  36:../../test/test.c **** #include "testpools.h"
+  37:../../test/test.c **** #include "testdyn.h"
+  38:../../test/test.c **** #include "testqueues.h"
+  39:../../test/test.c **** #include "testbmk.h"
+  40:../../test/test.c **** 
+  41:../../test/test.c **** /*
+  42:../../test/test.c ****  * Array of all the test patterns.
+  43:../../test/test.c ****  */
+  44:../../test/test.c **** static ROMCONST struct testcase * ROMCONST *patterns[] = {
+  45:../../test/test.c ****   patternthd,
+  46:../../test/test.c ****   patternsem,
+  47:../../test/test.c ****   patternmtx,
+  48:../../test/test.c ****   patternmsg,
+  49:../../test/test.c ****   patternmbox,
+  50:../../test/test.c ****   patternevt,
+  51:../../test/test.c ****   patternheap,
+  52:../../test/test.c ****   patternpools,
+  53:../../test/test.c ****   patterndyn,
+  54:../../test/test.c ****   patternqueues,
+  55:../../test/test.c ****   patternbmk,
+  56:../../test/test.c ****   NULL
+  57:../../test/test.c **** };
+  58:../../test/test.c **** 
+  59:../../test/test.c **** static bool_t local_fail, global_fail;
+  60:../../test/test.c **** static unsigned failpoint;
+  61:../../test/test.c **** static char tokens_buffer[MAX_TOKENS];
+  62:../../test/test.c **** static char *tokp;
+  63:../../test/test.c **** 
+  64:../../test/test.c **** /*
+  65:../../test/test.c ****  * Static working areas, the following areas can be used for threads or
+  66:../../test/test.c ****  * used as temporary buffers.
+  67:../../test/test.c ****  */
+  68:../../test/test.c **** union test_buffers test;
+  69:../../test/test.c **** 
+  70:../../test/test.c **** /*
+  71:../../test/test.c ****  * Pointers to the spawned threads.
+  72:../../test/test.c ****  */
+  73:../../test/test.c **** Thread *threads[MAX_THREADS];
+  74:../../test/test.c **** 
+  75:../../test/test.c **** /*
+  76:../../test/test.c ****  * Pointers to the working areas.
+  77:../../test/test.c ****  */
+  78:../../test/test.c **** void * ROMCONST wa[5] = {test.wa.T0, test.wa.T1, test.wa.T2,
+  79:../../test/test.c ****                          test.wa.T3, test.wa.T4};
+  80:../../test/test.c **** 
+  81:../../test/test.c **** /*
+  82:../../test/test.c ****  * Console output.
+  83:../../test/test.c ****  */
+  84:../../test/test.c **** static BaseSequentialStream *chp;
+  85:../../test/test.c **** 
+  86:../../test/test.c **** /**
+  87:../../test/test.c ****  * @brief   Prints a decimal unsigned number.
+  88:../../test/test.c ****  *
+  89:../../test/test.c ****  * @param[in] n         the number to be printed
+  90:../../test/test.c ****  */
+  91:../../test/test.c **** void test_printn(uint32_t n) {
+  92:../../test/test.c ****   char buf[16], *p;
+  93:../../test/test.c **** 
+  94:../../test/test.c ****   if (!n)
+  95:../../test/test.c ****     chSequentialStreamPut(chp, '0');
+  96:../../test/test.c ****   else {
+  97:../../test/test.c ****     p = buf;
+  98:../../test/test.c ****     while (n)
+  99:../../test/test.c ****       *p++ = (n % 10) + '0', n /= 10;
+ 100:../../test/test.c ****     while (p > buf)
+ 101:../../test/test.c ****       chSequentialStreamPut(chp, *--p);
+ 102:../../test/test.c ****   }
+ 103:../../test/test.c **** }
+ 104:../../test/test.c **** 
+ 105:../../test/test.c **** /**
+ 106:../../test/test.c ****  * @brief   Prints a line without final end-of-line.
+ 107:../../test/test.c ****  *
+ 108:../../test/test.c ****  * @param[in] msgp      the message
+ 109:../../test/test.c ****  */
+ 110:../../test/test.c **** void test_print(const char *msgp) {
+ 111:../../test/test.c **** 
+ 112:../../test/test.c ****   while (*msgp)
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 114:../../test/test.c **** }
+ 115:../../test/test.c **** 
+ 116:../../test/test.c **** /**
+ 117:../../test/test.c ****  * @brief   Prints a line.
+ 118:../../test/test.c ****  *
+ 119:../../test/test.c ****  * @param[in] msgp      the message
+ 120:../../test/test.c ****  */
+ 121:../../test/test.c **** void test_println(const char *msgp) {
+ 122:../../test/test.c **** 
+ 123:../../test/test.c ****   test_print(msgp);
+ 124:../../test/test.c ****   chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
+ 125:../../test/test.c **** }
+ 126:../../test/test.c **** 
+ 127:../../test/test.c **** /*
+ 128:../../test/test.c ****  * Tokens.
+ 129:../../test/test.c ****  */
+ 130:../../test/test.c **** static void clear_tokens(void) {
+ 131:../../test/test.c **** 
+ 132:../../test/test.c ****   tokp = tokens_buffer;
+ 133:../../test/test.c **** }
+ 134:../../test/test.c **** 
+ 135:../../test/test.c **** static void print_tokens(void) {
+ 136:../../test/test.c ****   char *cp = tokens_buffer;
+ 137:../../test/test.c **** 
+ 138:../../test/test.c ****   while (cp < tokp)
+ 139:../../test/test.c ****     chSequentialStreamPut(chp, *cp++);
+ 140:../../test/test.c **** }
+ 141:../../test/test.c **** 
+ 142:../../test/test.c **** /**
+ 143:../../test/test.c ****  * @brief   Emits a token into the tokens buffer.
+ 144:../../test/test.c ****  *
+ 145:../../test/test.c ****  * @param[in] token     the token as a char
+ 146:../../test/test.c ****  */
+ 147:../../test/test.c **** void test_emit_token(char token) {
+ 148:../../test/test.c **** 
+ 149:../../test/test.c ****   chSysLock();
+ 150:../../test/test.c ****   *tokp++ = token;
+ 151:../../test/test.c ****   chSysUnlock();
+ 152:../../test/test.c **** }
+ 153:../../test/test.c **** 
+ 154:../../test/test.c **** /*
+ 155:../../test/test.c ****  * Assertions.
+ 156:../../test/test.c ****  */
+ 157:../../test/test.c **** bool_t _test_fail(unsigned point) {
+ 158:../../test/test.c **** 
+ 159:../../test/test.c ****   local_fail = TRUE;
+ 160:../../test/test.c ****   global_fail = TRUE;
+ 161:../../test/test.c ****   failpoint = point;
+ 162:../../test/test.c ****   return TRUE;
+ 163:../../test/test.c **** }
+ 164:../../test/test.c **** 
+ 165:../../test/test.c **** bool_t _test_assert(unsigned point, bool_t condition) {
+ 166:../../test/test.c **** 
+ 167:../../test/test.c ****   if (!condition)
+ 168:../../test/test.c ****     return _test_fail(point);
+ 169:../../test/test.c ****   return FALSE;
+ 170:../../test/test.c **** }
+ 171:../../test/test.c **** 
+ 172:../../test/test.c **** bool_t _test_assert_sequence(unsigned point, char *expected) {
+ 173:../../test/test.c ****   char *cp = tokens_buffer;
+ 174:../../test/test.c ****   while (cp < tokp) {
+ 175:../../test/test.c ****     if (*cp++ != *expected++)
+ 176:../../test/test.c ****      return _test_fail(point);
+ 177:../../test/test.c ****   }
+ 178:../../test/test.c ****   if (*expected)
+ 179:../../test/test.c ****     return _test_fail(point);
+ 180:../../test/test.c ****   clear_tokens();
+ 181:../../test/test.c ****   return FALSE;
+ 182:../../test/test.c **** }
+ 183:../../test/test.c **** 
+ 184:../../test/test.c **** bool_t _test_assert_time_window(unsigned point, systime_t start, systime_t end) {
+ 185:../../test/test.c **** 
+ 186:../../test/test.c ****   return _test_assert(point, chTimeIsWithin(start, end));
+ 187:../../test/test.c **** }
+ 188:../../test/test.c **** 
+ 189:../../test/test.c **** /*
+ 190:../../test/test.c ****  * Threads utils.
+ 191:../../test/test.c ****  */
+ 192:../../test/test.c **** 
+ 193:../../test/test.c **** /**
+ 194:../../test/test.c ****  * @brief   Sets a termination request in all the test-spawned threads.
+ 195:../../test/test.c ****  */
+ 196:../../test/test.c **** void test_terminate_threads(void) {
+ 197:../../test/test.c ****   int i;
+ 198:../../test/test.c **** 
+ 199:../../test/test.c ****   for (i = 0; i < MAX_THREADS; i++)
+ 200:../../test/test.c ****     if (threads[i])
+ 201:../../test/test.c ****       chThdTerminate(threads[i]);
+ 202:../../test/test.c **** }
+ 203:../../test/test.c **** 
+ 204:../../test/test.c **** /**
+ 205:../../test/test.c ****  * @brief   Waits for the completion of all the test-spawned threads.
+ 206:../../test/test.c ****  */
+ 207:../../test/test.c **** void test_wait_threads(void) {
+ 208:../../test/test.c ****   int i;
+ 209:../../test/test.c **** 
+ 210:../../test/test.c ****   for (i = 0; i < MAX_THREADS; i++)
+ 211:../../test/test.c ****     if (threads[i] != NULL) {
+ 212:../../test/test.c ****       chThdWait(threads[i]);
+ 213:../../test/test.c ****       threads[i] = NULL;
+ 214:../../test/test.c ****     }
+ 215:../../test/test.c **** }
+ 216:../../test/test.c **** 
+ 217:../../test/test.c **** #if CH_DBG_THREADS_PROFILING
+ 218:../../test/test.c **** /**
+ 219:../../test/test.c ****  * @brief   CPU pulse.
+ 220:../../test/test.c ****  * @note    The current implementation is not totally reliable.
+ 221:../../test/test.c ****  *
+ 222:../../test/test.c ****  * @param[in] duration      CPU pulse duration in milliseconds
+ 223:../../test/test.c ****  */
+ 224:../../test/test.c **** void test_cpu_pulse(unsigned duration) {
+ 225:../../test/test.c ****   systime_t start, end, now;
+ 226:../../test/test.c **** 
+ 227:../../test/test.c ****   start = chThdSelf()->p_time;
+ 228:../../test/test.c ****   end = start + MS2ST(duration);
+ 229:../../test/test.c ****   do {
+ 230:../../test/test.c ****     now = chThdSelf()->p_time;
+ 231:../../test/test.c **** #if defined(SIMULATOR)
+ 232:../../test/test.c ****     ChkIntSources();
+ 233:../../test/test.c **** #endif
+ 234:../../test/test.c ****   }
+ 235:../../test/test.c ****   while (end > start ? (now >= start) && (now < end) :
+ 236:../../test/test.c ****                        (now >= start) || (now < end));
+ 237:../../test/test.c **** }
+ 238:../../test/test.c **** #endif
+ 239:../../test/test.c **** 
+ 240:../../test/test.c **** /**
+ 241:../../test/test.c ****  * @brief   Delays execution until next system time tick.
+ 242:../../test/test.c ****  *
+ 243:../../test/test.c ****  * @return              The system time.
+ 244:../../test/test.c ****  */
+ 245:../../test/test.c **** systime_t test_wait_tick(void) {
+ 246:../../test/test.c **** 
+ 247:../../test/test.c ****   chThdSleep(1);
+ 248:../../test/test.c ****   return chTimeNow();
+ 249:../../test/test.c **** }
+ 250:../../test/test.c **** 
+ 251:../../test/test.c **** /*
+ 252:../../test/test.c ****  * Timer utils.
+ 253:../../test/test.c ****  */
+ 254:../../test/test.c **** 
+ 255:../../test/test.c **** /**
+ 256:../../test/test.c ****  * @brief   Set to @p TRUE when the test timer reaches its deadline.
+ 257:../../test/test.c ****  */
+ 258:../../test/test.c **** bool_t test_timer_done;
+ 259:../../test/test.c **** 
+ 260:../../test/test.c **** static VirtualTimer vt;
+ 261:../../test/test.c **** static void tmr(void *p) {
+  14               		.loc 1 261 0
+  15               	.LVL0:
+  16               	/* prologue: function */
+  17               	/* frame size = 0 */
+  18               	/* stack size = 0 */
+  19               	.L__stack_usage = 0
+ 262:../../test/test.c ****   (void)p;
+ 263:../../test/test.c **** 
+ 264:../../test/test.c ****   test_timer_done = TRUE;
+  20               		.loc 1 264 0
+  21 0000 81E0      		ldi r24,lo8(1)
+  22               	.LVL1:
+  23 0002 8093 0000 		sts test_timer_done,r24
+  24 0006 0895      		ret
+  25               	.LFE21:
+  27               		.section	.rodata.str1.1,"aMS",@progbits,1
+  28               	.LC0:
+  29 0000 0D0A 00   		.string	"\r\n"
+  30               		.text
+  32               	print_line:
+  33               	.LFB24:
+ 265:../../test/test.c **** }
+ 266:../../test/test.c **** 
+ 267:../../test/test.c **** /**
+ 268:../../test/test.c ****  * @brief   Starts the test timer.
+ 269:../../test/test.c ****  *
+ 270:../../test/test.c ****  * @param[in] ms        time in milliseconds
+ 271:../../test/test.c ****  */
+ 272:../../test/test.c **** void test_start_timer(unsigned ms) {
+ 273:../../test/test.c **** 
+ 274:../../test/test.c ****   systime_t duration = MS2ST(ms);
+ 275:../../test/test.c ****   test_timer_done = FALSE;
+ 276:../../test/test.c ****   chVTSet(&vt, duration, tmr, NULL);
+ 277:../../test/test.c **** }
+ 278:../../test/test.c **** 
+ 279:../../test/test.c **** /*
+ 280:../../test/test.c ****  * Test suite execution.
+ 281:../../test/test.c ****  */
+ 282:../../test/test.c **** static void execute_test(const struct testcase *tcp) {
+ 283:../../test/test.c ****   int i;
+ 284:../../test/test.c **** 
+ 285:../../test/test.c ****   /* Initialization */
+ 286:../../test/test.c ****   clear_tokens();
+ 287:../../test/test.c ****   local_fail = FALSE;
+ 288:../../test/test.c ****   for (i = 0; i < MAX_THREADS; i++)
+ 289:../../test/test.c ****     threads[i] = NULL;
+ 290:../../test/test.c **** 
+ 291:../../test/test.c ****   if (tcp->setup != NULL)
+ 292:../../test/test.c ****     tcp->setup();
+ 293:../../test/test.c ****   tcp->execute();
+ 294:../../test/test.c ****   if (tcp->teardown != NULL)
+ 295:../../test/test.c ****     tcp->teardown();
+ 296:../../test/test.c **** 
+ 297:../../test/test.c ****   test_wait_threads();
+ 298:../../test/test.c **** }
+ 299:../../test/test.c **** 
+ 300:../../test/test.c **** static void print_line(void) {
+  34               		.loc 1 300 0
+  35 0008 CF93      		push r28
+  36               	.LCFI0:
+  37 000a DF93      		push r29
+  38               	.LCFI1:
+  39               	/* prologue: function */
+  40               	/* frame size = 0 */
+  41               	/* stack size = 2 */
+  42               	.L__stack_usage = 2
+  43               	.LVL2:
+  44               		.loc 1 300 0
+  45 000c CCE4      		ldi r28,lo8(76)
+  46 000e D0E0      		ldi r29,0
+  47               	.LVL3:
+  48               	.L3:
+ 301:../../test/test.c ****   unsigned i;
+ 302:../../test/test.c **** 
+ 303:../../test/test.c ****   for (i = 0; i < 76; i++)
+ 304:../../test/test.c ****     chSequentialStreamPut(chp, '-');
+  49               		.loc 1 304 0 discriminator 2
+  50 0010 8091 0000 		lds r24,chp
+  51 0014 9091 0000 		lds r25,chp+1
+  52 0018 DC01      		movw r26,r24
+  53 001a ED91      		ld r30,X+
+  54 001c FC91      		ld r31,X
+  55 001e 0480      		ldd __tmp_reg__,Z+4
+  56 0020 F581      		ldd r31,Z+5
+  57 0022 E02D      		mov r30,__tmp_reg__
+  58 0024 6DE2      		ldi r22,lo8(45)
+  59 0026 1995      		eicall
+  60               	.LVL4:
+  61 0028 2197      		sbiw r28,1
+ 303:../../test/test.c ****   for (i = 0; i < 76; i++)
+  62               		.loc 1 303 0 discriminator 2
+  63 002a 01F4      		brne .L3
+ 305:../../test/test.c ****   chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
+  64               		.loc 1 305 0
+  65 002c 8091 0000 		lds r24,chp
+  66 0030 9091 0000 		lds r25,chp+1
+  67 0034 DC01      		movw r26,r24
+  68 0036 ED91      		ld r30,X+
+  69 0038 FC91      		ld r31,X
+  70 003a 0190      		ld __tmp_reg__,Z+
+  71 003c F081      		ld r31,Z
+  72 003e E02D      		mov r30,__tmp_reg__
+  73 0040 42E0      		ldi r20,lo8(2)
+  74 0042 50E0      		ldi r21,0
+  75 0044 60E0      		ldi r22,lo8(.LC0)
+  76 0046 70E0      		ldi r23,hi8(.LC0)
+  77               	/* epilogue start */
+ 306:../../test/test.c **** }
+  78               		.loc 1 306 0
+  79 0048 DF91      		pop r29
+  80 004a CF91      		pop r28
+ 305:../../test/test.c ****   chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
+  81               		.loc 1 305 0
+  82 004c 1994      		eijmp
+  83               	.LVL5:
+  84               	.LFE24:
+  86               	.global	test_printn
+  88               	test_printn:
+  89               	.LFB7:
+  91:../../test/test.c **** void test_printn(uint32_t n) {
+  90               		.loc 1 91 0
+  91               	.LVL6:
+  92 004e 8F92      		push r8
+  93               	.LCFI2:
+  94 0050 9F92      		push r9
+  95               	.LCFI3:
+  96 0052 AF92      		push r10
+  97               	.LCFI4:
+  98 0054 BF92      		push r11
+  99               	.LCFI5:
+ 100 0056 EF92      		push r14
+ 101               	.LCFI6:
+ 102 0058 FF92      		push r15
+ 103               	.LCFI7:
+ 104 005a 0F93      		push r16
+ 105               	.LCFI8:
+ 106 005c 1F93      		push r17
+ 107               	.LCFI9:
+ 108 005e CF93      		push r28
+ 109               	.LCFI10:
+ 110 0060 DF93      		push r29
+ 111               	.LCFI11:
+ 112 0062 CDB7      		in r28,__SP_L__
+ 113 0064 DEB7      		in r29,__SP_H__
+ 114               	.LCFI12:
+ 115 0066 6097      		sbiw r28,16
+ 116               	.LCFI13:
+ 117 0068 0FB6      		in __tmp_reg__,__SREG__
+ 118 006a F894      		cli
+ 119 006c DEBF      		out __SP_H__,r29
+ 120 006e 0FBE      		out __SREG__,__tmp_reg__
+ 121 0070 CDBF      		out __SP_L__,r28
+ 122               	/* prologue: function */
+ 123               	/* frame size = 16 */
+ 124               	/* stack size = 26 */
+ 125               	.L__stack_usage = 26
+  94:../../test/test.c ****   if (!n)
+ 126               		.loc 1 94 0
+ 127 0072 6115      		cp r22,__zero_reg__
+ 128 0074 7105      		cpc r23,__zero_reg__
+ 129 0076 8105      		cpc r24,__zero_reg__
+ 130 0078 9105      		cpc r25,__zero_reg__
+ 131 007a 01F4      		brne .+2
+ 132 007c 00C0      		rjmp .L14
+ 133 007e EE24      		clr r14
+ 134 0080 E394      		inc r14
+ 135 0082 F12C      		mov r15,__zero_reg__
+ 136 0084 EC0E      		add r14,r28
+ 137 0086 FD1E      		adc r15,r29
+ 138 0088 8701      		movw r16,r14
+  99:../../test/test.c ****       *p++ = (n % 10) + '0', n /= 10;
+ 139               		.loc 1 99 0
+ 140 008a 3AE0      		ldi r19,lo8(10)
+ 141 008c 832E      		mov r8,r19
+ 142 008e 912C      		mov r9,__zero_reg__
+ 143 0090 A12C      		mov r10,__zero_reg__
+ 144 0092 B12C      		mov r11,__zero_reg__
+ 145               	.L8:
+ 146 0094 A501      		movw r20,r10
+ 147 0096 9401      		movw r18,r8
+ 148 0098 0E94 0000 		call __udivmodsi4
+ 149               	.LVL7:
+ 150 009c A62F      		mov r26,r22
+ 151 009e A05D      		subi r26,lo8(-(48))
+ 152 00a0 F801      		movw r30,r16
+ 153 00a2 A193      		st Z+,r26
+ 154 00a4 8F01      		movw r16,r30
+ 155               	.LVL8:
+ 156 00a6 B901      		movw r22,r18
+ 157 00a8 CA01      		movw r24,r20
+ 158               	.LVL9:
+  98:../../test/test.c ****     while (n)
+ 159               		.loc 1 98 0
+ 160 00aa 6115      		cp r22,__zero_reg__
+ 161 00ac 7105      		cpc r23,__zero_reg__
+ 162 00ae 8105      		cpc r24,__zero_reg__
+ 163 00b0 9105      		cpc r25,__zero_reg__
+ 164 00b2 01F4      		brne .L8
+ 100:../../test/test.c ****     while (p > buf)
+ 165               		.loc 1 100 0 discriminator 1
+ 166 00b4 EE16      		cp r14,r30
+ 167 00b6 FF06      		cpc r15,r31
+ 168 00b8 00F4      		brsh .L6
+  91:../../test/test.c **** void test_printn(uint32_t n) {
+ 169               		.loc 1 91 0
+ 170 00ba 0150      		subi r16,1
+ 171 00bc 1109      		sbc r17,__zero_reg__
+ 172               	.LVL10:
+ 173 00be 00C0      		rjmp .L12
+ 174               	.LVL11:
+ 175               	.L15:
+ 176 00c0 F801      		movw r30,r16
+ 177 00c2 A291      		ld r26,-Z
+ 178 00c4 8F01      		movw r16,r30
+ 179               	.L12:
+ 101:../../test/test.c ****       chSequentialStreamPut(chp, *--p);
+ 180               		.loc 1 101 0
+ 181 00c6 8091 0000 		lds r24,chp
+ 182 00ca 9091 0000 		lds r25,chp+1
+ 183 00ce FC01      		movw r30,r24
+ 184 00d0 2081      		ld r18,Z
+ 185 00d2 3181      		ldd r19,Z+1
+ 186 00d4 F901      		movw r30,r18
+ 187 00d6 2481      		ldd r18,Z+4
+ 188 00d8 3581      		ldd r19,Z+5
+ 189 00da 6A2F      		mov r22,r26
+ 190 00dc F901      		movw r30,r18
+ 191 00de 1995      		eicall
+ 192               	.LVL12:
+ 100:../../test/test.c ****     while (p > buf)
+ 193               		.loc 1 100 0
+ 194 00e0 0E15      		cp r16,r14
+ 195 00e2 1F05      		cpc r17,r15
+ 196 00e4 01F4      		brne .L15
+ 197               	.L6:
+ 198               	/* epilogue start */
+ 103:../../test/test.c **** }
+ 199               		.loc 1 103 0
+ 200 00e6 6096      		adiw r28,16
+ 201 00e8 0FB6      		in __tmp_reg__,__SREG__
+ 202 00ea F894      		cli
+ 203 00ec DEBF      		out __SP_H__,r29
+ 204 00ee 0FBE      		out __SREG__,__tmp_reg__
+ 205 00f0 CDBF      		out __SP_L__,r28
+ 206 00f2 DF91      		pop r29
+ 207 00f4 CF91      		pop r28
+ 208 00f6 1F91      		pop r17
+ 209 00f8 0F91      		pop r16
+ 210 00fa FF90      		pop r15
+ 211 00fc EF90      		pop r14
+ 212 00fe BF90      		pop r11
+ 213 0100 AF90      		pop r10
+ 214 0102 9F90      		pop r9
+ 215 0104 8F90      		pop r8
+ 216 0106 0895      		ret
+ 217               	.LVL13:
+ 218               	.L14:
+ 219               	.LBB50:
+ 220               	.LBB51:
+  95:../../test/test.c ****     chSequentialStreamPut(chp, '0');
+ 221               		.loc 1 95 0
+ 222 0108 8091 0000 		lds r24,chp
+ 223 010c 9091 0000 		lds r25,chp+1
+ 224 0110 DC01      		movw r26,r24
+ 225 0112 ED91      		ld r30,X+
+ 226 0114 FC91      		ld r31,X
+ 227 0116 0480      		ldd __tmp_reg__,Z+4
+ 228 0118 F581      		ldd r31,Z+5
+ 229 011a E02D      		mov r30,__tmp_reg__
+ 230 011c 60E3      		ldi r22,lo8(48)
+ 231               	.LVL14:
+ 232               	/* epilogue start */
+ 233               	.LBE51:
+ 234               	.LBE50:
+ 103:../../test/test.c **** }
+ 235               		.loc 1 103 0
+ 236 011e 6096      		adiw r28,16
+ 237 0120 0FB6      		in __tmp_reg__,__SREG__
+ 238 0122 F894      		cli
+ 239 0124 DEBF      		out __SP_H__,r29
+ 240 0126 0FBE      		out __SREG__,__tmp_reg__
+ 241 0128 CDBF      		out __SP_L__,r28
+ 242 012a DF91      		pop r29
+ 243 012c CF91      		pop r28
+ 244 012e 1F91      		pop r17
+ 245 0130 0F91      		pop r16
+ 246 0132 FF90      		pop r15
+ 247 0134 EF90      		pop r14
+ 248 0136 BF90      		pop r11
+ 249 0138 AF90      		pop r10
+ 250 013a 9F90      		pop r9
+ 251 013c 8F90      		pop r8
+ 252               	.LBB53:
+ 253               	.LBB52:
+  95:../../test/test.c ****     chSequentialStreamPut(chp, '0');
+ 254               		.loc 1 95 0
+ 255 013e 1994      		eijmp
+ 256               	.LVL15:
+ 257               	.LBE52:
+ 258               	.LBE53:
+ 259               	.LFE7:
+ 261               	.global	test_print
+ 263               	test_print:
+ 264               	.LFB8:
+ 110:../../test/test.c **** void test_print(const char *msgp) {
+ 265               		.loc 1 110 0
+ 266               	.LVL16:
+ 267 0140 CF93      		push r28
+ 268               	.LCFI14:
+ 269 0142 DF93      		push r29
+ 270               	.LCFI15:
+ 271               	/* prologue: function */
+ 272               	/* frame size = 0 */
+ 273               	/* stack size = 2 */
+ 274               	.L__stack_usage = 2
+ 112:../../test/test.c ****   while (*msgp)
+ 275               		.loc 1 112 0
+ 276 0144 DC01      		movw r26,r24
+ 277 0146 6C91      		ld r22,X
+ 278 0148 6623      		tst r22
+ 279 014a 01F0      		breq .L16
+ 110:../../test/test.c **** void test_print(const char *msgp) {
+ 280               		.loc 1 110 0
+ 281 014c EC01      		movw r28,r24
+ 282 014e 2196      		adiw r28,1
+ 283               	.LVL17:
+ 284               	.L18:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 285               		.loc 1 113 0
+ 286 0150 8091 0000 		lds r24,chp
+ 287 0154 9091 0000 		lds r25,chp+1
+ 288 0158 DC01      		movw r26,r24
+ 289 015a ED91      		ld r30,X+
+ 290 015c FC91      		ld r31,X
+ 291 015e 0480      		ldd __tmp_reg__,Z+4
+ 292 0160 F581      		ldd r31,Z+5
+ 293 0162 E02D      		mov r30,__tmp_reg__
+ 294 0164 1995      		eicall
+ 295               	.LVL18:
+ 112:../../test/test.c ****   while (*msgp)
+ 296               		.loc 1 112 0
+ 297 0166 6991      		ld r22,Y+
+ 298 0168 6111      		cpse r22,__zero_reg__
+ 299 016a 00C0      		rjmp .L18
+ 300               	.L16:
+ 301               	/* epilogue start */
+ 114:../../test/test.c **** }
+ 302               		.loc 1 114 0
+ 303 016c DF91      		pop r29
+ 304 016e CF91      		pop r28
+ 305 0170 0895      		ret
+ 306               	.LFE8:
+ 308               	.global	test_println
+ 310               	test_println:
+ 311               	.LFB9:
+ 121:../../test/test.c **** void test_println(const char *msgp) {
+ 312               		.loc 1 121 0
+ 313               	.LVL19:
+ 314 0172 CF93      		push r28
+ 315               	.LCFI16:
+ 316 0174 DF93      		push r29
+ 317               	.LCFI17:
+ 318               	/* prologue: function */
+ 319               	/* frame size = 0 */
+ 320               	/* stack size = 2 */
+ 321               	.L__stack_usage = 2
+ 322               	.LVL20:
+ 323               	.LBB54:
+ 324               	.LBB55:
+ 112:../../test/test.c ****   while (*msgp)
+ 325               		.loc 1 112 0
+ 326 0176 DC01      		movw r26,r24
+ 327 0178 6C91      		ld r22,X
+ 328 017a 6623      		tst r22
+ 329 017c 01F0      		breq .L24
+ 330               	.LBE55:
+ 331               	.LBE54:
+ 121:../../test/test.c **** void test_println(const char *msgp) {
+ 332               		.loc 1 121 0
+ 333 017e EC01      		movw r28,r24
+ 334 0180 2196      		adiw r28,1
+ 335               	.LVL21:
+ 336               	.L23:
+ 337               	.LBB57:
+ 338               	.LBB56:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 339               		.loc 1 113 0
+ 340 0182 8091 0000 		lds r24,chp
+ 341 0186 9091 0000 		lds r25,chp+1
+ 342 018a DC01      		movw r26,r24
+ 343 018c ED91      		ld r30,X+
+ 344 018e FC91      		ld r31,X
+ 345 0190 0480      		ldd __tmp_reg__,Z+4
+ 346 0192 F581      		ldd r31,Z+5
+ 347 0194 E02D      		mov r30,__tmp_reg__
+ 348 0196 1995      		eicall
+ 349               	.LVL22:
+ 112:../../test/test.c ****   while (*msgp)
+ 350               		.loc 1 112 0
+ 351 0198 6991      		ld r22,Y+
+ 352 019a 6111      		cpse r22,__zero_reg__
+ 353 019c 00C0      		rjmp .L23
+ 354               	.L24:
+ 355               	.LBE56:
+ 356               	.LBE57:
+ 124:../../test/test.c ****   chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
+ 357               		.loc 1 124 0
+ 358 019e 8091 0000 		lds r24,chp
+ 359 01a2 9091 0000 		lds r25,chp+1
+ 360 01a6 DC01      		movw r26,r24
+ 361 01a8 ED91      		ld r30,X+
+ 362 01aa FC91      		ld r31,X
+ 363 01ac 0190      		ld __tmp_reg__,Z+
+ 364 01ae F081      		ld r31,Z
+ 365 01b0 E02D      		mov r30,__tmp_reg__
+ 366 01b2 42E0      		ldi r20,lo8(2)
+ 367 01b4 50E0      		ldi r21,0
+ 368 01b6 60E0      		ldi r22,lo8(.LC0)
+ 369 01b8 70E0      		ldi r23,hi8(.LC0)
+ 370               	/* epilogue start */
+ 125:../../test/test.c **** }
+ 371               		.loc 1 125 0
+ 372 01ba DF91      		pop r29
+ 373 01bc CF91      		pop r28
+ 124:../../test/test.c ****   chSequentialStreamWrite(chp, (const uint8_t *)"\r\n", 2);
+ 374               		.loc 1 124 0
+ 375 01be 1994      		eijmp
+ 376               	.LVL23:
+ 377               	.LFE9:
+ 379               	.global	test_emit_token
+ 381               	test_emit_token:
+ 382               	.LFB12:
+ 147:../../test/test.c **** void test_emit_token(char token) {
+ 383               		.loc 1 147 0
+ 384               	.LVL24:
+ 385               	/* prologue: function */
+ 386               	/* frame size = 0 */
+ 387               	/* stack size = 0 */
+ 388               	.L__stack_usage = 0
+ 149:../../test/test.c ****   chSysLock();
+ 389               		.loc 1 149 0
+ 390               	/* #APP */
+ 391               	 ;  149 "../../test/test.c" 1
+ 392 01c0 F894      		cli
+ 393               	 ;  0 "" 2
+ 150:../../test/test.c ****   *tokp++ = token;
+ 394               		.loc 1 150 0
+ 395               	/* #NOAPP */
+ 396 01c2 E091 0000 		lds r30,tokp
+ 397 01c6 F091 0000 		lds r31,tokp+1
+ 398 01ca 8193      		st Z+,r24
+ 399 01cc F093 0000 		sts tokp+1,r31
+ 400 01d0 E093 0000 		sts tokp,r30
+ 151:../../test/test.c ****   chSysUnlock();
+ 401               		.loc 1 151 0
+ 402               	/* #APP */
+ 403               	 ;  151 "../../test/test.c" 1
+ 404 01d4 7894      		sei
+ 405               	 ;  0 "" 2
+ 406               	/* #NOAPP */
+ 407 01d6 0895      		ret
+ 408               	.LFE12:
+ 410               	.global	_test_fail
+ 412               	_test_fail:
+ 413               	.LFB13:
+ 157:../../test/test.c **** bool_t _test_fail(unsigned point) {
+ 414               		.loc 1 157 0
+ 415               	.LVL25:
+ 416               	/* prologue: function */
+ 417               	/* frame size = 0 */
+ 418               	/* stack size = 0 */
+ 419               	.L__stack_usage = 0
+ 159:../../test/test.c ****   local_fail = TRUE;
+ 420               		.loc 1 159 0
+ 421 01d8 21E0      		ldi r18,lo8(1)
+ 422 01da 2093 0000 		sts local_fail,r18
+ 160:../../test/test.c ****   global_fail = TRUE;
+ 423               		.loc 1 160 0
+ 424 01de 2093 0000 		sts global_fail,r18
+ 161:../../test/test.c ****   failpoint = point;
+ 425               		.loc 1 161 0
+ 426 01e2 9093 0000 		sts failpoint+1,r25
+ 427 01e6 8093 0000 		sts failpoint,r24
+ 163:../../test/test.c **** }
+ 428               		.loc 1 163 0
+ 429 01ea 81E0      		ldi r24,lo8(1)
+ 430               	.LVL26:
+ 431 01ec 0895      		ret
+ 432               	.LFE13:
+ 434               	.global	_test_assert
+ 436               	_test_assert:
+ 437               	.LFB14:
+ 165:../../test/test.c **** bool_t _test_assert(unsigned point, bool_t condition) {
+ 438               		.loc 1 165 0
+ 439               	.LVL27:
+ 440               	/* prologue: function */
+ 441               	/* frame size = 0 */
+ 442               	/* stack size = 0 */
+ 443               	.L__stack_usage = 0
+ 167:../../test/test.c ****   if (!condition)
+ 444               		.loc 1 167 0
+ 445 01ee 6111      		cpse r22,__zero_reg__
+ 446 01f0 00C0      		rjmp .L30
+ 447               	.LVL28:
+ 448               	.LBB58:
+ 449               	.LBB59:
+ 159:../../test/test.c ****   local_fail = TRUE;
+ 450               		.loc 1 159 0
+ 451 01f2 21E0      		ldi r18,lo8(1)
+ 452 01f4 2093 0000 		sts local_fail,r18
+ 160:../../test/test.c ****   global_fail = TRUE;
+ 453               		.loc 1 160 0
+ 454 01f8 2093 0000 		sts global_fail,r18
+ 161:../../test/test.c ****   failpoint = point;
+ 455               		.loc 1 161 0
+ 456 01fc 9093 0000 		sts failpoint+1,r25
+ 457 0200 8093 0000 		sts failpoint,r24
+ 458               	.LBE59:
+ 459               	.LBE58:
+ 168:../../test/test.c ****     return _test_fail(point);
+ 460               		.loc 1 168 0
+ 461 0204 81E0      		ldi r24,lo8(1)
+ 462               	.LVL29:
+ 463 0206 0895      		ret
+ 464               	.LVL30:
+ 465               	.L30:
+ 169:../../test/test.c ****   return FALSE;
+ 466               		.loc 1 169 0
+ 467 0208 80E0      		ldi r24,0
+ 468               	.LVL31:
+ 170:../../test/test.c **** }
+ 469               		.loc 1 170 0
+ 470 020a 0895      		ret
+ 471               	.LFE14:
+ 473               	.global	_test_assert_sequence
+ 475               	_test_assert_sequence:
+ 476               	.LFB15:
+ 172:../../test/test.c **** bool_t _test_assert_sequence(unsigned point, char *expected) {
+ 477               		.loc 1 172 0
+ 478               	.LVL32:
+ 479               	/* prologue: function */
+ 480               	/* frame size = 0 */
+ 481               	/* stack size = 0 */
+ 482               	.L__stack_usage = 0
+ 483 020c FB01      		movw r30,r22
+ 484               	.LVL33:
+ 485 020e 4091 0000 		lds r20,tokp
+ 486 0212 5091 0000 		lds r21,tokp+1
+ 487 0216 20E0      		ldi r18,lo8(tokens_buffer)
+ 488 0218 30E0      		ldi r19,hi8(tokens_buffer)
+ 174:../../test/test.c ****   while (cp < tokp) {
+ 489               		.loc 1 174 0
+ 490 021a 00C0      		rjmp .L32
+ 491               	.LVL34:
+ 492               	.L34:
+ 493 021c 2F5F      		subi r18,-1
+ 494 021e 3F4F      		sbci r19,-1
+ 175:../../test/test.c ****     if (*cp++ != *expected++)
+ 495               		.loc 1 175 0
+ 496 0220 6191      		ld r22,Z+
+ 497               	.LVL35:
+ 498 0222 7C91      		ld r23,X
+ 499 0224 7613      		cpse r23,r22
+ 500 0226 00C0      		rjmp .L37
+ 501               	.L32:
+ 502 0228 D901      		movw r26,r18
+ 174:../../test/test.c ****   while (cp < tokp) {
+ 503               		.loc 1 174 0 discriminator 1
+ 504 022a 2417      		cp r18,r20
+ 505 022c 3507      		cpc r19,r21
+ 506 022e 00F0      		brlo .L34
+ 178:../../test/test.c ****   if (*expected)
+ 507               		.loc 1 178 0
+ 508 0230 2081      		ld r18,Z
+ 509 0232 2111      		cpse r18,__zero_reg__
+ 510 0234 00C0      		rjmp .L37
+ 511               	.LBB60:
+ 512               	.LBB61:
+ 132:../../test/test.c ****   tokp = tokens_buffer;
+ 513               		.loc 1 132 0
+ 514 0236 80E0      		ldi r24,lo8(tokens_buffer)
+ 515 0238 90E0      		ldi r25,hi8(tokens_buffer)
+ 516               	.LVL36:
+ 517 023a 9093 0000 		sts tokp+1,r25
+ 518 023e 8093 0000 		sts tokp,r24
+ 519               	.LBE61:
+ 520               	.LBE60:
+ 181:../../test/test.c ****   return FALSE;
+ 521               		.loc 1 181 0
+ 522 0242 80E0      		ldi r24,0
+ 182:../../test/test.c **** }
+ 523               		.loc 1 182 0
+ 524 0244 0895      		ret
+ 525               	.LVL37:
+ 526               	.L37:
+ 527               	.LBB62:
+ 528               	.LBB63:
+ 159:../../test/test.c ****   local_fail = TRUE;
+ 529               		.loc 1 159 0
+ 530 0246 21E0      		ldi r18,lo8(1)
+ 531 0248 2093 0000 		sts local_fail,r18
+ 160:../../test/test.c ****   global_fail = TRUE;
+ 532               		.loc 1 160 0
+ 533 024c 2093 0000 		sts global_fail,r18
+ 161:../../test/test.c ****   failpoint = point;
+ 534               		.loc 1 161 0
+ 535 0250 9093 0000 		sts failpoint+1,r25
+ 536 0254 8093 0000 		sts failpoint,r24
+ 537               	.LBE63:
+ 538               	.LBE62:
+ 179:../../test/test.c ****     return _test_fail(point);
+ 539               		.loc 1 179 0
+ 540 0258 81E0      		ldi r24,lo8(1)
+ 541               	.LVL38:
+ 542 025a 0895      		ret
+ 543               	.LFE15:
+ 545               	.global	_test_assert_time_window
+ 547               	_test_assert_time_window:
+ 548               	.LFB16:
+ 184:../../test/test.c **** bool_t _test_assert_time_window(unsigned point, systime_t start, systime_t end) {
+ 549               		.loc 1 184 0
+ 550               	.LVL39:
+ 551               	/* prologue: function */
+ 552               	/* frame size = 0 */
+ 553               	/* stack size = 0 */
+ 554               	.L__stack_usage = 0
+ 186:../../test/test.c ****   return _test_assert(point, chTimeIsWithin(start, end));
+ 555               		.loc 1 186 0
+ 556 025c 2091 0000 		lds r18,vtlist+6
+ 557 0260 3091 0000 		lds r19,vtlist+6+1
+ 558               	.LVL40:
+ 559 0264 261B      		sub r18,r22
+ 560 0266 370B      		sbc r19,r23
+ 561               	.LVL41:
+ 562 0268 461B      		sub r20,r22
+ 563 026a 570B      		sbc r21,r23
+ 564               	.LVL42:
+ 565               	.LBB64:
+ 566               	.LBB65:
+ 167:../../test/test.c ****   if (!condition)
+ 567               		.loc 1 167 0
+ 568 026c 2417      		cp r18,r20
+ 569 026e 3507      		cpc r19,r21
+ 570 0270 00F0      		brlo .L40
+ 571               	.LVL43:
+ 572               	.LBB66:
+ 573               	.LBB67:
+ 159:../../test/test.c ****   local_fail = TRUE;
+ 574               		.loc 1 159 0
+ 575 0272 21E0      		ldi r18,lo8(1)
+ 576 0274 2093 0000 		sts local_fail,r18
+ 160:../../test/test.c ****   global_fail = TRUE;
+ 577               		.loc 1 160 0
+ 578 0278 2093 0000 		sts global_fail,r18
+ 161:../../test/test.c ****   failpoint = point;
+ 579               		.loc 1 161 0
+ 580 027c 9093 0000 		sts failpoint+1,r25
+ 581 0280 8093 0000 		sts failpoint,r24
+ 168:../../test/test.c ****     return _test_fail(point);
+ 582               		.loc 1 168 0
+ 583 0284 81E0      		ldi r24,lo8(1)
+ 584               	.LVL44:
+ 585 0286 0895      		ret
+ 586               	.LVL45:
+ 587               	.L40:
+ 588               	.LBE67:
+ 589               	.LBE66:
+ 169:../../test/test.c ****   return FALSE;
+ 590               		.loc 1 169 0
+ 591 0288 80E0      		ldi r24,0
+ 592               	.LVL46:
+ 593               	.LBE65:
+ 594               	.LBE64:
+ 187:../../test/test.c **** }
+ 595               		.loc 1 187 0
+ 596 028a 0895      		ret
+ 597               	.LFE16:
+ 599               	.global	test_terminate_threads
+ 601               	test_terminate_threads:
+ 602               	.LFB17:
+ 196:../../test/test.c **** void test_terminate_threads(void) {
+ 603               		.loc 1 196 0
+ 604 028c CF93      		push r28
+ 605               	.LCFI18:
+ 606 028e DF93      		push r29
+ 607               	.LCFI19:
+ 608               	/* prologue: function */
+ 609               	/* frame size = 0 */
+ 610               	/* stack size = 2 */
+ 611               	.L__stack_usage = 2
+ 612               	.LVL47:
+ 613 0290 C0E0      		ldi r28,lo8(threads)
+ 614 0292 D0E0      		ldi r29,hi8(threads)
+ 615               	.LVL48:
+ 616               	.L43:
+ 200:../../test/test.c ****     if (threads[i])
+ 617               		.loc 1 200 0
+ 618 0294 8991      		ld r24,Y+
+ 619 0296 9991      		ld r25,Y+
+ 620 0298 0097      		sbiw r24,0
+ 621 029a 01F0      		breq .L42
+ 201:../../test/test.c ****       chThdTerminate(threads[i]);
+ 622               		.loc 1 201 0
+ 623 029c 0E94 0000 		call chThdTerminate
+ 624               	.LVL49:
+ 625               	.L42:
+ 199:../../test/test.c ****   for (i = 0; i < MAX_THREADS; i++)
+ 626               		.loc 1 199 0
+ 627 02a0 80E0      		ldi r24,hi8(threads+10)
+ 628 02a2 C030      		cpi r28,lo8(threads+10)
+ 629 02a4 D807      		cpc r29,r24
+ 630 02a6 01F4      		brne .L43
+ 631               	/* epilogue start */
+ 202:../../test/test.c **** }
+ 632               		.loc 1 202 0
+ 633 02a8 DF91      		pop r29
+ 634 02aa CF91      		pop r28
+ 635 02ac 0895      		ret
+ 636               	.LFE17:
+ 638               	.global	test_wait_threads
+ 640               	test_wait_threads:
+ 641               	.LFB18:
+ 207:../../test/test.c **** void test_wait_threads(void) {
+ 642               		.loc 1 207 0
+ 643 02ae CF93      		push r28
+ 644               	.LCFI20:
+ 645 02b0 DF93      		push r29
+ 646               	.LCFI21:
+ 647               	/* prologue: function */
+ 648               	/* frame size = 0 */
+ 649               	/* stack size = 2 */
+ 650               	.L__stack_usage = 2
+ 651               	.LVL50:
+ 652 02b2 C0E0      		ldi r28,lo8(threads)
+ 653 02b4 D0E0      		ldi r29,hi8(threads)
+ 654               	.LVL51:
+ 655               	.L50:
+ 211:../../test/test.c ****     if (threads[i] != NULL) {
+ 656               		.loc 1 211 0
+ 657 02b6 8881      		ld r24,Y
+ 658 02b8 9981      		ldd r25,Y+1
+ 659 02ba 0097      		sbiw r24,0
+ 660 02bc 01F0      		breq .L49
+ 212:../../test/test.c ****       chThdWait(threads[i]);
+ 661               		.loc 1 212 0
+ 662 02be 0E94 0000 		call chThdWait
+ 663               	.LVL52:
+ 213:../../test/test.c ****       threads[i] = NULL;
+ 664               		.loc 1 213 0
+ 665 02c2 1982      		std Y+1,__zero_reg__
+ 666 02c4 1882      		st Y,__zero_reg__
+ 667               	.L49:
+ 668 02c6 2296      		adiw r28,2
+ 210:../../test/test.c ****   for (i = 0; i < MAX_THREADS; i++)
+ 669               		.loc 1 210 0
+ 670 02c8 80E0      		ldi r24,hi8(threads+10)
+ 671 02ca C030      		cpi r28,lo8(threads+10)
+ 672 02cc D807      		cpc r29,r24
+ 673 02ce 01F4      		brne .L50
+ 674               	/* epilogue start */
+ 215:../../test/test.c **** }
+ 675               		.loc 1 215 0
+ 676 02d0 DF91      		pop r29
+ 677 02d2 CF91      		pop r28
+ 678 02d4 0895      		ret
+ 679               	.LFE18:
+ 681               	.global	test_cpu_pulse
+ 683               	test_cpu_pulse:
+ 684               	.LFB19:
+ 224:../../test/test.c **** void test_cpu_pulse(unsigned duration) {
+ 685               		.loc 1 224 0
+ 686               	.LVL53:
+ 687 02d6 EF92      		push r14
+ 688               	.LCFI22:
+ 689 02d8 FF92      		push r15
+ 690               	.LCFI23:
+ 691 02da 0F93      		push r16
+ 692               	.LCFI24:
+ 693 02dc 1F93      		push r17
+ 694               	.LCFI25:
+ 695 02de CF93      		push r28
+ 696               	.LCFI26:
+ 697 02e0 DF93      		push r29
+ 698               	.LCFI27:
+ 699               	/* prologue: function */
+ 700               	/* frame size = 0 */
+ 701               	/* stack size = 6 */
+ 702               	.L__stack_usage = 6
+ 227:../../test/test.c ****   start = chThdSelf()->p_time;
+ 703               		.loc 1 227 0
+ 704 02e2 E090 0000 		lds r14,rlist+11
+ 705 02e6 F090 0000 		lds r15,rlist+11+1
+ 706 02ea F701      		movw r30,r14
+ 707 02ec C089      		ldd r28,Z+16
+ 708 02ee D189      		ldd r29,Z+17
+ 709               	.LVL54:
+ 228:../../test/test.c ****   end = start + MS2ST(duration);
+ 710               		.loc 1 228 0
+ 711 02f0 8E01      		movw r16,r28
+ 712 02f2 0F5F      		subi r16,-1
+ 713 02f4 1F4F      		sbci r17,-1
+ 714 02f6 9C01      		movw r18,r24
+ 715 02f8 A8EE      		ldi r26,lo8(-24)
+ 716 02fa B3E0      		ldi r27,lo8(3)
+ 717 02fc 0E94 0000 		call __umulhisi3
+ 718 0300 6150      		subi r22,1
+ 719 0302 7109      		sbc r23,__zero_reg__
+ 720 0304 8109      		sbc r24,__zero_reg__
+ 721 0306 9109      		sbc r25,__zero_reg__
+ 722 0308 28EE      		ldi r18,lo8(-24)
+ 723 030a 33E0      		ldi r19,lo8(3)
+ 724 030c 40E0      		ldi r20,0
+ 725 030e 50E0      		ldi r21,0
+ 726 0310 0E94 0000 		call __udivmodsi4
+ 727 0314 020F      		add r16,r18
+ 728 0316 131F      		adc r17,r19
+ 729               	.LVL55:
+ 730               	.L67:
+ 230:../../test/test.c ****     now = chThdSelf()->p_time;
+ 731               		.loc 1 230 0
+ 732 0318 F701      		movw r30,r14
+ 733 031a 8089      		ldd r24,Z+16
+ 734 031c 9189      		ldd r25,Z+17
+ 735               	.LVL56:
+ 235:../../test/test.c ****   while (end > start ? (now >= start) && (now < end) :
+ 736               		.loc 1 235 0
+ 737 031e C017      		cp r28,r16
+ 738 0320 D107      		cpc r29,r17
+ 739 0322 00F4      		brsh .L56
+ 235:../../test/test.c ****   while (end > start ? (now >= start) && (now < end) :
+ 740               		.loc 1 235 0 is_stmt 0 discriminator 1
+ 741 0324 8C17      		cp r24,r28
+ 742 0326 9D07      		cpc r25,r29
+ 743 0328 00F4      		brsh .L68
+ 744               	/* epilogue start */
+ 237:../../test/test.c **** }
+ 745               		.loc 1 237 0 is_stmt 1
+ 746 032a DF91      		pop r29
+ 747 032c CF91      		pop r28
+ 748               	.LVL57:
+ 749 032e 1F91      		pop r17
+ 750 0330 0F91      		pop r16
+ 751               	.LVL58:
+ 752 0332 FF90      		pop r15
+ 753 0334 EF90      		pop r14
+ 754 0336 0895      		ret
+ 755               	.LVL59:
+ 756               	.L56:
+ 236:../../test/test.c ****                        (now >= start) || (now < end));
+ 757               		.loc 1 236 0
+ 758 0338 8C17      		cp r24,r28
+ 759 033a 9D07      		cpc r25,r29
+ 760 033c 00F4      		brsh .L67
+ 761               	.L68:
+ 236:../../test/test.c ****                        (now >= start) || (now < end));
+ 762               		.loc 1 236 0 is_stmt 0 discriminator 2
+ 763 033e 8017      		cp r24,r16
+ 764 0340 9107      		cpc r25,r17
+ 765 0342 00F0      		brlo .L67
+ 766               	/* epilogue start */
+ 237:../../test/test.c **** }
+ 767               		.loc 1 237 0 is_stmt 1
+ 768 0344 DF91      		pop r29
+ 769 0346 CF91      		pop r28
+ 770               	.LVL60:
+ 771 0348 1F91      		pop r17
+ 772 034a 0F91      		pop r16
+ 773               	.LVL61:
+ 774 034c FF90      		pop r15
+ 775 034e EF90      		pop r14
+ 776 0350 0895      		ret
+ 777               	.LFE19:
+ 779               	.global	test_wait_tick
+ 781               	test_wait_tick:
+ 782               	.LFB20:
+ 245:../../test/test.c **** systime_t test_wait_tick(void) {
+ 783               		.loc 1 245 0
+ 784               	/* prologue: function */
+ 785               	/* frame size = 0 */
+ 786               	/* stack size = 0 */
+ 787               	.L__stack_usage = 0
+ 247:../../test/test.c ****   chThdSleep(1);
+ 788               		.loc 1 247 0
+ 789 0352 81E0      		ldi r24,lo8(1)
+ 790 0354 90E0      		ldi r25,0
+ 791 0356 0E94 0000 		call chThdSleep
+ 792               	.LVL62:
+ 248:../../test/test.c ****   return chTimeNow();
+ 793               		.loc 1 248 0
+ 794 035a 2091 0000 		lds r18,vtlist+6
+ 795 035e 3091 0000 		lds r19,vtlist+6+1
+ 249:../../test/test.c **** }
+ 796               		.loc 1 249 0
+ 797 0362 C901      		movw r24,r18
+ 798 0364 0895      		ret
+ 799               	.LFE20:
+ 801               	.global	test_start_timer
+ 803               	test_start_timer:
+ 804               	.LFB22:
+ 272:../../test/test.c **** void test_start_timer(unsigned ms) {
+ 805               		.loc 1 272 0
+ 806               	.LVL63:
+ 807               	/* prologue: function */
+ 808               	/* frame size = 0 */
+ 809               	/* stack size = 0 */
+ 810               	.L__stack_usage = 0
+ 275:../../test/test.c ****   test_timer_done = FALSE;
+ 811               		.loc 1 275 0
+ 812 0366 1092 0000 		sts test_timer_done,__zero_reg__
+ 276:../../test/test.c ****   chVTSet(&vt, duration, tmr, NULL);
+ 813               		.loc 1 276 0
+ 814               	/* #APP */
+ 815               	 ;  276 "../../test/test.c" 1
+ 816 036a F894      		cli
+ 817               	 ;  0 "" 2
+ 274:../../test/test.c ****   systime_t duration = MS2ST(ms);
+ 818               		.loc 1 274 0
+ 819               	/* #NOAPP */
+ 820 036c 9C01      		movw r18,r24
+ 821 036e A8EE      		ldi r26,lo8(-24)
+ 822 0370 B3E0      		ldi r27,lo8(3)
+ 823 0372 0E94 0000 		call __umulhisi3
+ 824 0376 6150      		subi r22,1
+ 825 0378 7109      		sbc r23,__zero_reg__
+ 826 037a 8109      		sbc r24,__zero_reg__
+ 827 037c 9109      		sbc r25,__zero_reg__
+ 828 037e 28EE      		ldi r18,lo8(-24)
+ 829 0380 33E0      		ldi r19,lo8(3)
+ 830 0382 40E0      		ldi r20,0
+ 831 0384 50E0      		ldi r21,0
+ 832 0386 0E94 0000 		call __udivmodsi4
+ 833 038a B901      		movw r22,r18
+ 834 038c 6F5F      		subi r22,-1
+ 835 038e 7F4F      		sbci r23,-1
+ 276:../../test/test.c ****   chVTSet(&vt, duration, tmr, NULL);
+ 836               		.loc 1 276 0
+ 837 0390 20E0      		ldi r18,0
+ 838 0392 30E0      		ldi r19,0
+ 839 0394 40E0      		ldi r20,lo8(gs(tmr))
+ 840 0396 50E0      		ldi r21,hi8(gs(tmr))
+ 841 0398 80E0      		ldi r24,lo8(vt)
+ 842 039a 90E0      		ldi r25,hi8(vt)
+ 843               	.LVL64:
+ 844 039c 0E94 0000 		call chVTSetI
+ 845               	.LVL65:
+ 846               	/* #APP */
+ 847               	 ;  276 "../../test/test.c" 1
+ 848 03a0 7894      		sei
+ 849               	 ;  0 "" 2
+ 850               	/* #NOAPP */
+ 851 03a2 0895      		ret
+ 852               	.LFE22:
+ 854               		.section	.rodata.str1.1
+ 855               	.LC1:
+ 856 0003 00        		.string	""
+ 857               	.LC2:
+ 858 0004 2A2A 2A20 		.string	"*** ChibiOS/RT test suite"
+ 858      4368 6962 
+ 858      694F 532F 
+ 858      5254 2074 
+ 858      6573 7420 
+ 859               	.LC3:
+ 860 001e 2A2A 2A00 		.string	"***"
+ 861               	.LC4:
+ 862 0022 2A2A 2A20 		.string	"*** Kernel:       "
+ 862      4B65 726E 
+ 862      656C 3A20 
+ 862      2020 2020 
+ 862      2020 00
+ 863               	.LC5:
+ 864 0035 4172 6475 		.string	"Arduino Mega"
+ 864      696E 6F20 
+ 864      4D65 6761 
+ 864      00
+ 865               	.LC6:
+ 866 0042 2D2D 2D20 		.string	"--- Test Case "
+ 866      5465 7374 
+ 866      2043 6173 
+ 866      6520 00
+ 867               	.LC7:
+ 868 0051 2900      		.string	")"
+ 869               	.LC8:
+ 870 0053 2D2D 2D20 		.string	"--- Result: FAILURE (#"
+ 870      5265 7375 
+ 870      6C74 3A20 
+ 870      4641 494C 
+ 870      5552 4520 
+ 871               	.LC9:
+ 872 006a 5D29 00   		.string	"])"
+ 873               	.LC10:
+ 874 006d 2D2D 2D20 		.string	"--- Result: SUCCESS"
+ 874      5265 7375 
+ 874      6C74 3A20 
+ 874      5355 4343 
+ 874      4553 5300 
+ 875               	.LC11:
+ 876 0081 4641 494C 		.string	"FAILURE"
+ 876      5552 4500 
+ 877               	.LC12:
+ 878 0089 5355 4343 		.string	"SUCCESS"
+ 878      4553 5300 
+ 879               	.LC13:
+ 880 0091 322E 362E 		.string	"2.6.5"
+ 880      3500 
+ 881               	.LC14:
+ 882 0097 2A2A 2A20 		.string	"*** Compiled:     "
+ 882      436F 6D70 
+ 882      696C 6564 
+ 882      3A20 2020 
+ 882      2020 00
+ 883               	.LC15:
+ 884 00aa 4175 6720 		.string	"Aug 17 2014 - 20:48:47"
+ 884      3137 2032 
+ 884      3031 3420 
+ 884      2D20 3230 
+ 884      3A34 383A 
+ 885               	.LC16:
+ 886 00c1 2A2A 2A20 		.string	"*** Compiler:     "
+ 886      436F 6D70 
+ 886      696C 6572 
+ 886      3A20 2020 
+ 886      2020 00
+ 887               	.LC17:
+ 888 00d4 4743 4320 		.string	"GCC 4.7.2"
+ 888      342E 372E 
+ 888      3200 
+ 889               	.LC18:
+ 890 00de 2A2A 2A20 		.string	"*** Architecture: "
+ 890      4172 6368 
+ 890      6974 6563 
+ 890      7475 7265 
+ 890      3A20 00
+ 891               	.LC19:
+ 892 00f1 4156 5200 		.string	"AVR"
+ 893               	.LC20:
+ 894 00f5 2A2A 2A20 		.string	"*** Core Variant: "
+ 894      436F 7265 
+ 894      2056 6172 
+ 894      6961 6E74 
+ 894      3A20 00
+ 895               	.LC21:
+ 896 0108 4D65 6761 		.string	"MegaAVR"
+ 896      4156 5200 
+ 897               	.LC22:
+ 898 0110 2A2A 2A20 		.string	"*** Port Info:    "
+ 898      506F 7274 
+ 898      2049 6E66 
+ 898      6F3A 2020 
+ 898      2020 00
+ 899               	.LC23:
+ 900 0123 4E6F 6E65 		.string	"None"
+ 900      00
+ 901               	.LC24:
+ 902 0128 2A2A 2A20 		.string	"*** Platform:     "
+ 902      506C 6174 
+ 902      666F 726D 
+ 902      3A20 2020 
+ 902      2020 00
+ 903               	.LC25:
+ 904 013b 4154 6D65 		.string	"ATmega128"
+ 904      6761 3132 
+ 904      3800 
+ 905               	.LC26:
+ 906 0145 2A2A 2A20 		.string	"*** Test Board:   "
+ 906      5465 7374 
+ 906      2042 6F61 
+ 906      7264 3A20 
+ 906      2020 00
+ 907               	.LC27:
+ 908 0158 2028 00   		.string	" ("
+ 909               	.LC28:
+ 910 015b 205B 00   		.string	" ["
+ 911               	.LC29:
+ 912 015e 4669 6E61 		.string	"Final result: "
+ 912      6C20 7265 
+ 912      7375 6C74 
+ 912      3A20 00
+ 913               		.text
+ 914               	.global	TestThread
+ 916               	TestThread:
+ 917               	.LFB25:
+ 307:../../test/test.c **** 
+ 308:../../test/test.c **** /**
+ 309:../../test/test.c ****  * @brief   Test execution thread function.
+ 310:../../test/test.c ****  *
+ 311:../../test/test.c ****  * @param[in] p         pointer to a @p BaseChannel object for test output
+ 312:../../test/test.c ****  * @return              A failure boolean value.
+ 313:../../test/test.c ****  */
+ 314:../../test/test.c **** msg_t TestThread(void *p) {
+ 918               		.loc 1 314 0
+ 919               	.LVL66:
+ 920 03a4 4F92      		push r4
+ 921               	.LCFI28:
+ 922 03a6 5F92      		push r5
+ 923               	.LCFI29:
+ 924 03a8 6F92      		push r6
+ 925               	.LCFI30:
+ 926 03aa 7F92      		push r7
+ 927               	.LCFI31:
+ 928 03ac 8F92      		push r8
+ 929               	.LCFI32:
+ 930 03ae 9F92      		push r9
+ 931               	.LCFI33:
+ 932 03b0 AF92      		push r10
+ 933               	.LCFI34:
+ 934 03b2 BF92      		push r11
+ 935               	.LCFI35:
+ 936 03b4 CF92      		push r12
+ 937               	.LCFI36:
+ 938 03b6 DF92      		push r13
+ 939               	.LCFI37:
+ 940 03b8 EF92      		push r14
+ 941               	.LCFI38:
+ 942 03ba FF92      		push r15
+ 943               	.LCFI39:
+ 944 03bc 0F93      		push r16
+ 945               	.LCFI40:
+ 946 03be 1F93      		push r17
+ 947               	.LCFI41:
+ 948 03c0 CF93      		push r28
+ 949               	.LCFI42:
+ 950 03c2 DF93      		push r29
+ 951               	.LCFI43:
+ 952               	/* prologue: function */
+ 953               	/* frame size = 0 */
+ 954               	/* stack size = 16 */
+ 955               	.L__stack_usage = 16
+ 315:../../test/test.c ****   int i, j;
+ 316:../../test/test.c **** 
+ 317:../../test/test.c ****   chp = p;
+ 956               		.loc 1 317 0
+ 957 03c4 9093 0000 		sts chp+1,r25
+ 958 03c8 8093 0000 		sts chp,r24
+ 318:../../test/test.c ****   test_println("");
+ 959               		.loc 1 318 0
+ 960 03cc 80E0      		ldi r24,lo8(.LC1)
+ 961 03ce 90E0      		ldi r25,hi8(.LC1)
+ 962               	.LVL67:
+ 963 03d0 0E94 0000 		call test_println
+ 964               	.LVL68:
+ 319:../../test/test.c ****   test_println("*** ChibiOS/RT test suite");
+ 965               		.loc 1 319 0
+ 966 03d4 80E0      		ldi r24,lo8(.LC2)
+ 967 03d6 90E0      		ldi r25,hi8(.LC2)
+ 968 03d8 0E94 0000 		call test_println
+ 969               	.LVL69:
+ 320:../../test/test.c ****   test_println("***");
+ 970               		.loc 1 320 0
+ 971 03dc 80E0      		ldi r24,lo8(.LC3)
+ 972 03de 90E0      		ldi r25,hi8(.LC3)
+ 973 03e0 0E94 0000 		call test_println
+ 974               	.LVL70:
+ 975 03e4 C0E0      		ldi r28,lo8(.LC4+1)
+ 976 03e6 D0E0      		ldi r29,hi8(.LC4+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 977               		.loc 1 112 0
+ 978 03e8 6AE2      		ldi r22,lo8(42)
+ 979               	.LVL71:
+ 980               	.L72:
+ 981               	.LBB104:
+ 982               	.LBB105:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 983               		.loc 1 113 0
+ 984 03ea 8091 0000 		lds r24,chp
+ 985 03ee 9091 0000 		lds r25,chp+1
+ 986 03f2 DC01      		movw r26,r24
+ 987 03f4 ED91      		ld r30,X+
+ 988 03f6 FC91      		ld r31,X
+ 989 03f8 0480      		ldd __tmp_reg__,Z+4
+ 990 03fa F581      		ldd r31,Z+5
+ 991 03fc E02D      		mov r30,__tmp_reg__
+ 992 03fe 1995      		eicall
+ 993               	.LVL72:
+ 112:../../test/test.c ****   while (*msgp)
+ 994               		.loc 1 112 0
+ 995 0400 6991      		ld r22,Y+
+ 996 0402 6111      		cpse r22,__zero_reg__
+ 997 0404 00C0      		rjmp .L72
+ 998               	.LBE105:
+ 999               	.LBE104:
+ 321:../../test/test.c ****   test_print("*** Kernel:       ");
+ 322:../../test/test.c ****   test_println(CH_KERNEL_VERSION);
+ 1000               		.loc 1 322 0
+ 1001 0406 80E0      		ldi r24,lo8(.LC13)
+ 1002 0408 90E0      		ldi r25,hi8(.LC13)
+ 1003 040a 0E94 0000 		call test_println
+ 1004               	.LVL73:
+ 1005 040e C0E0      		ldi r28,lo8(.LC14+1)
+ 1006 0410 D0E0      		ldi r29,hi8(.LC14+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1007               		.loc 1 112 0
+ 1008 0412 6AE2      		ldi r22,lo8(42)
+ 1009               	.LVL74:
+ 1010               	.L74:
+ 1011               	.LBB106:
+ 1012               	.LBB107:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1013               		.loc 1 113 0
+ 1014 0414 8091 0000 		lds r24,chp
+ 1015 0418 9091 0000 		lds r25,chp+1
+ 1016 041c DC01      		movw r26,r24
+ 1017 041e ED91      		ld r30,X+
+ 1018 0420 FC91      		ld r31,X
+ 1019 0422 0480      		ldd __tmp_reg__,Z+4
+ 1020 0424 F581      		ldd r31,Z+5
+ 1021 0426 E02D      		mov r30,__tmp_reg__
+ 1022 0428 1995      		eicall
+ 1023               	.LVL75:
+ 112:../../test/test.c ****   while (*msgp)
+ 1024               		.loc 1 112 0
+ 1025 042a 6991      		ld r22,Y+
+ 1026 042c 6111      		cpse r22,__zero_reg__
+ 1027 042e 00C0      		rjmp .L74
+ 1028               	.LBE107:
+ 1029               	.LBE106:
+ 323:../../test/test.c ****   test_print("*** Compiled:     ");
+ 324:../../test/test.c ****   test_println(__DATE__ " - " __TIME__);
+ 1030               		.loc 1 324 0
+ 1031 0430 80E0      		ldi r24,lo8(.LC15)
+ 1032 0432 90E0      		ldi r25,hi8(.LC15)
+ 1033 0434 0E94 0000 		call test_println
+ 1034               	.LVL76:
+ 1035 0438 C0E0      		ldi r28,lo8(.LC16+1)
+ 1036 043a D0E0      		ldi r29,hi8(.LC16+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1037               		.loc 1 112 0
+ 1038 043c 6AE2      		ldi r22,lo8(42)
+ 1039               	.LVL77:
+ 1040               	.L76:
+ 1041               	.LBB108:
+ 1042               	.LBB109:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1043               		.loc 1 113 0
+ 1044 043e 8091 0000 		lds r24,chp
+ 1045 0442 9091 0000 		lds r25,chp+1
+ 1046 0446 DC01      		movw r26,r24
+ 1047 0448 ED91      		ld r30,X+
+ 1048 044a FC91      		ld r31,X
+ 1049 044c 0480      		ldd __tmp_reg__,Z+4
+ 1050 044e F581      		ldd r31,Z+5
+ 1051 0450 E02D      		mov r30,__tmp_reg__
+ 1052 0452 1995      		eicall
+ 1053               	.LVL78:
+ 112:../../test/test.c ****   while (*msgp)
+ 1054               		.loc 1 112 0
+ 1055 0454 6991      		ld r22,Y+
+ 1056 0456 6111      		cpse r22,__zero_reg__
+ 1057 0458 00C0      		rjmp .L76
+ 1058               	.LBE109:
+ 1059               	.LBE108:
+ 325:../../test/test.c **** #ifdef CH_COMPILER_NAME
+ 326:../../test/test.c ****   test_print("*** Compiler:     ");
+ 327:../../test/test.c ****   test_println(CH_COMPILER_NAME);
+ 1060               		.loc 1 327 0
+ 1061 045a 80E0      		ldi r24,lo8(.LC17)
+ 1062 045c 90E0      		ldi r25,hi8(.LC17)
+ 1063 045e 0E94 0000 		call test_println
+ 1064               	.LVL79:
+ 1065 0462 C0E0      		ldi r28,lo8(.LC18+1)
+ 1066 0464 D0E0      		ldi r29,hi8(.LC18+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1067               		.loc 1 112 0
+ 1068 0466 6AE2      		ldi r22,lo8(42)
+ 1069               	.LVL80:
+ 1070               	.L78:
+ 1071               	.LBB110:
+ 1072               	.LBB111:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1073               		.loc 1 113 0
+ 1074 0468 8091 0000 		lds r24,chp
+ 1075 046c 9091 0000 		lds r25,chp+1
+ 1076 0470 DC01      		movw r26,r24
+ 1077 0472 ED91      		ld r30,X+
+ 1078 0474 FC91      		ld r31,X
+ 1079 0476 0480      		ldd __tmp_reg__,Z+4
+ 1080 0478 F581      		ldd r31,Z+5
+ 1081 047a E02D      		mov r30,__tmp_reg__
+ 1082 047c 1995      		eicall
+ 1083               	.LVL81:
+ 112:../../test/test.c ****   while (*msgp)
+ 1084               		.loc 1 112 0
+ 1085 047e 6991      		ld r22,Y+
+ 1086 0480 6111      		cpse r22,__zero_reg__
+ 1087 0482 00C0      		rjmp .L78
+ 1088               	.LBE111:
+ 1089               	.LBE110:
+ 328:../../test/test.c **** #endif
+ 329:../../test/test.c ****   test_print("*** Architecture: ");
+ 330:../../test/test.c ****   test_println(CH_ARCHITECTURE_NAME);
+ 1090               		.loc 1 330 0
+ 1091 0484 80E0      		ldi r24,lo8(.LC19)
+ 1092 0486 90E0      		ldi r25,hi8(.LC19)
+ 1093 0488 0E94 0000 		call test_println
+ 1094               	.LVL82:
+ 1095 048c C0E0      		ldi r28,lo8(.LC20+1)
+ 1096 048e D0E0      		ldi r29,hi8(.LC20+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1097               		.loc 1 112 0
+ 1098 0490 6AE2      		ldi r22,lo8(42)
+ 1099               	.LVL83:
+ 1100               	.L80:
+ 1101               	.LBB112:
+ 1102               	.LBB113:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1103               		.loc 1 113 0
+ 1104 0492 8091 0000 		lds r24,chp
+ 1105 0496 9091 0000 		lds r25,chp+1
+ 1106 049a DC01      		movw r26,r24
+ 1107 049c ED91      		ld r30,X+
+ 1108 049e FC91      		ld r31,X
+ 1109 04a0 0480      		ldd __tmp_reg__,Z+4
+ 1110 04a2 F581      		ldd r31,Z+5
+ 1111 04a4 E02D      		mov r30,__tmp_reg__
+ 1112 04a6 1995      		eicall
+ 1113               	.LVL84:
+ 112:../../test/test.c ****   while (*msgp)
+ 1114               		.loc 1 112 0
+ 1115 04a8 6991      		ld r22,Y+
+ 1116 04aa 6111      		cpse r22,__zero_reg__
+ 1117 04ac 00C0      		rjmp .L80
+ 1118               	.LBE113:
+ 1119               	.LBE112:
+ 331:../../test/test.c **** #ifdef CH_CORE_VARIANT_NAME
+ 332:../../test/test.c ****   test_print("*** Core Variant: ");
+ 333:../../test/test.c ****   test_println(CH_CORE_VARIANT_NAME);
+ 1120               		.loc 1 333 0
+ 1121 04ae 80E0      		ldi r24,lo8(.LC21)
+ 1122 04b0 90E0      		ldi r25,hi8(.LC21)
+ 1123 04b2 0E94 0000 		call test_println
+ 1124               	.LVL85:
+ 1125 04b6 C0E0      		ldi r28,lo8(.LC22+1)
+ 1126 04b8 D0E0      		ldi r29,hi8(.LC22+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1127               		.loc 1 112 0
+ 1128 04ba 6AE2      		ldi r22,lo8(42)
+ 1129               	.LVL86:
+ 1130               	.L82:
+ 1131               	.LBB114:
+ 1132               	.LBB115:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1133               		.loc 1 113 0
+ 1134 04bc 8091 0000 		lds r24,chp
+ 1135 04c0 9091 0000 		lds r25,chp+1
+ 1136 04c4 DC01      		movw r26,r24
+ 1137 04c6 ED91      		ld r30,X+
+ 1138 04c8 FC91      		ld r31,X
+ 1139 04ca 0480      		ldd __tmp_reg__,Z+4
+ 1140 04cc F581      		ldd r31,Z+5
+ 1141 04ce E02D      		mov r30,__tmp_reg__
+ 1142 04d0 1995      		eicall
+ 1143               	.LVL87:
+ 112:../../test/test.c ****   while (*msgp)
+ 1144               		.loc 1 112 0
+ 1145 04d2 6991      		ld r22,Y+
+ 1146 04d4 6111      		cpse r22,__zero_reg__
+ 1147 04d6 00C0      		rjmp .L82
+ 1148               	.LBE115:
+ 1149               	.LBE114:
+ 334:../../test/test.c **** #endif
+ 335:../../test/test.c **** #ifdef CH_PORT_INFO
+ 336:../../test/test.c ****   test_print("*** Port Info:    ");
+ 337:../../test/test.c ****   test_println(CH_PORT_INFO);
+ 1150               		.loc 1 337 0
+ 1151 04d8 80E0      		ldi r24,lo8(.LC23)
+ 1152 04da 90E0      		ldi r25,hi8(.LC23)
+ 1153 04dc 0E94 0000 		call test_println
+ 1154               	.LVL88:
+ 1155 04e0 C0E0      		ldi r28,lo8(.LC24+1)
+ 1156 04e2 D0E0      		ldi r29,hi8(.LC24+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1157               		.loc 1 112 0
+ 1158 04e4 6AE2      		ldi r22,lo8(42)
+ 1159               	.LVL89:
+ 1160               	.L84:
+ 1161               	.LBB116:
+ 1162               	.LBB117:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1163               		.loc 1 113 0
+ 1164 04e6 8091 0000 		lds r24,chp
+ 1165 04ea 9091 0000 		lds r25,chp+1
+ 1166 04ee DC01      		movw r26,r24
+ 1167 04f0 ED91      		ld r30,X+
+ 1168 04f2 FC91      		ld r31,X
+ 1169 04f4 0480      		ldd __tmp_reg__,Z+4
+ 1170 04f6 F581      		ldd r31,Z+5
+ 1171 04f8 E02D      		mov r30,__tmp_reg__
+ 1172 04fa 1995      		eicall
+ 1173               	.LVL90:
+ 112:../../test/test.c ****   while (*msgp)
+ 1174               		.loc 1 112 0
+ 1175 04fc 6991      		ld r22,Y+
+ 1176 04fe 6111      		cpse r22,__zero_reg__
+ 1177 0500 00C0      		rjmp .L84
+ 1178               	.LBE117:
+ 1179               	.LBE116:
+ 338:../../test/test.c **** #endif
+ 339:../../test/test.c **** #ifdef PLATFORM_NAME
+ 340:../../test/test.c ****   test_print("*** Platform:     ");
+ 341:../../test/test.c ****   test_println(PLATFORM_NAME);
+ 1180               		.loc 1 341 0
+ 1181 0502 80E0      		ldi r24,lo8(.LC25)
+ 1182 0504 90E0      		ldi r25,hi8(.LC25)
+ 1183 0506 0E94 0000 		call test_println
+ 1184               	.LVL91:
+ 1185 050a C0E0      		ldi r28,lo8(.LC26+1)
+ 1186 050c D0E0      		ldi r29,hi8(.LC26+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1187               		.loc 1 112 0
+ 1188 050e 6AE2      		ldi r22,lo8(42)
+ 1189               	.LVL92:
+ 1190               	.L86:
+ 1191               	.LBB118:
+ 1192               	.LBB119:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1193               		.loc 1 113 0
+ 1194 0510 8091 0000 		lds r24,chp
+ 1195 0514 9091 0000 		lds r25,chp+1
+ 1196 0518 DC01      		movw r26,r24
+ 1197 051a ED91      		ld r30,X+
+ 1198 051c FC91      		ld r31,X
+ 1199 051e 0480      		ldd __tmp_reg__,Z+4
+ 1200 0520 F581      		ldd r31,Z+5
+ 1201 0522 E02D      		mov r30,__tmp_reg__
+ 1202 0524 1995      		eicall
+ 1203               	.LVL93:
+ 112:../../test/test.c ****   while (*msgp)
+ 1204               		.loc 1 112 0
+ 1205 0526 6991      		ld r22,Y+
+ 1206 0528 6111      		cpse r22,__zero_reg__
+ 1207 052a 00C0      		rjmp .L86
+ 1208               	.LBE119:
+ 1209               	.LBE118:
+ 342:../../test/test.c **** #endif
+ 343:../../test/test.c **** #ifdef BOARD_NAME
+ 344:../../test/test.c ****   test_print("*** Test Board:   ");
+ 345:../../test/test.c ****   test_println(BOARD_NAME);
+ 1210               		.loc 1 345 0
+ 1211 052c 80E0      		ldi r24,lo8(.LC5)
+ 1212 052e 90E0      		ldi r25,hi8(.LC5)
+ 1213 0530 0E94 0000 		call test_println
+ 1214               	.LVL94:
+ 346:../../test/test.c **** #endif
+ 347:../../test/test.c ****   test_println("");
+ 1215               		.loc 1 347 0
+ 1216 0534 80E0      		ldi r24,lo8(.LC1)
+ 1217 0536 90E0      		ldi r25,hi8(.LC1)
+ 1218 0538 0E94 0000 		call test_println
+ 1219               	.LVL95:
+ 348:../../test/test.c **** 
+ 349:../../test/test.c ****   global_fail = FALSE;
+ 1220               		.loc 1 349 0
+ 1221 053c 1092 0000 		sts global_fail,__zero_reg__
+ 1222               	.LVL96:
+ 1223 0540 50E0      		ldi r21,lo8(patterns+2)
+ 1224 0542 452E      		mov r4,r21
+ 1225 0544 50E0      		ldi r21,hi8(patterns+2)
+ 1226 0546 552E      		mov r5,r21
+ 350:../../test/test.c ****   i = 0;
+ 351:../../test/test.c ****   while (patterns[i]) {
+ 1227               		.loc 1 351 0
+ 1228 0548 812C      		mov r8,__zero_reg__
+ 1229 054a 912C      		mov r9,__zero_reg__
+ 1230 054c 5401      		movw r10,r8
+ 1231 054e 8394      		inc r8
+ 1232 0550 00E0      		ldi r16,lo8(patternthd)
+ 1233 0552 10E0      		ldi r17,hi8(patternthd)
+ 1234               	.LBB120:
+ 1235               	.LBB121:
+ 1236               	.LBB122:
+ 1237               	.LBB123:
+ 132:../../test/test.c ****   tokp = tokens_buffer;
+ 1238               		.loc 1 132 0
+ 1239 0554 70E0      		ldi r23,lo8(tokens_buffer)
+ 1240 0556 672E      		mov r6,r23
+ 1241 0558 70E0      		ldi r23,hi8(tokens_buffer)
+ 1242 055a 772E      		mov r7,r23
+ 1243               	.LVL97:
+ 1244               	.L88:
+ 1245               	.LBE123:
+ 1246               	.LBE122:
+ 1247               	.LBE121:
+ 1248               	.LBE120:
+ 112:../../test/test.c ****   while (*msgp)
+ 1249               		.loc 1 112 0 discriminator 1
+ 1250 055c C12C      		mov r12,__zero_reg__
+ 1251 055e D12C      		mov r13,__zero_reg__
+ 1252 0560 7601      		movw r14,r12
+ 1253 0562 C394      		inc r12
+ 352:../../test/test.c ****     j = 0;
+ 353:../../test/test.c ****     while (patterns[i][j]) {
+ 1254               		.loc 1 353 0 discriminator 1
+ 1255 0564 F801      		movw r30,r16
+ 1256 0566 8081      		ld r24,Z
+ 1257 0568 9181      		ldd r25,Z+1
+ 1258 056a 892B      		or r24,r25
+ 1259 056c 01F4      		brne .+2
+ 1260 056e 00C0      		rjmp .L139
+ 1261               	.L106:
+ 354:../../test/test.c ****       print_line();
+ 1262               		.loc 1 354 0
+ 1263 0570 0E94 0000 		call print_line
+ 1264               	.LVL98:
+ 1265 0574 C0E0      		ldi r28,lo8(.LC6+1)
+ 1266 0576 D0E0      		ldi r29,hi8(.LC6+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1267               		.loc 1 112 0
+ 1268 0578 6DE2      		ldi r22,lo8(45)
+ 1269               	.LVL99:
+ 1270               	.L89:
+ 1271               	.LBB128:
+ 1272               	.LBB129:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1273               		.loc 1 113 0
+ 1274 057a 8091 0000 		lds r24,chp
+ 1275 057e 9091 0000 		lds r25,chp+1
+ 1276 0582 DC01      		movw r26,r24
+ 1277 0584 ED91      		ld r30,X+
+ 1278 0586 FC91      		ld r31,X
+ 1279 0588 0480      		ldd __tmp_reg__,Z+4
+ 1280 058a F581      		ldd r31,Z+5
+ 1281 058c E02D      		mov r30,__tmp_reg__
+ 1282 058e 1995      		eicall
+ 1283               	.LVL100:
+ 112:../../test/test.c ****   while (*msgp)
+ 1284               		.loc 1 112 0
+ 1285 0590 6991      		ld r22,Y+
+ 1286 0592 6111      		cpse r22,__zero_reg__
+ 1287 0594 00C0      		rjmp .L89
+ 1288               	.LBE129:
+ 1289               	.LBE128:
+ 355:../../test/test.c ****       test_print("--- Test Case ");
+ 356:../../test/test.c ****       test_printn(i + 1);
+ 1290               		.loc 1 356 0
+ 1291 0596 C501      		movw r24,r10
+ 1292 0598 B401      		movw r22,r8
+ 1293 059a 0E94 0000 		call test_printn
+ 1294               	.LVL101:
+ 1295               	.LBB130:
+ 1296               	.LBB131:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1297               		.loc 1 113 0
+ 1298 059e 8091 0000 		lds r24,chp
+ 1299 05a2 9091 0000 		lds r25,chp+1
+ 1300               	.LVL102:
+ 1301 05a6 DC01      		movw r26,r24
+ 1302 05a8 ED91      		ld r30,X+
+ 1303 05aa FC91      		ld r31,X
+ 1304 05ac 0480      		ldd __tmp_reg__,Z+4
+ 1305 05ae F581      		ldd r31,Z+5
+ 1306 05b0 E02D      		mov r30,__tmp_reg__
+ 1307 05b2 6EE2      		ldi r22,lo8(46)
+ 1308 05b4 1995      		eicall
+ 1309               	.LVL103:
+ 1310               	.LBE131:
+ 1311               	.LBE130:
+ 357:../../test/test.c ****       test_print(".");
+ 358:../../test/test.c ****       test_printn(j + 1);
+ 1312               		.loc 1 358 0
+ 1313 05b6 C701      		movw r24,r14
+ 1314 05b8 B601      		movw r22,r12
+ 1315 05ba 0E94 0000 		call test_printn
+ 1316               	.LVL104:
+ 1317 05be C0E0      		ldi r28,lo8(.LC27+1)
+ 1318 05c0 D0E0      		ldi r29,hi8(.LC27+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1319               		.loc 1 112 0
+ 1320 05c2 60E2      		ldi r22,lo8(32)
+ 1321               	.LVL105:
+ 1322               	.L91:
+ 1323               	.LBB132:
+ 1324               	.LBB133:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1325               		.loc 1 113 0
+ 1326 05c4 8091 0000 		lds r24,chp
+ 1327 05c8 9091 0000 		lds r25,chp+1
+ 1328 05cc DC01      		movw r26,r24
+ 1329 05ce ED91      		ld r30,X+
+ 1330 05d0 FC91      		ld r31,X
+ 1331 05d2 0480      		ldd __tmp_reg__,Z+4
+ 1332 05d4 F581      		ldd r31,Z+5
+ 1333 05d6 E02D      		mov r30,__tmp_reg__
+ 1334 05d8 1995      		eicall
+ 1335               	.LVL106:
+ 112:../../test/test.c ****   while (*msgp)
+ 1336               		.loc 1 112 0
+ 1337 05da 6991      		ld r22,Y+
+ 1338 05dc 6111      		cpse r22,__zero_reg__
+ 1339 05de 00C0      		rjmp .L91
+ 1340               	.LBE133:
+ 1341               	.LBE132:
+ 359:../../test/test.c ****       test_print(" (");
+ 360:../../test/test.c ****       test_print(patterns[i][j]->name);
+ 1342               		.loc 1 360 0
+ 1343 05e0 D801      		movw r26,r16
+ 1344 05e2 ED91      		ld r30,X+
+ 1345 05e4 FC91      		ld r31,X
+ 1346 05e6 C081      		ld r28,Z
+ 1347 05e8 D181      		ldd r29,Z+1
+ 1348               	.LVL107:
+ 1349               	.LBB134:
+ 1350               	.LBB135:
+ 112:../../test/test.c ****   while (*msgp)
+ 1351               		.loc 1 112 0
+ 1352 05ea 6881      		ld r22,Y
+ 1353 05ec 6623      		tst r22
+ 1354 05ee 01F0      		breq .L96
+ 1355               	.LBE135:
+ 1356               	.LBE134:
+ 1357               	.LBB137:
+ 1358               	.LBB126:
+ 314:../../test/test.c **** msg_t TestThread(void *p) {
+ 1359               		.loc 1 314 0
+ 1360 05f0 2196      		adiw r28,1
+ 1361               	.LVL108:
+ 1362               	.L95:
+ 1363               	.LBE126:
+ 1364               	.LBE137:
+ 1365               	.LBB138:
+ 1366               	.LBB136:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1367               		.loc 1 113 0
+ 1368 05f2 8091 0000 		lds r24,chp
+ 1369 05f6 9091 0000 		lds r25,chp+1
+ 1370 05fa DC01      		movw r26,r24
+ 1371 05fc ED91      		ld r30,X+
+ 1372 05fe FC91      		ld r31,X
+ 1373 0600 0480      		ldd __tmp_reg__,Z+4
+ 1374 0602 F581      		ldd r31,Z+5
+ 1375 0604 E02D      		mov r30,__tmp_reg__
+ 1376 0606 1995      		eicall
+ 1377               	.LVL109:
+ 112:../../test/test.c ****   while (*msgp)
+ 1378               		.loc 1 112 0
+ 1379 0608 6991      		ld r22,Y+
+ 1380 060a 6111      		cpse r22,__zero_reg__
+ 1381 060c 00C0      		rjmp .L95
+ 1382               	.L96:
+ 1383               	.LBE136:
+ 1384               	.LBE138:
+ 361:../../test/test.c ****       test_println(")");
+ 1385               		.loc 1 361 0
+ 1386 060e 80E0      		ldi r24,lo8(.LC7)
+ 1387 0610 90E0      		ldi r25,hi8(.LC7)
+ 1388 0612 0E94 0000 		call test_println
+ 1389               	.LVL110:
+ 362:../../test/test.c **** #if DELAY_BETWEEN_TESTS > 0
+ 363:../../test/test.c ****       chThdSleepMilliseconds(DELAY_BETWEEN_TESTS);
+ 1390               		.loc 1 363 0
+ 1391 0616 88EC      		ldi r24,lo8(-56)
+ 1392 0618 90E0      		ldi r25,0
+ 1393 061a 0E94 0000 		call chThdSleep
+ 1394               	.LVL111:
+ 364:../../test/test.c **** #endif
+ 365:../../test/test.c ****       execute_test(patterns[i][j]);
+ 1395               		.loc 1 365 0
+ 1396 061e F801      		movw r30,r16
+ 1397 0620 C191      		ld r28,Z+
+ 1398 0622 D191      		ld r29,Z+
+ 1399 0624 8F01      		movw r16,r30
+ 1400               	.LVL112:
+ 1401               	.LBB139:
+ 1402               	.LBB127:
+ 1403               	.LBB125:
+ 1404               	.LBB124:
+ 132:../../test/test.c ****   tokp = tokens_buffer;
+ 1405               		.loc 1 132 0
+ 1406 0626 7092 0000 		sts tokp+1,r7
+ 1407 062a 6092 0000 		sts tokp,r6
+ 1408               	.LBE124:
+ 1409               	.LBE125:
+ 287:../../test/test.c ****   local_fail = FALSE;
+ 1410               		.loc 1 287 0
+ 1411 062e 1092 0000 		sts local_fail,__zero_reg__
+ 1412               	.LVL113:
+ 289:../../test/test.c ****     threads[i] = NULL;
+ 1413               		.loc 1 289 0
+ 1414 0632 1092 0000 		sts threads+1,__zero_reg__
+ 1415 0636 1092 0000 		sts threads,__zero_reg__
+ 1416               	.LVL114:
+ 1417 063a 1092 0000 		sts threads+2+1,__zero_reg__
+ 1418 063e 1092 0000 		sts threads+2,__zero_reg__
+ 1419               	.LVL115:
+ 1420 0642 1092 0000 		sts threads+4+1,__zero_reg__
+ 1421 0646 1092 0000 		sts threads+4,__zero_reg__
+ 1422               	.LVL116:
+ 1423 064a 1092 0000 		sts threads+6+1,__zero_reg__
+ 1424 064e 1092 0000 		sts threads+6,__zero_reg__
+ 1425               	.LVL117:
+ 1426 0652 1092 0000 		sts threads+8+1,__zero_reg__
+ 1427 0656 1092 0000 		sts threads+8,__zero_reg__
+ 1428               	.LVL118:
+ 291:../../test/test.c ****   if (tcp->setup != NULL)
+ 1429               		.loc 1 291 0
+ 1430 065a EA81      		ldd r30,Y+2
+ 1431 065c FB81      		ldd r31,Y+3
+ 1432 065e 3097      		sbiw r30,0
+ 1433 0660 01F0      		breq .L94
+ 292:../../test/test.c ****     tcp->setup();
+ 1434               		.loc 1 292 0
+ 1435 0662 1995      		eicall
+ 1436               	.LVL119:
+ 1437               	.L94:
+ 293:../../test/test.c ****   tcp->execute();
+ 1438               		.loc 1 293 0
+ 1439 0664 EE81      		ldd r30,Y+6
+ 1440 0666 FF81      		ldd r31,Y+7
+ 1441 0668 1995      		eicall
+ 1442               	.LVL120:
+ 294:../../test/test.c ****   if (tcp->teardown != NULL)
+ 1443               		.loc 1 294 0
+ 1444 066a EC81      		ldd r30,Y+4
+ 1445 066c FD81      		ldd r31,Y+5
+ 1446 066e 3097      		sbiw r30,0
+ 1447 0670 01F0      		breq .L97
+ 295:../../test/test.c ****     tcp->teardown();
+ 1448               		.loc 1 295 0
+ 1449 0672 1995      		eicall
+ 1450               	.LVL121:
+ 1451               	.L97:
+ 297:../../test/test.c ****   test_wait_threads();
+ 1452               		.loc 1 297 0
+ 1453 0674 0E94 0000 		call test_wait_threads
+ 1454               	.LVL122:
+ 1455               	.LBE127:
+ 1456               	.LBE139:
+ 366:../../test/test.c ****       if (local_fail) {
+ 1457               		.loc 1 366 0
+ 1458 0678 8091 0000 		lds r24,local_fail
+ 1459 067c 8823      		tst r24
+ 1460 067e 01F4      		brne .+2
+ 1461 0680 00C0      		rjmp .L98
+ 1462 0682 C0E0      		ldi r28,lo8(.LC8+1)
+ 1463 0684 D0E0      		ldi r29,hi8(.LC8+1)
+ 1464               	.LVL123:
+ 112:../../test/test.c ****   while (*msgp)
+ 1465               		.loc 1 112 0
+ 1466 0686 6DE2      		ldi r22,lo8(45)
+ 1467               	.L99:
+ 1468               	.LBB140:
+ 1469               	.LBB141:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1470               		.loc 1 113 0
+ 1471 0688 8091 0000 		lds r24,chp
+ 1472 068c 9091 0000 		lds r25,chp+1
+ 1473               	.LVL124:
+ 1474 0690 DC01      		movw r26,r24
+ 1475 0692 ED91      		ld r30,X+
+ 1476 0694 FC91      		ld r31,X
+ 1477 0696 0480      		ldd __tmp_reg__,Z+4
+ 1478 0698 F581      		ldd r31,Z+5
+ 1479 069a E02D      		mov r30,__tmp_reg__
+ 1480 069c 1995      		eicall
+ 1481               	.LVL125:
+ 112:../../test/test.c ****   while (*msgp)
+ 1482               		.loc 1 112 0
+ 1483 069e 6991      		ld r22,Y+
+ 1484 06a0 6111      		cpse r22,__zero_reg__
+ 1485 06a2 00C0      		rjmp .L99
+ 1486               	.LBE141:
+ 1487               	.LBE140:
+ 367:../../test/test.c ****         test_print("--- Result: FAILURE (#");
+ 368:../../test/test.c ****         test_printn(failpoint);
+ 1488               		.loc 1 368 0
+ 1489 06a4 6091 0000 		lds r22,failpoint
+ 1490 06a8 7091 0000 		lds r23,failpoint+1
+ 1491 06ac 80E0      		ldi r24,0
+ 1492 06ae 90E0      		ldi r25,0
+ 1493 06b0 0E94 0000 		call test_printn
+ 1494               	.LVL126:
+ 1495 06b4 C0E0      		ldi r28,lo8(.LC28+1)
+ 1496 06b6 D0E0      		ldi r29,hi8(.LC28+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1497               		.loc 1 112 0
+ 1498 06b8 60E2      		ldi r22,lo8(32)
+ 1499               	.LVL127:
+ 1500               	.L101:
+ 1501               	.LBB142:
+ 1502               	.LBB143:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1503               		.loc 1 113 0
+ 1504 06ba 8091 0000 		lds r24,chp
+ 1505 06be 9091 0000 		lds r25,chp+1
+ 1506 06c2 DC01      		movw r26,r24
+ 1507 06c4 ED91      		ld r30,X+
+ 1508 06c6 FC91      		ld r31,X
+ 1509 06c8 0480      		ldd __tmp_reg__,Z+4
+ 1510 06ca F581      		ldd r31,Z+5
+ 1511 06cc E02D      		mov r30,__tmp_reg__
+ 1512 06ce 1995      		eicall
+ 1513               	.LVL128:
+ 112:../../test/test.c ****   while (*msgp)
+ 1514               		.loc 1 112 0
+ 1515 06d0 6991      		ld r22,Y+
+ 1516 06d2 6111      		cpse r22,__zero_reg__
+ 1517 06d4 00C0      		rjmp .L101
+ 1518               	.LVL129:
+ 1519               	.LBE143:
+ 1520               	.LBE142:
+ 1521               	.LBB144:
+ 1522               	.LBB145:
+ 138:../../test/test.c ****   while (cp < tokp)
+ 1523               		.loc 1 138 0
+ 1524 06d6 8091 0000 		lds r24,tokp
+ 1525 06da 9091 0000 		lds r25,tokp+1
+ 1526 06de 8050      		subi r24,lo8(tokens_buffer)
+ 1527 06e0 9040      		sbci r25,hi8(tokens_buffer)
+ 1528 06e2 01F0      		breq .L105
+ 1529 06e4 00F0      		brlo .L105
+ 1530 06e6 C0E0      		ldi r28,lo8(tokens_buffer)
+ 1531 06e8 D0E0      		ldi r29,hi8(tokens_buffer)
+ 1532               	.LVL130:
+ 1533               	.L104:
+ 139:../../test/test.c ****     chSequentialStreamPut(chp, *cp++);
+ 1534               		.loc 1 139 0
+ 1535 06ea 8091 0000 		lds r24,chp
+ 1536 06ee 9091 0000 		lds r25,chp+1
+ 1537 06f2 6991      		ld r22,Y+
+ 1538               	.LVL131:
+ 1539 06f4 DC01      		movw r26,r24
+ 1540 06f6 ED91      		ld r30,X+
+ 1541 06f8 FC91      		ld r31,X
+ 1542 06fa 0480      		ldd __tmp_reg__,Z+4
+ 1543 06fc F581      		ldd r31,Z+5
+ 1544 06fe E02D      		mov r30,__tmp_reg__
+ 1545 0700 1995      		eicall
+ 1546               	.LVL132:
+ 138:../../test/test.c ****   while (cp < tokp)
+ 1547               		.loc 1 138 0
+ 1548 0702 8091 0000 		lds r24,tokp
+ 1549 0706 9091 0000 		lds r25,tokp+1
+ 1550 070a C817      		cp r28,r24
+ 1551 070c D907      		cpc r29,r25
+ 1552 070e 00F0      		brlo .L104
+ 1553               	.LVL133:
+ 1554               	.L105:
+ 1555               	.LBE145:
+ 1556               	.LBE144:
+ 369:../../test/test.c ****         test_print(" [");
+ 370:../../test/test.c ****         print_tokens();
+ 371:../../test/test.c ****         test_println("])");
+ 1557               		.loc 1 371 0
+ 1558 0710 80E0      		ldi r24,lo8(.LC9)
+ 1559 0712 90E0      		ldi r25,hi8(.LC9)
+ 1560 0714 0E94 0000 		call test_println
+ 1561               	.LVL134:
+ 1562               	.L103:
+ 1563 0718 BFEF      		ldi r27,-1
+ 1564 071a CB1A      		sub r12,r27
+ 1565 071c DB0A      		sbc r13,r27
+ 1566 071e EB0A      		sbc r14,r27
+ 1567 0720 FB0A      		sbc r15,r27
+ 353:../../test/test.c ****     while (patterns[i][j]) {
+ 1568               		.loc 1 353 0 discriminator 1
+ 1569 0722 F801      		movw r30,r16
+ 1570 0724 8081      		ld r24,Z
+ 1571 0726 9181      		ldd r25,Z+1
+ 1572 0728 892B      		or r24,r25
+ 1573 072a 01F0      		breq .+2
+ 1574 072c 00C0      		rjmp .L106
+ 1575               	.LVL135:
+ 1576               	.L139:
+ 351:../../test/test.c ****   while (patterns[i]) {
+ 1577               		.loc 1 351 0
+ 1578 072e D201      		movw r26,r4
+ 1579 0730 0D91      		ld r16,X+
+ 1580 0732 1D91      		ld r17,X+
+ 1581 0734 2D01      		movw r4,r26
+ 1582 0736 BFEF      		ldi r27,-1
+ 1583 0738 8B1A      		sub r8,r27
+ 1584 073a 9B0A      		sbc r9,r27
+ 1585 073c AB0A      		sbc r10,r27
+ 1586 073e BB0A      		sbc r11,r27
+ 1587 0740 0115      		cp r16,__zero_reg__
+ 1588 0742 1105      		cpc r17,__zero_reg__
+ 1589 0744 01F0      		breq .+2
+ 1590 0746 00C0      		rjmp .L88
+ 372:../../test/test.c ****       }
+ 373:../../test/test.c ****       else
+ 374:../../test/test.c ****         test_println("--- Result: SUCCESS");
+ 375:../../test/test.c ****       j++;
+ 376:../../test/test.c ****     }
+ 377:../../test/test.c ****     i++;
+ 378:../../test/test.c ****   }
+ 379:../../test/test.c ****   print_line();
+ 1591               		.loc 1 379 0
+ 1592 0748 0E94 0000 		call print_line
+ 1593               	.LVL136:
+ 380:../../test/test.c ****   test_println("");
+ 1594               		.loc 1 380 0
+ 1595 074c 80E0      		ldi r24,lo8(.LC1)
+ 1596 074e 90E0      		ldi r25,hi8(.LC1)
+ 1597 0750 0E94 0000 		call test_println
+ 1598               	.LVL137:
+ 1599 0754 C0E0      		ldi r28,lo8(.LC29+1)
+ 1600 0756 D0E0      		ldi r29,hi8(.LC29+1)
+ 112:../../test/test.c ****   while (*msgp)
+ 1601               		.loc 1 112 0
+ 1602 0758 66E4      		ldi r22,lo8(70)
+ 1603               	.LVL138:
+ 1604               	.L108:
+ 1605               	.LBB146:
+ 1606               	.LBB147:
+ 113:../../test/test.c ****     chSequentialStreamPut(chp, *msgp++);
+ 1607               		.loc 1 113 0
+ 1608 075a 8091 0000 		lds r24,chp
+ 1609 075e 9091 0000 		lds r25,chp+1
+ 1610 0762 DC01      		movw r26,r24
+ 1611 0764 ED91      		ld r30,X+
+ 1612 0766 FC91      		ld r31,X
+ 1613 0768 0480      		ldd __tmp_reg__,Z+4
+ 1614 076a F581      		ldd r31,Z+5
+ 1615 076c E02D      		mov r30,__tmp_reg__
+ 1616 076e 1995      		eicall
+ 1617               	.LVL139:
+ 112:../../test/test.c ****   while (*msgp)
+ 1618               		.loc 1 112 0
+ 1619 0770 6991      		ld r22,Y+
+ 1620 0772 6111      		cpse r22,__zero_reg__
+ 1621 0774 00C0      		rjmp .L108
+ 1622               	.LBE147:
+ 1623               	.LBE146:
+ 381:../../test/test.c ****   test_print("Final result: ");
+ 382:../../test/test.c ****   if (global_fail)
+ 1624               		.loc 1 382 0
+ 1625 0776 8091 0000 		lds r24,global_fail
+ 1626 077a 8111      		cpse r24,__zero_reg__
+ 1627 077c 00C0      		rjmp .L140
+ 383:../../test/test.c ****     test_println("FAILURE");
+ 384:../../test/test.c ****   else
+ 385:../../test/test.c ****     test_println("SUCCESS");
+ 1628               		.loc 1 385 0
+ 1629 077e 80E0      		ldi r24,lo8(.LC12)
+ 1630 0780 90E0      		ldi r25,hi8(.LC12)
+ 1631 0782 0E94 0000 		call test_println
+ 1632               	.LVL140:
+ 1633               	.L110:
+ 386:../../test/test.c **** 
+ 387:../../test/test.c ****   return (msg_t)global_fail;
+ 1634               		.loc 1 387 0
+ 1635 0786 8091 0000 		lds r24,global_fail
+ 388:../../test/test.c **** }
+ 1636               		.loc 1 388 0
+ 1637 078a 90E0      		ldi r25,0
+ 1638               	/* epilogue start */
+ 1639 078c DF91      		pop r29
+ 1640 078e CF91      		pop r28
+ 1641 0790 1F91      		pop r17
+ 1642 0792 0F91      		pop r16
+ 1643 0794 FF90      		pop r15
+ 1644 0796 EF90      		pop r14
+ 1645 0798 DF90      		pop r13
+ 1646 079a CF90      		pop r12
+ 1647 079c BF90      		pop r11
+ 1648 079e AF90      		pop r10
+ 1649 07a0 9F90      		pop r9
+ 1650 07a2 8F90      		pop r8
+ 1651 07a4 7F90      		pop r7
+ 1652 07a6 6F90      		pop r6
+ 1653 07a8 5F90      		pop r5
+ 1654 07aa 4F90      		pop r4
+ 1655 07ac 0895      		ret
+ 1656               	.LVL141:
+ 1657               	.L98:
+ 374:../../test/test.c ****         test_println("--- Result: SUCCESS");
+ 1658               		.loc 1 374 0
+ 1659 07ae 80E0      		ldi r24,lo8(.LC10)
+ 1660 07b0 90E0      		ldi r25,hi8(.LC10)
+ 1661 07b2 0E94 0000 		call test_println
+ 1662               	.LVL142:
+ 1663 07b6 00C0      		rjmp .L103
+ 1664               	.LVL143:
+ 1665               	.L140:
+ 383:../../test/test.c ****     test_println("FAILURE");
+ 1666               		.loc 1 383 0
+ 1667 07b8 80E0      		ldi r24,lo8(.LC11)
+ 1668 07ba 90E0      		ldi r25,hi8(.LC11)
+ 1669 07bc 0E94 0000 		call test_println
+ 1670               	.LVL144:
+ 1671 07c0 00C0      		rjmp .L110
+ 1672               	.LFE25:
+ 1674               		.comm	test_timer_done,1,1
+ 1675               	.global	wa
+ 1676               		.section	.rodata
+ 1679               	wa:
+ 1680 0000 0000      		.word	test
+ 1681 0002 0000      		.word	test+151
+ 1682 0004 0000      		.word	test+302
+ 1683 0006 0000      		.word	test+453
+ 1684 0008 0000      		.word	test+604
+ 1685               		.comm	threads,10,1
+ 1686               		.comm	test,755,1
+ 1687               		.local	chp
+ 1688               		.comm	chp,2,1
+ 1689               		.local	tokp
+ 1690               		.comm	tokp,2,1
+ 1691               		.local	local_fail
+ 1692               		.comm	local_fail,1,1
+ 1693               		.local	global_fail
+ 1694               		.comm	global_fail,1,1
+ 1695               		.local	failpoint
+ 1696               		.comm	failpoint,2,1
+ 1697               		.local	tokens_buffer
+ 1698               		.comm	tokens_buffer,16,1
+ 1699               		.local	vt
+ 1700               		.comm	vt,10,1
+ 1703               	patterns:
+ 1704 000a 0000      		.word	patternthd
+ 1705 000c 0000      		.word	patternsem
+ 1706 000e 0000      		.word	patternmtx
+ 1707 0010 0000      		.word	patternmsg
+ 1708 0012 0000      		.word	patternmbox
+ 1709 0014 0000      		.word	patternevt
+ 1710 0016 0000      		.word	patternheap
+ 1711 0018 0000      		.word	patternpools
+ 1712 001a 0000      		.word	patterndyn
+ 1713 001c 0000      		.word	patternqueues
+ 1714 001e 0000      		.word	patternbmk
+ 1715 0020 0000      		.word	0
+ 2122               	.Letext0:
+ 2123               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 2124               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 2125               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 2126               		.file 5 "../../os/kernel/include/chlists.h"
+ 2127               		.file 6 "../../os/kernel/include/chthreads.h"
+ 2128               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 2129               		.file 8 "../../os/kernel/include/chvt.h"
+ 2130               		.file 9 "../../os/kernel/include/chschd.h"
+ 2131               		.file 10 "../../os/kernel/include/chmtx.h"
+ 2132               		.file 11 "../../os/kernel/include/chstreams.h"
+ 2133               		.file 12 "../../test/test.h"
+ 2134               		.file 13 "../../test/testthd.h"
+ 2135               		.file 14 "../../test/testsem.h"
+ 2136               		.file 15 "../../test/testmtx.h"
+ 2137               		.file 16 "../../test/testmsg.h"
+ 2138               		.file 17 "../../test/testmbox.h"
+ 2139               		.file 18 "../../test/testevt.h"
+ 2140               		.file 19 "../../test/testheap.h"
+ 2141               		.file 20 "../../test/testpools.h"
+ 2142               		.file 21 "../../test/testdyn.h"
+ 2143               		.file 22 "../../test/testqueues.h"
+ 2144               		.file 23 "../../test/testbmk.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 test.c
+     /tmp/ccPvWZwi.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccPvWZwi.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccPvWZwi.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccPvWZwi.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/ccPvWZwi.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccPvWZwi.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccPvWZwi.s:11     .text:0000000000000000 tmr
+                            *COM*:0000000000000001 test_timer_done
+     /tmp/ccPvWZwi.s:32     .text:0000000000000008 print_line
+                             .bss:0000000000000000 chp
+     /tmp/ccPvWZwi.s:88     .text:000000000000004e test_printn
+     /tmp/ccPvWZwi.s:263    .text:0000000000000140 test_print
+     /tmp/ccPvWZwi.s:310    .text:0000000000000172 test_println
+     /tmp/ccPvWZwi.s:381    .text:00000000000001c0 test_emit_token
+     /tmp/ccPvWZwi.s:1688   .bss:0000000000000002 tokp
+     /tmp/ccPvWZwi.s:412    .text:00000000000001d8 _test_fail
+     /tmp/ccPvWZwi.s:1690   .bss:0000000000000004 local_fail
+     /tmp/ccPvWZwi.s:1692   .bss:0000000000000005 global_fail
+     /tmp/ccPvWZwi.s:1694   .bss:0000000000000006 failpoint
+     /tmp/ccPvWZwi.s:436    .text:00000000000001ee _test_assert
+     /tmp/ccPvWZwi.s:475    .text:000000000000020c _test_assert_sequence
+     /tmp/ccPvWZwi.s:1696   .bss:0000000000000008 tokens_buffer
+     /tmp/ccPvWZwi.s:547    .text:000000000000025c _test_assert_time_window
+     /tmp/ccPvWZwi.s:601    .text:000000000000028c test_terminate_threads
+                            *COM*:000000000000000a threads
+     /tmp/ccPvWZwi.s:640    .text:00000000000002ae test_wait_threads
+     /tmp/ccPvWZwi.s:683    .text:00000000000002d6 test_cpu_pulse
+     /tmp/ccPvWZwi.s:781    .text:0000000000000352 test_wait_tick
+     /tmp/ccPvWZwi.s:803    .text:0000000000000366 test_start_timer
+     /tmp/ccPvWZwi.s:1698   .bss:0000000000000018 vt
+     /tmp/ccPvWZwi.s:916    .text:00000000000003a4 TestThread
+     /tmp/ccPvWZwi.s:1703   .rodata:000000000000000a patterns
+     /tmp/ccPvWZwi.s:1679   .rodata:0000000000000000 wa
+                            *COM*:00000000000002f3 test
+                   .rodata.str1.1:0000000000000022 .LC4
+                   .rodata.str1.1:0000000000000097 .LC14
+                   .rodata.str1.1:00000000000000c1 .LC16
+                   .rodata.str1.1:00000000000000de .LC18
+                   .rodata.str1.1:00000000000000f5 .LC20
+                   .rodata.str1.1:0000000000000110 .LC22
+                   .rodata.str1.1:0000000000000128 .LC24
+                   .rodata.str1.1:0000000000000145 .LC26
+                   .rodata.str1.1:0000000000000042 .LC6
+                   .rodata.str1.1:0000000000000158 .LC27
+                   .rodata.str1.1:0000000000000053 .LC8
+                   .rodata.str1.1:000000000000015b .LC28
+                   .rodata.str1.1:000000000000015e .LC29
+
+UNDEFINED SYMBOLS
+__udivmodsi4
+vtlist
+chThdTerminate
+chThdWait
+rlist
+__umulhisi3
+chThdSleep
+chVTSetI
+patternthd
+patternsem
+patternmtx
+patternmsg
+patternmbox
+patternevt
+patternheap
+patternpools
+patterndyn
+patternqueues
+patternbmk
+__do_copy_data
+__do_clear_bss

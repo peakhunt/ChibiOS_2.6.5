@@ -1,0 +1,3055 @@
+   1               		.file	"testmtx.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  10               		.section	.rodata.str1.1,"aMS",@progbits,1
+  11               	.LC0:
+  12 0000 4100      		.string	"A"
+  13               	.LC1:
+  14 0002 4300      		.string	"C"
+  15               	.LC2:
+  16 0004 4200      		.string	"B"
+  17               	.LC3:
+  18 0006 4142 4300 		.string	"ABC"
+  19               		.text
+  21               	mtx8_execute:
+  22               	.LFB36:
+  23               		.file 1 "../../test/testmtx.c"
+   1:../../test/testmtx.c **** /*
+   2:../../test/testmtx.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testmtx.c **** 
+   4:../../test/testmtx.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testmtx.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testmtx.c ****     You may obtain a copy of the License at
+   7:../../test/testmtx.c **** 
+   8:../../test/testmtx.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testmtx.c **** 
+  10:../../test/testmtx.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testmtx.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testmtx.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testmtx.c ****     See the License for the specific language governing permissions and
+  14:../../test/testmtx.c ****     limitations under the License.
+  15:../../test/testmtx.c **** */
+  16:../../test/testmtx.c **** 
+  17:../../test/testmtx.c **** #include "ch.h"
+  18:../../test/testmtx.c **** #include "test.h"
+  19:../../test/testmtx.c **** 
+  20:../../test/testmtx.c **** /**
+  21:../../test/testmtx.c ****  * @page test_mtx Mutexes test
+  22:../../test/testmtx.c ****  *
+  23:../../test/testmtx.c ****  * File: @ref testmtx.c
+  24:../../test/testmtx.c ****  *
+  25:../../test/testmtx.c ****  * <h2>Description</h2>
+  26:../../test/testmtx.c ****  * This module implements the test sequence for the @ref mutexes and
+  27:../../test/testmtx.c ****  * @ref condvars subsystems.<br>
+  28:../../test/testmtx.c ****  * Tests on those subsystems are particularly critical because the system-wide
+  29:../../test/testmtx.c ****  * implications of the Priority Inheritance mechanism.
+  30:../../test/testmtx.c ****  *
+  31:../../test/testmtx.c ****  * <h2>Objective</h2>
+  32:../../test/testmtx.c ****  * Objective of the test module is to cover 100% of the subsystems code.
+  33:../../test/testmtx.c ****  *
+  34:../../test/testmtx.c ****  * <h2>Preconditions</h2>
+  35:../../test/testmtx.c ****  * The module requires the following kernel options:
+  36:../../test/testmtx.c ****  * - @p CH_USE_MUTEXES
+  37:../../test/testmtx.c ****  * - @p CH_USE_CONDVARS
+  38:../../test/testmtx.c ****  * - @p CH_DBG_THREADS_PROFILING
+  39:../../test/testmtx.c ****  * .
+  40:../../test/testmtx.c ****  * In case some of the required options are not enabled then some or all tests
+  41:../../test/testmtx.c ****  * may be skipped.
+  42:../../test/testmtx.c ****  *
+  43:../../test/testmtx.c ****  * <h2>Test Cases</h2>
+  44:../../test/testmtx.c ****  * - @subpage test_mtx_001
+  45:../../test/testmtx.c ****  * - @subpage test_mtx_002
+  46:../../test/testmtx.c ****  * - @subpage test_mtx_003
+  47:../../test/testmtx.c ****  * - @subpage test_mtx_004
+  48:../../test/testmtx.c ****  * - @subpage test_mtx_005
+  49:../../test/testmtx.c ****  * - @subpage test_mtx_006
+  50:../../test/testmtx.c ****  * - @subpage test_mtx_007
+  51:../../test/testmtx.c ****  * - @subpage test_mtx_008
+  52:../../test/testmtx.c ****  * .
+  53:../../test/testmtx.c ****  * @file testmtx.c
+  54:../../test/testmtx.c ****  * @brief Mutexes and CondVars test source file
+  55:../../test/testmtx.c ****  * @file testmtx.h
+  56:../../test/testmtx.c ****  * @brief Mutexes and CondVars test header file
+  57:../../test/testmtx.c ****  */
+  58:../../test/testmtx.c **** 
+  59:../../test/testmtx.c **** #if CH_USE_MUTEXES || defined(__DOXYGEN__)
+  60:../../test/testmtx.c **** 
+  61:../../test/testmtx.c **** #define ALLOWED_DELAY 5
+  62:../../test/testmtx.c **** 
+  63:../../test/testmtx.c **** /*
+  64:../../test/testmtx.c ****  * Note, the static initializers are not really required because the
+  65:../../test/testmtx.c ****  * variables are explicitly initialized in each test case. It is done in order
+  66:../../test/testmtx.c ****  * to test the macros.
+  67:../../test/testmtx.c ****  */
+  68:../../test/testmtx.c **** static MUTEX_DECL(m1);
+  69:../../test/testmtx.c **** static MUTEX_DECL(m2);
+  70:../../test/testmtx.c **** #if CH_USE_CONDVARS || defined(__DOXYGEN__)
+  71:../../test/testmtx.c **** static CONDVAR_DECL(c1);
+  72:../../test/testmtx.c **** #endif
+  73:../../test/testmtx.c **** 
+  74:../../test/testmtx.c **** /**
+  75:../../test/testmtx.c ****  * @page test_mtx_001 Priority enqueuing test
+  76:../../test/testmtx.c ****  *
+  77:../../test/testmtx.c ****  * <h2>Description</h2>
+  78:../../test/testmtx.c ****  * Five threads, with increasing priority, are enqueued on a locked mutex then
+  79:../../test/testmtx.c ****  * the mutex is unlocked.<br>
+  80:../../test/testmtx.c ****  * The test expects the threads to perform their operations in increasing
+  81:../../test/testmtx.c ****  * priority order regardless of the initial order.
+  82:../../test/testmtx.c ****  */
+  83:../../test/testmtx.c **** 
+  84:../../test/testmtx.c **** static void mtx1_setup(void) {
+  85:../../test/testmtx.c **** 
+  86:../../test/testmtx.c ****   chMtxInit(&m1);
+  87:../../test/testmtx.c **** }
+  88:../../test/testmtx.c **** 
+  89:../../test/testmtx.c **** static msg_t thread1(void *p) {
+  90:../../test/testmtx.c **** 
+  91:../../test/testmtx.c ****   chMtxLock(&m1);
+  92:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+  93:../../test/testmtx.c ****   chMtxUnlock();
+  94:../../test/testmtx.c ****   return 0;
+  95:../../test/testmtx.c **** }
+  96:../../test/testmtx.c **** 
+  97:../../test/testmtx.c **** static void mtx1_execute(void) {
+  98:../../test/testmtx.c **** 
+  99:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority(); /* Because priority inheritance.*/
+ 100:../../test/testmtx.c ****   chMtxLock(&m1);
+ 101:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread1, "E");
+ 102:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread1, "D");
+ 103:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread1, "C");
+ 104:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, prio+4, thread1, "B");
+ 105:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread1, "A");
+ 106:../../test/testmtx.c ****   chMtxUnlock();
+ 107:../../test/testmtx.c ****   test_wait_threads();
+ 108:../../test/testmtx.c ****   test_assert(1, prio == chThdGetPriority(), "wrong priority level");
+ 109:../../test/testmtx.c ****   test_assert_sequence(2, "ABCDE");
+ 110:../../test/testmtx.c **** }
+ 111:../../test/testmtx.c **** 
+ 112:../../test/testmtx.c **** ROMCONST struct testcase testmtx1 = {
+ 113:../../test/testmtx.c ****   "Mutexes, priority enqueuing test",
+ 114:../../test/testmtx.c ****   mtx1_setup,
+ 115:../../test/testmtx.c ****   NULL,
+ 116:../../test/testmtx.c ****   mtx1_execute
+ 117:../../test/testmtx.c **** };
+ 118:../../test/testmtx.c **** 
+ 119:../../test/testmtx.c **** #if CH_DBG_THREADS_PROFILING || defined(__DOXYGEN__)
+ 120:../../test/testmtx.c **** /**
+ 121:../../test/testmtx.c ****  * @page test_mtx_002 Priority inheritance, simple case
+ 122:../../test/testmtx.c ****  *
+ 123:../../test/testmtx.c ****  * <h2>Description</h2>
+ 124:../../test/testmtx.c ****  * Three threads are involved in the classic priority inversion scenario, a
+ 125:../../test/testmtx.c ****  * medium priority thread tries to starve an high priority thread by
+ 126:../../test/testmtx.c ****  * blocking a low priority thread into a mutex lock zone.<br>
+ 127:../../test/testmtx.c ****  * The test expects the threads to reach their goal in increasing priority
+ 128:../../test/testmtx.c ****  * order by rearranging their priorities in order to avoid the priority
+ 129:../../test/testmtx.c ****  * inversion trap.
+ 130:../../test/testmtx.c ****  *
+ 131:../../test/testmtx.c ****  * <h2>Scenario</h2>
+ 132:../../test/testmtx.c ****  * This weird looking diagram should explain what happens in the test case:
+ 133:../../test/testmtx.c ****  * @code
+ 134:../../test/testmtx.c ****  * Time ----> 0     10    20    30    40    50    60    70    80    90    100
+ 135:../../test/testmtx.c ****  *    0 ......AL++++++++++............2+++++++++++AU0---------------++++++G...
+ 136:../../test/testmtx.c ****  *    1 ..................++++++++++++------------------++++++++++++G.........
+ 137:../../test/testmtx.c ****  *    2  .............................AL..........++++++AUG...................
+ 138:../../test/testmtx.c ****  *                                    ^           ^
+ 139:../../test/testmtx.c ****  * Legend:
+ 140:../../test/testmtx.c ****  *   0..2 - Priority levels
+ 141:../../test/testmtx.c ****  *   +++  - Running
+ 142:../../test/testmtx.c ****  *   ---  - Ready
+ 143:../../test/testmtx.c ****  *   ...  - Waiting or Terminated
+ 144:../../test/testmtx.c ****  *   xL   - Lock operation on mutex 'x'
+ 145:../../test/testmtx.c ****  *   xUn  - Unlock operation on mutex 'x' with priority returning to level 'n'
+ 146:../../test/testmtx.c ****  *   G    - Goal
+ 147:../../test/testmtx.c ****  *   ^    - Priority transition (boost or return).
+ 148:../../test/testmtx.c ****  * @endcode
+ 149:../../test/testmtx.c ****  */
+ 150:../../test/testmtx.c **** 
+ 151:../../test/testmtx.c **** static void mtx2_setup(void) {
+ 152:../../test/testmtx.c **** 
+ 153:../../test/testmtx.c ****   chMtxInit(&m1);
+ 154:../../test/testmtx.c **** }
+ 155:../../test/testmtx.c **** 
+ 156:../../test/testmtx.c **** /* Low priority thread */
+ 157:../../test/testmtx.c **** static msg_t thread2L(void *p) {
+ 158:../../test/testmtx.c **** 
+ 159:../../test/testmtx.c ****   (void)p;
+ 160:../../test/testmtx.c ****   chMtxLock(&m1);
+ 161:../../test/testmtx.c ****   test_cpu_pulse(40);
+ 162:../../test/testmtx.c ****   chMtxUnlock();
+ 163:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 164:../../test/testmtx.c ****   test_emit_token('C');
+ 165:../../test/testmtx.c ****   return 0;
+ 166:../../test/testmtx.c **** }
+ 167:../../test/testmtx.c **** 
+ 168:../../test/testmtx.c **** /* Medium priority thread */
+ 169:../../test/testmtx.c **** static msg_t thread2M(void *p) {
+ 170:../../test/testmtx.c **** 
+ 171:../../test/testmtx.c ****   (void)p;
+ 172:../../test/testmtx.c ****   chThdSleepMilliseconds(20);
+ 173:../../test/testmtx.c ****   test_cpu_pulse(40);
+ 174:../../test/testmtx.c ****   test_emit_token('B');
+ 175:../../test/testmtx.c ****   return 0;
+ 176:../../test/testmtx.c **** }
+ 177:../../test/testmtx.c **** 
+ 178:../../test/testmtx.c **** /* High priority thread */
+ 179:../../test/testmtx.c **** static msg_t thread2H(void *p) {
+ 180:../../test/testmtx.c **** 
+ 181:../../test/testmtx.c ****   (void)p;
+ 182:../../test/testmtx.c ****   chThdSleepMilliseconds(40);
+ 183:../../test/testmtx.c ****   chMtxLock(&m1);
+ 184:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 185:../../test/testmtx.c ****   chMtxUnlock();
+ 186:../../test/testmtx.c ****   test_emit_token('A');
+ 187:../../test/testmtx.c ****   return 0;
+ 188:../../test/testmtx.c **** }
+ 189:../../test/testmtx.c **** 
+ 190:../../test/testmtx.c **** static void mtx2_execute(void) {
+ 191:../../test/testmtx.c ****   systime_t time;
+ 192:../../test/testmtx.c **** 
+ 193:../../test/testmtx.c ****   test_wait_tick();
+ 194:../../test/testmtx.c ****   time = chTimeNow();
+ 195:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread2H, 0);
+ 196:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-2, thread2M, 0);
+ 197:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread2L, 0);
+ 198:../../test/testmtx.c ****   test_wait_threads();
+ 199:../../test/testmtx.c ****   test_assert_sequence(1, "ABC");
+ 200:../../test/testmtx.c ****   test_assert_time_window(2, time + MS2ST(100), time + MS2ST(100) + ALLOWED_DELAY);
+ 201:../../test/testmtx.c **** }
+ 202:../../test/testmtx.c **** 
+ 203:../../test/testmtx.c **** ROMCONST struct testcase testmtx2 = {
+ 204:../../test/testmtx.c ****   "Mutexes, priority inheritance, simple case",
+ 205:../../test/testmtx.c ****   mtx2_setup,
+ 206:../../test/testmtx.c ****   NULL,
+ 207:../../test/testmtx.c ****   mtx2_execute
+ 208:../../test/testmtx.c **** };
+ 209:../../test/testmtx.c **** 
+ 210:../../test/testmtx.c **** /**
+ 211:../../test/testmtx.c ****  * @page test_mtx_003 Priority inheritance, complex case
+ 212:../../test/testmtx.c ****  *
+ 213:../../test/testmtx.c ****  * <h2>Description</h2>
+ 214:../../test/testmtx.c ****  * Five threads are involved in the complex priority inversion scenario,
+ 215:../../test/testmtx.c ****  * please refer to the diagram below for the complete scenario.<br>
+ 216:../../test/testmtx.c ****  * The test expects the threads to perform their operations in increasing
+ 217:../../test/testmtx.c ****  * priority order by rearranging their priorities in order to avoid the
+ 218:../../test/testmtx.c ****  * priority inversion trap.
+ 219:../../test/testmtx.c ****  *
+ 220:../../test/testmtx.c ****  * <h2>Scenario</h2>
+ 221:../../test/testmtx.c ****  * This weird looking diagram should explain what happens in the test case:
+ 222:../../test/testmtx.c ****  * @code
+ 223:../../test/testmtx.c ****  * Time ----> 0     10    20    30    40    50    60    70    80    90    100   110
+ 224:../../test/testmtx.c ****  *    0 ......BL++++------------2+++++------4+++++BU0---------------------------G.....
+ 225:../../test/testmtx.c ****  *    1 ............AL++++2+++++BL----------4-----++++++BU4+++AU1---------------G.....
+ 226:../../test/testmtx.c ****  *    2 ..................AL----------------------------------------------++++++AUG...
+ 227:../../test/testmtx.c ****  *    3 ..............................+++++++-----------------------++++++G...........
+ 228:../../test/testmtx.c ****  *    4 ....................................AL................++++++AUG...............
+ 229:../../test/testmtx.c ****  *                        ^     ^           ^     ^     ^     ^
+ 230:../../test/testmtx.c ****  * Legend:
+ 231:../../test/testmtx.c ****  *   0..4 - Priority levels
+ 232:../../test/testmtx.c ****  *   +++  - Running
+ 233:../../test/testmtx.c ****  *   ---  - Ready
+ 234:../../test/testmtx.c ****  *   ...  - Waiting or Terminated
+ 235:../../test/testmtx.c ****  *   xL   - Lock operation on mutex 'x'
+ 236:../../test/testmtx.c ****  *   xUn  - Unlock operation on mutex 'x' with priority returning to level 'n'
+ 237:../../test/testmtx.c ****  *   ^    - Priority transition (boost or return).
+ 238:../../test/testmtx.c ****  * @endcode
+ 239:../../test/testmtx.c ****  */
+ 240:../../test/testmtx.c **** 
+ 241:../../test/testmtx.c **** static void mtx3_setup(void) {
+ 242:../../test/testmtx.c **** 
+ 243:../../test/testmtx.c ****   chMtxInit(&m1); /* Mutex B.*/
+ 244:../../test/testmtx.c ****   chMtxInit(&m2); /* Mutex A.*/
+ 245:../../test/testmtx.c **** }
+ 246:../../test/testmtx.c **** 
+ 247:../../test/testmtx.c **** /* Lowest priority thread */
+ 248:../../test/testmtx.c **** static msg_t thread3LL(void *p) {
+ 249:../../test/testmtx.c **** 
+ 250:../../test/testmtx.c ****   (void)p;
+ 251:../../test/testmtx.c ****   chMtxLock(&m1);
+ 252:../../test/testmtx.c ****   test_cpu_pulse(30);
+ 253:../../test/testmtx.c ****   chMtxUnlock();
+ 254:../../test/testmtx.c ****   test_emit_token('E');
+ 255:../../test/testmtx.c ****   return 0;
+ 256:../../test/testmtx.c **** }
+ 257:../../test/testmtx.c **** 
+ 258:../../test/testmtx.c **** /* Low priority thread */
+ 259:../../test/testmtx.c **** static msg_t thread3L(void *p) {
+ 260:../../test/testmtx.c **** 
+ 261:../../test/testmtx.c ****   (void)p;
+ 262:../../test/testmtx.c ****   chThdSleepMilliseconds(10);
+ 263:../../test/testmtx.c ****   chMtxLock(&m2);
+ 264:../../test/testmtx.c ****   test_cpu_pulse(20);
+ 265:../../test/testmtx.c ****   chMtxLock(&m1);
+ 266:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 267:../../test/testmtx.c ****   chMtxUnlock();
+ 268:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 269:../../test/testmtx.c ****   chMtxUnlock();
+ 270:../../test/testmtx.c ****   test_emit_token('D');
+ 271:../../test/testmtx.c ****   return 0;
+ 272:../../test/testmtx.c **** }
+ 273:../../test/testmtx.c **** 
+ 274:../../test/testmtx.c **** /* Medium priority thread */
+ 275:../../test/testmtx.c **** static msg_t thread3M(void *p) {
+ 276:../../test/testmtx.c **** 
+ 277:../../test/testmtx.c ****   (void)p;
+ 278:../../test/testmtx.c ****   chThdSleepMilliseconds(20);
+ 279:../../test/testmtx.c ****   chMtxLock(&m2);
+ 280:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 281:../../test/testmtx.c ****   chMtxUnlock();
+ 282:../../test/testmtx.c ****   test_emit_token('C');
+ 283:../../test/testmtx.c ****   return 0;
+ 284:../../test/testmtx.c **** }
+ 285:../../test/testmtx.c **** 
+ 286:../../test/testmtx.c **** /* High priority thread */
+ 287:../../test/testmtx.c **** static msg_t thread3H(void *p) {
+ 288:../../test/testmtx.c **** 
+ 289:../../test/testmtx.c ****   (void)p;
+ 290:../../test/testmtx.c ****   chThdSleepMilliseconds(40);
+ 291:../../test/testmtx.c ****   test_cpu_pulse(20);
+ 292:../../test/testmtx.c ****   test_emit_token('B');
+ 293:../../test/testmtx.c ****   return 0;
+ 294:../../test/testmtx.c **** }
+ 295:../../test/testmtx.c **** 
+ 296:../../test/testmtx.c **** /* Highest priority thread */
+ 297:../../test/testmtx.c **** static msg_t thread3HH(void *p) {
+ 298:../../test/testmtx.c **** 
+ 299:../../test/testmtx.c ****   (void)p;
+ 300:../../test/testmtx.c ****   chThdSleepMilliseconds(50);
+ 301:../../test/testmtx.c ****   chMtxLock(&m2);
+ 302:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 303:../../test/testmtx.c ****   chMtxUnlock();
+ 304:../../test/testmtx.c ****   test_emit_token('A');
+ 305:../../test/testmtx.c ****   return 0;
+ 306:../../test/testmtx.c **** }
+ 307:../../test/testmtx.c **** 
+ 308:../../test/testmtx.c **** static void mtx3_execute(void) {
+ 309:../../test/testmtx.c ****   systime_t time;
+ 310:../../test/testmtx.c **** 
+ 311:../../test/testmtx.c ****   test_wait_tick();
+ 312:../../test/testmtx.c ****   time = chTimeNow();
+ 313:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread3LL, 0);
+ 314:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread3L, 0);
+ 315:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread3M, 0);
+ 316:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread3H, 0);
+ 317:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread3HH, 0);
+ 318:../../test/testmtx.c ****   test_wait_threads();
+ 319:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 320:../../test/testmtx.c ****   test_assert_time_window(2, time + MS2ST(110), time + MS2ST(110) + ALLOWED_DELAY);
+ 321:../../test/testmtx.c **** }
+ 322:../../test/testmtx.c **** 
+ 323:../../test/testmtx.c **** ROMCONST struct testcase testmtx3 = {
+ 324:../../test/testmtx.c ****   "Mutexes, priority inheritance, complex case",
+ 325:../../test/testmtx.c ****   mtx3_setup,
+ 326:../../test/testmtx.c ****   NULL,
+ 327:../../test/testmtx.c ****   mtx3_execute
+ 328:../../test/testmtx.c **** };
+ 329:../../test/testmtx.c **** #endif /* CH_DBG_THREADS_PROFILING */
+ 330:../../test/testmtx.c **** 
+ 331:../../test/testmtx.c **** /**
+ 332:../../test/testmtx.c ****  * @page test_mtx_004 Priority return verification
+ 333:../../test/testmtx.c ****  *
+ 334:../../test/testmtx.c ****  * <h2>Description</h2>
+ 335:../../test/testmtx.c ****  * Two threads are spawned that try to lock the mutexes locked by the tester
+ 336:../../test/testmtx.c ****  * thread with precise timing.<br>
+ 337:../../test/testmtx.c ****  * The test expects that the priority changes caused by the priority
+ 338:../../test/testmtx.c ****  * inheritance algorithm happen at the right moment and with the right values.
+ 339:../../test/testmtx.c ****  */
+ 340:../../test/testmtx.c **** 
+ 341:../../test/testmtx.c **** static void mtx4_setup(void) {
+ 342:../../test/testmtx.c **** 
+ 343:../../test/testmtx.c ****   chMtxInit(&m1);
+ 344:../../test/testmtx.c ****   chMtxInit(&m2);
+ 345:../../test/testmtx.c **** }
+ 346:../../test/testmtx.c **** 
+ 347:../../test/testmtx.c **** static msg_t thread4a(void *p) {
+ 348:../../test/testmtx.c **** 
+ 349:../../test/testmtx.c ****   (void)p;
+ 350:../../test/testmtx.c ****   chThdSleepMilliseconds(50);
+ 351:../../test/testmtx.c ****   chMtxLock(&m2);
+ 352:../../test/testmtx.c ****   chMtxUnlock();
+ 353:../../test/testmtx.c ****   return 0;
+ 354:../../test/testmtx.c **** }
+ 355:../../test/testmtx.c **** 
+ 356:../../test/testmtx.c **** static msg_t thread4b(void *p) {
+ 357:../../test/testmtx.c **** 
+ 358:../../test/testmtx.c ****   (void)p;
+ 359:../../test/testmtx.c ****   chThdSleepMilliseconds(150);
+ 360:../../test/testmtx.c ****   chMtxLock(&m1);
+ 361:../../test/testmtx.c ****   chMtxUnlock();
+ 362:../../test/testmtx.c ****   return 0;
+ 363:../../test/testmtx.c **** }
+ 364:../../test/testmtx.c **** 
+ 365:../../test/testmtx.c **** static void mtx4_execute(void) {
+ 366:../../test/testmtx.c ****   tprio_t p, p1, p2;
+ 367:../../test/testmtx.c **** 
+ 368:../../test/testmtx.c ****   p = chThdGetPriority();
+ 369:../../test/testmtx.c ****   p1 = p + 1;
+ 370:../../test/testmtx.c ****   p2 = p + 2;
+ 371:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, p1, thread4a, "B");
+ 372:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, p2, thread4b, "A");
+ 373:../../test/testmtx.c ****   chMtxLock(&m2);
+ 374:../../test/testmtx.c ****   test_assert(1, chThdGetPriority() == p, "wrong priority level");
+ 375:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 376:../../test/testmtx.c ****   test_assert(2, chThdGetPriority() == p1, "wrong priority level");
+ 377:../../test/testmtx.c ****   chMtxLock(&m1);
+ 378:../../test/testmtx.c ****   test_assert(3, chThdGetPriority() == p1, "wrong priority level");
+ 379:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 380:../../test/testmtx.c ****   test_assert(4, chThdGetPriority() == p2, "wrong priority level");
+ 381:../../test/testmtx.c ****   chMtxUnlock();
+ 382:../../test/testmtx.c ****   test_assert(5, chThdGetPriority() == p1, "wrong priority level");
+ 383:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 384:../../test/testmtx.c ****   test_assert(6, chThdGetPriority() == p1, "wrong priority level");
+ 385:../../test/testmtx.c ****   chMtxUnlockAll();
+ 386:../../test/testmtx.c ****   test_assert(7, chThdGetPriority() == p, "wrong priority level");
+ 387:../../test/testmtx.c ****   test_wait_threads();
+ 388:../../test/testmtx.c **** 
+ 389:../../test/testmtx.c ****   /* Test repeated in order to cover chMtxUnlockS().*/
+ 390:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, p1, thread4a, "D");
+ 391:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, p2, thread4b, "C");
+ 392:../../test/testmtx.c ****   chMtxLock(&m2);
+ 393:../../test/testmtx.c ****   test_assert(8, chThdGetPriority() == p, "wrong priority level");
+ 394:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 395:../../test/testmtx.c ****   test_assert(9, chThdGetPriority() == p1, "wrong priority level");
+ 396:../../test/testmtx.c ****   chMtxLock(&m1);
+ 397:../../test/testmtx.c ****   test_assert(10, chThdGetPriority() == p1, "wrong priority level");
+ 398:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 399:../../test/testmtx.c ****   test_assert(11, chThdGetPriority() == p2, "wrong priority level");
+ 400:../../test/testmtx.c ****   chSysLock();
+ 401:../../test/testmtx.c ****   chMtxUnlockS();
+ 402:../../test/testmtx.c ****   chSchRescheduleS();
+ 403:../../test/testmtx.c ****   chSysUnlock();
+ 404:../../test/testmtx.c ****   test_assert(12, chThdGetPriority() == p1, "wrong priority level");
+ 405:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 406:../../test/testmtx.c ****   test_assert(13, chThdGetPriority() == p1, "wrong priority level");
+ 407:../../test/testmtx.c ****   chMtxUnlockAll();
+ 408:../../test/testmtx.c ****   test_assert(14, chThdGetPriority() == p, "wrong priority level");
+ 409:../../test/testmtx.c ****   test_wait_threads();
+ 410:../../test/testmtx.c **** }
+ 411:../../test/testmtx.c **** 
+ 412:../../test/testmtx.c **** ROMCONST struct testcase testmtx4 = {
+ 413:../../test/testmtx.c ****   "Mutexes, priority return",
+ 414:../../test/testmtx.c ****   mtx4_setup,
+ 415:../../test/testmtx.c ****   NULL,
+ 416:../../test/testmtx.c ****   mtx4_execute
+ 417:../../test/testmtx.c **** };
+ 418:../../test/testmtx.c **** 
+ 419:../../test/testmtx.c **** /**
+ 420:../../test/testmtx.c ****  * @page test_mtx_005 Mutex status
+ 421:../../test/testmtx.c ****  *
+ 422:../../test/testmtx.c ****  * <h2>Description</h2>
+ 423:../../test/testmtx.c ****  * Various tests on the mutex structure status after performing some lock and
+ 424:../../test/testmtx.c ****  * unlock operations.<br>
+ 425:../../test/testmtx.c ****  * The test expects that the internal mutex status is consistent after each
+ 426:../../test/testmtx.c ****  * operation.
+ 427:../../test/testmtx.c ****  */
+ 428:../../test/testmtx.c **** 
+ 429:../../test/testmtx.c **** static void mtx5_setup(void) {
+ 430:../../test/testmtx.c **** 
+ 431:../../test/testmtx.c ****   chMtxInit(&m1);
+ 432:../../test/testmtx.c **** }
+ 433:../../test/testmtx.c **** 
+ 434:../../test/testmtx.c **** static void mtx5_execute(void) {
+ 435:../../test/testmtx.c ****   bool_t b;
+ 436:../../test/testmtx.c ****   tprio_t prio;
+ 437:../../test/testmtx.c **** 
+ 438:../../test/testmtx.c ****   prio = chThdGetPriority();
+ 439:../../test/testmtx.c **** 
+ 440:../../test/testmtx.c ****   b = chMtxTryLock(&m1);
+ 441:../../test/testmtx.c ****   test_assert(1, b, "already locked");
+ 442:../../test/testmtx.c **** 
+ 443:../../test/testmtx.c ****   b = chMtxTryLock(&m1);
+ 444:../../test/testmtx.c ****   test_assert(2, !b, "not locked");
+ 445:../../test/testmtx.c **** 
+ 446:../../test/testmtx.c ****   chSysLock();
+ 447:../../test/testmtx.c ****   chMtxUnlockS();
+ 448:../../test/testmtx.c ****   chSysUnlock();
+ 449:../../test/testmtx.c **** 
+ 450:../../test/testmtx.c ****   test_assert(3, isempty(&m1.m_queue), "queue not empty");
+ 451:../../test/testmtx.c ****   test_assert(4, m1.m_owner == NULL, "still owned");
+ 452:../../test/testmtx.c ****   test_assert(5, chThdGetPriority() == prio, "wrong priority level");
+ 453:../../test/testmtx.c ****   
+ 454:../../test/testmtx.c ****   chMtxLock(&m1);
+ 455:../../test/testmtx.c ****   chMtxUnlockAll();
+ 456:../../test/testmtx.c ****   test_assert(6, isempty(&m1.m_queue), "queue not empty");
+ 457:../../test/testmtx.c ****   test_assert(7, m1.m_owner == NULL, "still owned");
+ 458:../../test/testmtx.c **** }
+ 459:../../test/testmtx.c **** 
+ 460:../../test/testmtx.c **** ROMCONST struct testcase testmtx5 = {
+ 461:../../test/testmtx.c ****   "Mutexes, status",
+ 462:../../test/testmtx.c ****   mtx5_setup,
+ 463:../../test/testmtx.c ****   NULL,
+ 464:../../test/testmtx.c ****   mtx5_execute
+ 465:../../test/testmtx.c **** };
+ 466:../../test/testmtx.c **** 
+ 467:../../test/testmtx.c **** #if CH_USE_CONDVARS || defined(__DOXYGEN__)
+ 468:../../test/testmtx.c **** /**
+ 469:../../test/testmtx.c ****  * @page test_mtx_006 Condition Variable signal test
+ 470:../../test/testmtx.c ****  *
+ 471:../../test/testmtx.c ****  * <h2>Description</h2>
+ 472:../../test/testmtx.c ****  * Five threads take a mutex and then enter a conditional variable queue, the
+ 473:../../test/testmtx.c ****  * tester thread then proceeds to signal the conditional variable five times
+ 474:../../test/testmtx.c ****  * atomically.<br>
+ 475:../../test/testmtx.c ****  * The test expects the threads to reach their goal in increasing priority
+ 476:../../test/testmtx.c ****  * order regardless of the initial order.
+ 477:../../test/testmtx.c ****  */
+ 478:../../test/testmtx.c **** 
+ 479:../../test/testmtx.c **** static void mtx6_setup(void) {
+ 480:../../test/testmtx.c **** 
+ 481:../../test/testmtx.c ****   chCondInit(&c1);
+ 482:../../test/testmtx.c ****   chMtxInit(&m1);
+ 483:../../test/testmtx.c **** }
+ 484:../../test/testmtx.c **** 
+ 485:../../test/testmtx.c **** static msg_t thread10(void *p) {
+ 486:../../test/testmtx.c **** 
+ 487:../../test/testmtx.c ****   chMtxLock(&m1);
+ 488:../../test/testmtx.c ****   chCondWait(&c1);
+ 489:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 490:../../test/testmtx.c ****   chMtxUnlock();
+ 491:../../test/testmtx.c ****   return 0;
+ 492:../../test/testmtx.c **** }
+ 493:../../test/testmtx.c **** 
+ 494:../../test/testmtx.c **** static void mtx6_execute(void) {
+ 495:../../test/testmtx.c **** 
+ 496:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority();
+ 497:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread10, "E");
+ 498:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread10, "D");
+ 499:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread10, "C");
+ 500:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, prio+4, thread10, "B");
+ 501:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread10, "A");
+ 502:../../test/testmtx.c ****   chSysLock();
+ 503:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 504:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 505:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 506:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 507:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 508:../../test/testmtx.c ****   chSchRescheduleS();
+ 509:../../test/testmtx.c ****   chSysUnlock();
+ 510:../../test/testmtx.c ****   test_wait_threads();
+ 511:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 512:../../test/testmtx.c **** }
+ 513:../../test/testmtx.c **** 
+ 514:../../test/testmtx.c **** ROMCONST struct testcase testmtx6 = {
+ 515:../../test/testmtx.c ****   "CondVar, signal test",
+ 516:../../test/testmtx.c ****   mtx6_setup,
+ 517:../../test/testmtx.c ****   NULL,
+ 518:../../test/testmtx.c ****   mtx6_execute
+ 519:../../test/testmtx.c **** };
+ 520:../../test/testmtx.c **** 
+ 521:../../test/testmtx.c **** /**
+ 522:../../test/testmtx.c ****  * @page test_mtx_007 Condition Variable broadcast test
+ 523:../../test/testmtx.c ****  *
+ 524:../../test/testmtx.c ****  * <h2>Description</h2>
+ 525:../../test/testmtx.c ****  * Five threads take a mutex and then enter a conditional variable queue, the
+ 526:../../test/testmtx.c ****  * tester thread then proceeds to broadcast the conditional variable.<br>
+ 527:../../test/testmtx.c ****  * The test expects the threads to reach their goal in increasing priority
+ 528:../../test/testmtx.c ****  * order regardless of the initial order.
+ 529:../../test/testmtx.c ****  */
+ 530:../../test/testmtx.c **** 
+ 531:../../test/testmtx.c **** static void mtx7_setup(void) {
+ 532:../../test/testmtx.c **** 
+ 533:../../test/testmtx.c ****   chCondInit(&c1);
+ 534:../../test/testmtx.c ****   chMtxInit(&m1);
+ 535:../../test/testmtx.c **** }
+ 536:../../test/testmtx.c **** 
+ 537:../../test/testmtx.c **** static void mtx7_execute(void) {
+ 538:../../test/testmtx.c **** 
+ 539:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority();
+ 540:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread10, "E");
+ 541:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread10, "D");
+ 542:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread10, "C");
+ 543:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, prio+4, thread10, "B");
+ 544:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread10, "A");
+ 545:../../test/testmtx.c ****   chCondBroadcast(&c1);
+ 546:../../test/testmtx.c ****   test_wait_threads();
+ 547:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 548:../../test/testmtx.c **** }
+ 549:../../test/testmtx.c **** 
+ 550:../../test/testmtx.c **** ROMCONST struct testcase testmtx7 = {
+ 551:../../test/testmtx.c ****   "CondVar, broadcast test",
+ 552:../../test/testmtx.c ****   mtx7_setup,
+ 553:../../test/testmtx.c ****   NULL,
+ 554:../../test/testmtx.c ****   mtx7_execute
+ 555:../../test/testmtx.c **** };
+ 556:../../test/testmtx.c **** 
+ 557:../../test/testmtx.c **** /**
+ 558:../../test/testmtx.c ****  * @page test_mtx_008 Condition Variable priority boost test
+ 559:../../test/testmtx.c ****  *
+ 560:../../test/testmtx.c ****  * <h2>Description</h2>
+ 561:../../test/testmtx.c ****  * This test case verifies the priority boost of a thread waiting on a
+ 562:../../test/testmtx.c ****  * conditional variable queue. It tests this very specific situation in order
+ 563:../../test/testmtx.c ****  * to complete the code coverage.
+ 564:../../test/testmtx.c ****  */
+ 565:../../test/testmtx.c **** 
+ 566:../../test/testmtx.c **** static void mtx8_setup(void) {
+ 567:../../test/testmtx.c **** 
+ 568:../../test/testmtx.c ****   chCondInit(&c1);
+ 569:../../test/testmtx.c ****   chMtxInit(&m1);
+ 570:../../test/testmtx.c ****   chMtxInit(&m2);
+ 571:../../test/testmtx.c **** }
+ 572:../../test/testmtx.c **** 
+ 573:../../test/testmtx.c **** static msg_t thread11(void *p) {
+ 574:../../test/testmtx.c **** 
+ 575:../../test/testmtx.c ****   chMtxLock(&m2);
+ 576:../../test/testmtx.c ****   chMtxLock(&m1);
+ 577:../../test/testmtx.c **** #if CH_USE_CONDVARS_TIMEOUT || defined(__DOXYGEN__)
+ 578:../../test/testmtx.c ****   chCondWaitTimeout(&c1, TIME_INFINITE);
+ 579:../../test/testmtx.c **** #else
+ 580:../../test/testmtx.c ****   chCondWait(&c1);
+ 581:../../test/testmtx.c **** #endif
+ 582:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 583:../../test/testmtx.c ****   chMtxUnlock();
+ 584:../../test/testmtx.c ****   chMtxUnlock();
+ 585:../../test/testmtx.c ****   return 0;
+ 586:../../test/testmtx.c **** }
+ 587:../../test/testmtx.c **** 
+ 588:../../test/testmtx.c **** static msg_t thread12(void *p) {
+ 589:../../test/testmtx.c **** 
+ 590:../../test/testmtx.c ****   chMtxLock(&m2);
+ 591:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 592:../../test/testmtx.c ****   chMtxUnlock();
+ 593:../../test/testmtx.c ****   return 0;
+ 594:../../test/testmtx.c **** }
+ 595:../../test/testmtx.c **** 
+ 596:../../test/testmtx.c **** static void mtx8_execute(void) {
+  24               		.loc 1 596 0
+  25 0000 0F93      		push r16
+  26               	.LCFI0:
+  27 0002 1F93      		push r17
+  28               	.LCFI1:
+  29 0004 CF93      		push r28
+  30               	.LCFI2:
+  31               	/* prologue: function */
+  32               	/* frame size = 0 */
+  33               	/* stack size = 3 */
+  34               	.L__stack_usage = 3
+ 597:../../test/testmtx.c **** 
+ 598:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority();
+  35               		.loc 1 598 0
+  36 0006 E091 0000 		lds r30,rlist+11
+  37 000a F091 0000 		lds r31,rlist+11+1
+  38 000e C481      		ldd r28,Z+4
+  39               	.LVL0:
+ 599:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread11, "A");
+  40               		.loc 1 599 0
+  41 0010 4C2F      		mov r20,r28
+  42 0012 4F5F      		subi r20,lo8(-(1))
+  43 0014 00E0      		ldi r16,lo8(.LC0)
+  44 0016 10E0      		ldi r17,hi8(.LC0)
+  45 0018 20E0      		ldi r18,lo8(gs(thread11))
+  46 001a 30E0      		ldi r19,hi8(gs(thread11))
+  47 001c 67E9      		ldi r22,lo8(-105)
+  48 001e 70E0      		ldi r23,0
+  49 0020 8091 0000 		lds r24,wa
+  50 0024 9091 0000 		lds r25,wa+1
+  51 0028 0E94 0000 		call chThdCreateStatic
+  52               	.LVL1:
+  53 002c 9093 0000 		sts threads+1,r25
+  54 0030 8093 0000 		sts threads,r24
+ 600:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread10, "C");
+  55               		.loc 1 600 0
+  56 0034 4C2F      		mov r20,r28
+  57 0036 4E5F      		subi r20,lo8(-(2))
+  58 0038 00E0      		ldi r16,lo8(.LC1)
+  59 003a 10E0      		ldi r17,hi8(.LC1)
+  60 003c 20E0      		ldi r18,lo8(gs(thread10))
+  61 003e 30E0      		ldi r19,hi8(gs(thread10))
+  62 0040 67E9      		ldi r22,lo8(-105)
+  63 0042 70E0      		ldi r23,0
+  64 0044 8091 0000 		lds r24,wa+2
+  65 0048 9091 0000 		lds r25,wa+2+1
+  66 004c 0E94 0000 		call chThdCreateStatic
+  67               	.LVL2:
+  68 0050 9093 0000 		sts threads+2+1,r25
+  69 0054 8093 0000 		sts threads+2,r24
+ 601:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread12, "B");
+  70               		.loc 1 601 0
+  71 0058 4C2F      		mov r20,r28
+  72 005a 4D5F      		subi r20,lo8(-(3))
+  73 005c 00E0      		ldi r16,lo8(.LC2)
+  74 005e 10E0      		ldi r17,hi8(.LC2)
+  75 0060 20E0      		ldi r18,lo8(gs(thread12))
+  76 0062 30E0      		ldi r19,hi8(gs(thread12))
+  77 0064 67E9      		ldi r22,lo8(-105)
+  78 0066 70E0      		ldi r23,0
+  79 0068 8091 0000 		lds r24,wa+4
+  80 006c 9091 0000 		lds r25,wa+4+1
+  81 0070 0E94 0000 		call chThdCreateStatic
+  82               	.LVL3:
+  83 0074 9093 0000 		sts threads+4+1,r25
+  84 0078 8093 0000 		sts threads+4,r24
+ 602:../../test/testmtx.c ****   chCondSignal(&c1);
+  85               		.loc 1 602 0
+  86 007c 80E0      		ldi r24,lo8(c1)
+  87 007e 90E0      		ldi r25,hi8(c1)
+  88 0080 0E94 0000 		call chCondSignal
+  89               	.LVL4:
+ 603:../../test/testmtx.c ****   chCondSignal(&c1);
+  90               		.loc 1 603 0
+  91 0084 80E0      		ldi r24,lo8(c1)
+  92 0086 90E0      		ldi r25,hi8(c1)
+  93 0088 0E94 0000 		call chCondSignal
+  94               	.LVL5:
+ 604:../../test/testmtx.c ****   test_wait_threads();
+  95               		.loc 1 604 0
+  96 008c 0E94 0000 		call test_wait_threads
+  97               	.LVL6:
+ 605:../../test/testmtx.c ****   test_assert_sequence(1, "ABC");
+  98               		.loc 1 605 0
+  99 0090 60E0      		ldi r22,lo8(.LC3)
+ 100 0092 70E0      		ldi r23,hi8(.LC3)
+ 101 0094 81E0      		ldi r24,lo8(1)
+ 102 0096 90E0      		ldi r25,0
+ 103               	/* epilogue start */
+ 606:../../test/testmtx.c **** }
+ 104               		.loc 1 606 0
+ 105 0098 CF91      		pop r28
+ 106               	.LVL7:
+ 107 009a 1F91      		pop r17
+ 108 009c 0F91      		pop r16
+ 605:../../test/testmtx.c ****   test_assert_sequence(1, "ABC");
+ 109               		.loc 1 605 0
+ 110 009e 0C94 0000 		jmp _test_assert_sequence
+ 111               	.LVL8:
+ 112               	.LFE36:
+ 115               	thread12:
+ 116               	.LFB35:
+ 588:../../test/testmtx.c **** static msg_t thread12(void *p) {
+ 117               		.loc 1 588 0
+ 118               	.LVL9:
+ 119 00a2 CF93      		push r28
+ 120               	.LCFI3:
+ 121 00a4 DF93      		push r29
+ 122               	.LCFI4:
+ 123               	/* prologue: function */
+ 124               	/* frame size = 0 */
+ 125               	/* stack size = 2 */
+ 126               	.L__stack_usage = 2
+ 127 00a6 EC01      		movw r28,r24
+ 590:../../test/testmtx.c ****   chMtxLock(&m2);
+ 128               		.loc 1 590 0
+ 129 00a8 80E0      		ldi r24,lo8(m2)
+ 130 00aa 90E0      		ldi r25,hi8(m2)
+ 131               	.LVL10:
+ 132 00ac 0E94 0000 		call chMtxLock
+ 133               	.LVL11:
+ 591:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 134               		.loc 1 591 0
+ 135 00b0 8881      		ld r24,Y
+ 136 00b2 0E94 0000 		call test_emit_token
+ 137               	.LVL12:
+ 592:../../test/testmtx.c ****   chMtxUnlock();
+ 138               		.loc 1 592 0
+ 139 00b6 0E94 0000 		call chMtxUnlock
+ 140               	.LVL13:
+ 594:../../test/testmtx.c **** }
+ 141               		.loc 1 594 0
+ 142 00ba 80E0      		ldi r24,0
+ 143 00bc 90E0      		ldi r25,0
+ 144               	/* epilogue start */
+ 145 00be DF91      		pop r29
+ 146 00c0 CF91      		pop r28
+ 147               	.LVL14:
+ 148 00c2 0895      		ret
+ 149               	.LFE35:
+ 152               	thread1:
+ 153               	.LFB8:
+  89:../../test/testmtx.c **** static msg_t thread1(void *p) {
+ 154               		.loc 1 89 0
+ 155               	.LVL15:
+ 156 00c4 CF93      		push r28
+ 157               	.LCFI5:
+ 158 00c6 DF93      		push r29
+ 159               	.LCFI6:
+ 160               	/* prologue: function */
+ 161               	/* frame size = 0 */
+ 162               	/* stack size = 2 */
+ 163               	.L__stack_usage = 2
+ 164 00c8 EC01      		movw r28,r24
+  91:../../test/testmtx.c ****   chMtxLock(&m1);
+ 165               		.loc 1 91 0
+ 166 00ca 80E0      		ldi r24,lo8(m1)
+ 167 00cc 90E0      		ldi r25,hi8(m1)
+ 168               	.LVL16:
+ 169 00ce 0E94 0000 		call chMtxLock
+ 170               	.LVL17:
+  92:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 171               		.loc 1 92 0
+ 172 00d2 8881      		ld r24,Y
+ 173 00d4 0E94 0000 		call test_emit_token
+ 174               	.LVL18:
+  93:../../test/testmtx.c ****   chMtxUnlock();
+ 175               		.loc 1 93 0
+ 176 00d8 0E94 0000 		call chMtxUnlock
+ 177               	.LVL19:
+  95:../../test/testmtx.c **** }
+ 178               		.loc 1 95 0
+ 179 00dc 80E0      		ldi r24,0
+ 180 00de 90E0      		ldi r25,0
+ 181               	/* epilogue start */
+ 182 00e0 DF91      		pop r29
+ 183 00e2 CF91      		pop r28
+ 184               	.LVL20:
+ 185 00e4 0895      		ret
+ 186               	.LFE8:
+ 189               	thread10:
+ 190               	.LFB29:
+ 485:../../test/testmtx.c **** static msg_t thread10(void *p) {
+ 191               		.loc 1 485 0
+ 192               	.LVL21:
+ 193 00e6 CF93      		push r28
+ 194               	.LCFI7:
+ 195 00e8 DF93      		push r29
+ 196               	.LCFI8:
+ 197               	/* prologue: function */
+ 198               	/* frame size = 0 */
+ 199               	/* stack size = 2 */
+ 200               	.L__stack_usage = 2
+ 201 00ea EC01      		movw r28,r24
+ 487:../../test/testmtx.c ****   chMtxLock(&m1);
+ 202               		.loc 1 487 0
+ 203 00ec 80E0      		ldi r24,lo8(m1)
+ 204 00ee 90E0      		ldi r25,hi8(m1)
+ 205               	.LVL22:
+ 206 00f0 0E94 0000 		call chMtxLock
+ 207               	.LVL23:
+ 488:../../test/testmtx.c ****   chCondWait(&c1);
+ 208               		.loc 1 488 0
+ 209 00f4 80E0      		ldi r24,lo8(c1)
+ 210 00f6 90E0      		ldi r25,hi8(c1)
+ 211 00f8 0E94 0000 		call chCondWait
+ 212               	.LVL24:
+ 489:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 213               		.loc 1 489 0
+ 214 00fc 8881      		ld r24,Y
+ 215 00fe 0E94 0000 		call test_emit_token
+ 216               	.LVL25:
+ 490:../../test/testmtx.c ****   chMtxUnlock();
+ 217               		.loc 1 490 0
+ 218 0102 0E94 0000 		call chMtxUnlock
+ 219               	.LVL26:
+ 492:../../test/testmtx.c **** }
+ 220               		.loc 1 492 0
+ 221 0106 80E0      		ldi r24,0
+ 222 0108 90E0      		ldi r25,0
+ 223               	/* epilogue start */
+ 224 010a DF91      		pop r29
+ 225 010c CF91      		pop r28
+ 226               	.LVL27:
+ 227 010e 0895      		ret
+ 228               	.LFE29:
+ 231               	thread11:
+ 232               	.LFB34:
+ 573:../../test/testmtx.c **** static msg_t thread11(void *p) {
+ 233               		.loc 1 573 0
+ 234               	.LVL28:
+ 235 0110 CF93      		push r28
+ 236               	.LCFI9:
+ 237 0112 DF93      		push r29
+ 238               	.LCFI10:
+ 239               	/* prologue: function */
+ 240               	/* frame size = 0 */
+ 241               	/* stack size = 2 */
+ 242               	.L__stack_usage = 2
+ 243 0114 EC01      		movw r28,r24
+ 575:../../test/testmtx.c ****   chMtxLock(&m2);
+ 244               		.loc 1 575 0
+ 245 0116 80E0      		ldi r24,lo8(m2)
+ 246 0118 90E0      		ldi r25,hi8(m2)
+ 247               	.LVL29:
+ 248 011a 0E94 0000 		call chMtxLock
+ 249               	.LVL30:
+ 576:../../test/testmtx.c ****   chMtxLock(&m1);
+ 250               		.loc 1 576 0
+ 251 011e 80E0      		ldi r24,lo8(m1)
+ 252 0120 90E0      		ldi r25,hi8(m1)
+ 253 0122 0E94 0000 		call chMtxLock
+ 254               	.LVL31:
+ 578:../../test/testmtx.c ****   chCondWaitTimeout(&c1, TIME_INFINITE);
+ 255               		.loc 1 578 0
+ 256 0126 6FEF      		ldi r22,lo8(-1)
+ 257 0128 7FEF      		ldi r23,lo8(-1)
+ 258 012a 80E0      		ldi r24,lo8(c1)
+ 259 012c 90E0      		ldi r25,hi8(c1)
+ 260 012e 0E94 0000 		call chCondWaitTimeout
+ 261               	.LVL32:
+ 582:../../test/testmtx.c ****   test_emit_token(*(char *)p);
+ 262               		.loc 1 582 0
+ 263 0132 8881      		ld r24,Y
+ 264 0134 0E94 0000 		call test_emit_token
+ 265               	.LVL33:
+ 583:../../test/testmtx.c ****   chMtxUnlock();
+ 266               		.loc 1 583 0
+ 267 0138 0E94 0000 		call chMtxUnlock
+ 268               	.LVL34:
+ 584:../../test/testmtx.c ****   chMtxUnlock();
+ 269               		.loc 1 584 0
+ 270 013c 0E94 0000 		call chMtxUnlock
+ 271               	.LVL35:
+ 586:../../test/testmtx.c **** }
+ 272               		.loc 1 586 0
+ 273 0140 80E0      		ldi r24,0
+ 274 0142 90E0      		ldi r25,0
+ 275               	/* epilogue start */
+ 276 0144 DF91      		pop r29
+ 277 0146 CF91      		pop r28
+ 278               	.LVL36:
+ 279 0148 0895      		ret
+ 280               	.LFE34:
+ 283               	mtx8_setup:
+ 284               	.LFB33:
+ 566:../../test/testmtx.c **** static void mtx8_setup(void) {
+ 285               		.loc 1 566 0
+ 286               	/* prologue: function */
+ 287               	/* frame size = 0 */
+ 288               	/* stack size = 0 */
+ 289               	.L__stack_usage = 0
+ 568:../../test/testmtx.c ****   chCondInit(&c1);
+ 290               		.loc 1 568 0
+ 291 014a 80E0      		ldi r24,lo8(c1)
+ 292 014c 90E0      		ldi r25,hi8(c1)
+ 293 014e 0E94 0000 		call chCondInit
+ 294               	.LVL37:
+ 569:../../test/testmtx.c ****   chMtxInit(&m1);
+ 295               		.loc 1 569 0
+ 296 0152 80E0      		ldi r24,lo8(m1)
+ 297 0154 90E0      		ldi r25,hi8(m1)
+ 298 0156 0E94 0000 		call chMtxInit
+ 299               	.LVL38:
+ 570:../../test/testmtx.c ****   chMtxInit(&m2);
+ 300               		.loc 1 570 0
+ 301 015a 80E0      		ldi r24,lo8(m2)
+ 302 015c 90E0      		ldi r25,hi8(m2)
+ 303 015e 0C94 0000 		jmp chMtxInit
+ 304               	.LVL39:
+ 305               	.LFE33:
+ 308               	mtx7_setup:
+ 309               	.LFB31:
+ 531:../../test/testmtx.c **** static void mtx7_setup(void) {
+ 310               		.loc 1 531 0
+ 311               	/* prologue: function */
+ 312               	/* frame size = 0 */
+ 313               	/* stack size = 0 */
+ 314               	.L__stack_usage = 0
+ 533:../../test/testmtx.c ****   chCondInit(&c1);
+ 315               		.loc 1 533 0
+ 316 0162 80E0      		ldi r24,lo8(c1)
+ 317 0164 90E0      		ldi r25,hi8(c1)
+ 318 0166 0E94 0000 		call chCondInit
+ 319               	.LVL40:
+ 534:../../test/testmtx.c ****   chMtxInit(&m1);
+ 320               		.loc 1 534 0
+ 321 016a 80E0      		ldi r24,lo8(m1)
+ 322 016c 90E0      		ldi r25,hi8(m1)
+ 323 016e 0C94 0000 		jmp chMtxInit
+ 324               	.LVL41:
+ 325               	.LFE31:
+ 328               	mtx6_setup:
+ 329               	.LFB28:
+ 479:../../test/testmtx.c **** static void mtx6_setup(void) {
+ 330               		.loc 1 479 0
+ 331               	/* prologue: function */
+ 332               	/* frame size = 0 */
+ 333               	/* stack size = 0 */
+ 334               	.L__stack_usage = 0
+ 481:../../test/testmtx.c ****   chCondInit(&c1);
+ 335               		.loc 1 481 0
+ 336 0172 80E0      		ldi r24,lo8(c1)
+ 337 0174 90E0      		ldi r25,hi8(c1)
+ 338 0176 0E94 0000 		call chCondInit
+ 339               	.LVL42:
+ 482:../../test/testmtx.c ****   chMtxInit(&m1);
+ 340               		.loc 1 482 0
+ 341 017a 80E0      		ldi r24,lo8(m1)
+ 342 017c 90E0      		ldi r25,hi8(m1)
+ 343 017e 0C94 0000 		jmp chMtxInit
+ 344               	.LVL43:
+ 345               	.LFE28:
+ 348               	mtx5_setup:
+ 349               	.LFB26:
+ 429:../../test/testmtx.c **** static void mtx5_setup(void) {
+ 350               		.loc 1 429 0
+ 351               	/* prologue: function */
+ 352               	/* frame size = 0 */
+ 353               	/* stack size = 0 */
+ 354               	.L__stack_usage = 0
+ 431:../../test/testmtx.c ****   chMtxInit(&m1);
+ 355               		.loc 1 431 0
+ 356 0182 80E0      		ldi r24,lo8(m1)
+ 357 0184 90E0      		ldi r25,hi8(m1)
+ 358 0186 0C94 0000 		jmp chMtxInit
+ 359               	.LVL44:
+ 360               	.LFE26:
+ 363               	mtx4_setup:
+ 364               	.LFB22:
+ 341:../../test/testmtx.c **** static void mtx4_setup(void) {
+ 365               		.loc 1 341 0
+ 366               	/* prologue: function */
+ 367               	/* frame size = 0 */
+ 368               	/* stack size = 0 */
+ 369               	.L__stack_usage = 0
+ 343:../../test/testmtx.c ****   chMtxInit(&m1);
+ 370               		.loc 1 343 0
+ 371 018a 80E0      		ldi r24,lo8(m1)
+ 372 018c 90E0      		ldi r25,hi8(m1)
+ 373 018e 0E94 0000 		call chMtxInit
+ 374               	.LVL45:
+ 344:../../test/testmtx.c ****   chMtxInit(&m2);
+ 375               		.loc 1 344 0
+ 376 0192 80E0      		ldi r24,lo8(m2)
+ 377 0194 90E0      		ldi r25,hi8(m2)
+ 378 0196 0C94 0000 		jmp chMtxInit
+ 379               	.LVL46:
+ 380               	.LFE22:
+ 383               	mtx3_setup:
+ 384               	.LFB15:
+ 241:../../test/testmtx.c **** static void mtx3_setup(void) {
+ 385               		.loc 1 241 0
+ 386               	/* prologue: function */
+ 387               	/* frame size = 0 */
+ 388               	/* stack size = 0 */
+ 389               	.L__stack_usage = 0
+ 243:../../test/testmtx.c ****   chMtxInit(&m1); /* Mutex B.*/
+ 390               		.loc 1 243 0
+ 391 019a 80E0      		ldi r24,lo8(m1)
+ 392 019c 90E0      		ldi r25,hi8(m1)
+ 393 019e 0E94 0000 		call chMtxInit
+ 394               	.LVL47:
+ 244:../../test/testmtx.c ****   chMtxInit(&m2); /* Mutex A.*/
+ 395               		.loc 1 244 0
+ 396 01a2 80E0      		ldi r24,lo8(m2)
+ 397 01a4 90E0      		ldi r25,hi8(m2)
+ 398 01a6 0C94 0000 		jmp chMtxInit
+ 399               	.LVL48:
+ 400               	.LFE15:
+ 403               	mtx2_setup:
+ 404               	.LFB10:
+ 151:../../test/testmtx.c **** static void mtx2_setup(void) {
+ 405               		.loc 1 151 0
+ 406               	/* prologue: function */
+ 407               	/* frame size = 0 */
+ 408               	/* stack size = 0 */
+ 409               	.L__stack_usage = 0
+ 153:../../test/testmtx.c ****   chMtxInit(&m1);
+ 410               		.loc 1 153 0
+ 411 01aa 80E0      		ldi r24,lo8(m1)
+ 412 01ac 90E0      		ldi r25,hi8(m1)
+ 413 01ae 0C94 0000 		jmp chMtxInit
+ 414               	.LVL49:
+ 415               	.LFE10:
+ 418               	mtx1_setup:
+ 419               	.LFB7:
+  84:../../test/testmtx.c **** static void mtx1_setup(void) {
+ 420               		.loc 1 84 0
+ 421               	/* prologue: function */
+ 422               	/* frame size = 0 */
+ 423               	/* stack size = 0 */
+ 424               	.L__stack_usage = 0
+  86:../../test/testmtx.c ****   chMtxInit(&m1);
+ 425               		.loc 1 86 0
+ 426 01b2 80E0      		ldi r24,lo8(m1)
+ 427 01b4 90E0      		ldi r25,hi8(m1)
+ 428 01b6 0C94 0000 		jmp chMtxInit
+ 429               	.LVL50:
+ 430               	.LFE7:
+ 432               		.section	.rodata.str1.1
+ 433               	.LC4:
+ 434 000a 4500      		.string	"E"
+ 435               	.LC5:
+ 436 000c 4400      		.string	"D"
+ 437               	.LC6:
+ 438 000e 4142 4344 		.string	"ABCDE"
+ 438      4500 
+ 439               		.text
+ 441               	mtx7_execute:
+ 442               	.LFB32:
+ 537:../../test/testmtx.c **** static void mtx7_execute(void) {
+ 443               		.loc 1 537 0
+ 444 01ba 0F93      		push r16
+ 445               	.LCFI11:
+ 446 01bc 1F93      		push r17
+ 447               	.LCFI12:
+ 448 01be CF93      		push r28
+ 449               	.LCFI13:
+ 450               	/* prologue: function */
+ 451               	/* frame size = 0 */
+ 452               	/* stack size = 3 */
+ 453               	.L__stack_usage = 3
+ 539:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority();
+ 454               		.loc 1 539 0
+ 455 01c0 E091 0000 		lds r30,rlist+11
+ 456 01c4 F091 0000 		lds r31,rlist+11+1
+ 457 01c8 C481      		ldd r28,Z+4
+ 458               	.LVL51:
+ 540:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread10, "E");
+ 459               		.loc 1 540 0
+ 460 01ca 4C2F      		mov r20,r28
+ 461 01cc 4F5F      		subi r20,lo8(-(1))
+ 462 01ce 00E0      		ldi r16,lo8(.LC4)
+ 463 01d0 10E0      		ldi r17,hi8(.LC4)
+ 464 01d2 20E0      		ldi r18,lo8(gs(thread10))
+ 465 01d4 30E0      		ldi r19,hi8(gs(thread10))
+ 466 01d6 67E9      		ldi r22,lo8(-105)
+ 467 01d8 70E0      		ldi r23,0
+ 468 01da 8091 0000 		lds r24,wa
+ 469 01de 9091 0000 		lds r25,wa+1
+ 470 01e2 0E94 0000 		call chThdCreateStatic
+ 471               	.LVL52:
+ 472 01e6 9093 0000 		sts threads+1,r25
+ 473 01ea 8093 0000 		sts threads,r24
+ 541:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread10, "D");
+ 474               		.loc 1 541 0
+ 475 01ee 4C2F      		mov r20,r28
+ 476 01f0 4E5F      		subi r20,lo8(-(2))
+ 477 01f2 00E0      		ldi r16,lo8(.LC5)
+ 478 01f4 10E0      		ldi r17,hi8(.LC5)
+ 479 01f6 20E0      		ldi r18,lo8(gs(thread10))
+ 480 01f8 30E0      		ldi r19,hi8(gs(thread10))
+ 481 01fa 67E9      		ldi r22,lo8(-105)
+ 482 01fc 70E0      		ldi r23,0
+ 483 01fe 8091 0000 		lds r24,wa+2
+ 484 0202 9091 0000 		lds r25,wa+2+1
+ 485 0206 0E94 0000 		call chThdCreateStatic
+ 486               	.LVL53:
+ 487 020a 9093 0000 		sts threads+2+1,r25
+ 488 020e 8093 0000 		sts threads+2,r24
+ 542:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread10, "C");
+ 489               		.loc 1 542 0
+ 490 0212 4C2F      		mov r20,r28
+ 491 0214 4D5F      		subi r20,lo8(-(3))
+ 492 0216 00E0      		ldi r16,lo8(.LC1)
+ 493 0218 10E0      		ldi r17,hi8(.LC1)
+ 494 021a 20E0      		ldi r18,lo8(gs(thread10))
+ 495 021c 30E0      		ldi r19,hi8(gs(thread10))
+ 496 021e 67E9      		ldi r22,lo8(-105)
+ 497 0220 70E0      		ldi r23,0
+ 498 0222 8091 0000 		lds r24,wa+4
+ 499 0226 9091 0000 		lds r25,wa+4+1
+ 500 022a 0E94 0000 		call chThdCreateStatic
+ 501               	.LVL54:
+ 502 022e 9093 0000 		sts threads+4+1,r25
+ 503 0232 8093 0000 		sts threads+4,r24
+ 543:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, prio+4, thread10, "B");
+ 504               		.loc 1 543 0
+ 505 0236 4C2F      		mov r20,r28
+ 506 0238 4C5F      		subi r20,lo8(-(4))
+ 507 023a 00E0      		ldi r16,lo8(.LC2)
+ 508 023c 10E0      		ldi r17,hi8(.LC2)
+ 509 023e 20E0      		ldi r18,lo8(gs(thread10))
+ 510 0240 30E0      		ldi r19,hi8(gs(thread10))
+ 511 0242 67E9      		ldi r22,lo8(-105)
+ 512 0244 70E0      		ldi r23,0
+ 513 0246 8091 0000 		lds r24,wa+6
+ 514 024a 9091 0000 		lds r25,wa+6+1
+ 515 024e 0E94 0000 		call chThdCreateStatic
+ 516               	.LVL55:
+ 517 0252 9093 0000 		sts threads+6+1,r25
+ 518 0256 8093 0000 		sts threads+6,r24
+ 544:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread10, "A");
+ 519               		.loc 1 544 0
+ 520 025a 4C2F      		mov r20,r28
+ 521 025c 4B5F      		subi r20,lo8(-(5))
+ 522 025e 00E0      		ldi r16,lo8(.LC0)
+ 523 0260 10E0      		ldi r17,hi8(.LC0)
+ 524 0262 20E0      		ldi r18,lo8(gs(thread10))
+ 525 0264 30E0      		ldi r19,hi8(gs(thread10))
+ 526 0266 67E9      		ldi r22,lo8(-105)
+ 527 0268 70E0      		ldi r23,0
+ 528 026a 8091 0000 		lds r24,wa+8
+ 529 026e 9091 0000 		lds r25,wa+8+1
+ 530 0272 0E94 0000 		call chThdCreateStatic
+ 531               	.LVL56:
+ 532 0276 9093 0000 		sts threads+8+1,r25
+ 533 027a 8093 0000 		sts threads+8,r24
+ 545:../../test/testmtx.c ****   chCondBroadcast(&c1);
+ 534               		.loc 1 545 0
+ 535 027e 80E0      		ldi r24,lo8(c1)
+ 536 0280 90E0      		ldi r25,hi8(c1)
+ 537 0282 0E94 0000 		call chCondBroadcast
+ 538               	.LVL57:
+ 546:../../test/testmtx.c ****   test_wait_threads();
+ 539               		.loc 1 546 0
+ 540 0286 0E94 0000 		call test_wait_threads
+ 541               	.LVL58:
+ 547:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 542               		.loc 1 547 0
+ 543 028a 60E0      		ldi r22,lo8(.LC6)
+ 544 028c 70E0      		ldi r23,hi8(.LC6)
+ 545 028e 81E0      		ldi r24,lo8(1)
+ 546 0290 90E0      		ldi r25,0
+ 547               	/* epilogue start */
+ 548:../../test/testmtx.c **** }
+ 548               		.loc 1 548 0
+ 549 0292 CF91      		pop r28
+ 550               	.LVL59:
+ 551 0294 1F91      		pop r17
+ 552 0296 0F91      		pop r16
+ 547:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 553               		.loc 1 547 0
+ 554 0298 0C94 0000 		jmp _test_assert_sequence
+ 555               	.LVL60:
+ 556               	.LFE32:
+ 559               	mtx6_execute:
+ 560               	.LFB30:
+ 494:../../test/testmtx.c **** static void mtx6_execute(void) {
+ 561               		.loc 1 494 0
+ 562 029c 0F93      		push r16
+ 563               	.LCFI14:
+ 564 029e 1F93      		push r17
+ 565               	.LCFI15:
+ 566 02a0 CF93      		push r28
+ 567               	.LCFI16:
+ 568               	/* prologue: function */
+ 569               	/* frame size = 0 */
+ 570               	/* stack size = 3 */
+ 571               	.L__stack_usage = 3
+ 496:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority();
+ 572               		.loc 1 496 0
+ 573 02a2 E091 0000 		lds r30,rlist+11
+ 574 02a6 F091 0000 		lds r31,rlist+11+1
+ 575 02aa C481      		ldd r28,Z+4
+ 576               	.LVL61:
+ 497:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread10, "E");
+ 577               		.loc 1 497 0
+ 578 02ac 4C2F      		mov r20,r28
+ 579 02ae 4F5F      		subi r20,lo8(-(1))
+ 580 02b0 00E0      		ldi r16,lo8(.LC4)
+ 581 02b2 10E0      		ldi r17,hi8(.LC4)
+ 582 02b4 20E0      		ldi r18,lo8(gs(thread10))
+ 583 02b6 30E0      		ldi r19,hi8(gs(thread10))
+ 584 02b8 67E9      		ldi r22,lo8(-105)
+ 585 02ba 70E0      		ldi r23,0
+ 586 02bc 8091 0000 		lds r24,wa
+ 587 02c0 9091 0000 		lds r25,wa+1
+ 588 02c4 0E94 0000 		call chThdCreateStatic
+ 589               	.LVL62:
+ 590 02c8 9093 0000 		sts threads+1,r25
+ 591 02cc 8093 0000 		sts threads,r24
+ 498:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread10, "D");
+ 592               		.loc 1 498 0
+ 593 02d0 4C2F      		mov r20,r28
+ 594 02d2 4E5F      		subi r20,lo8(-(2))
+ 595 02d4 00E0      		ldi r16,lo8(.LC5)
+ 596 02d6 10E0      		ldi r17,hi8(.LC5)
+ 597 02d8 20E0      		ldi r18,lo8(gs(thread10))
+ 598 02da 30E0      		ldi r19,hi8(gs(thread10))
+ 599 02dc 67E9      		ldi r22,lo8(-105)
+ 600 02de 70E0      		ldi r23,0
+ 601 02e0 8091 0000 		lds r24,wa+2
+ 602 02e4 9091 0000 		lds r25,wa+2+1
+ 603 02e8 0E94 0000 		call chThdCreateStatic
+ 604               	.LVL63:
+ 605 02ec 9093 0000 		sts threads+2+1,r25
+ 606 02f0 8093 0000 		sts threads+2,r24
+ 499:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread10, "C");
+ 607               		.loc 1 499 0
+ 608 02f4 4C2F      		mov r20,r28
+ 609 02f6 4D5F      		subi r20,lo8(-(3))
+ 610 02f8 00E0      		ldi r16,lo8(.LC1)
+ 611 02fa 10E0      		ldi r17,hi8(.LC1)
+ 612 02fc 20E0      		ldi r18,lo8(gs(thread10))
+ 613 02fe 30E0      		ldi r19,hi8(gs(thread10))
+ 614 0300 67E9      		ldi r22,lo8(-105)
+ 615 0302 70E0      		ldi r23,0
+ 616 0304 8091 0000 		lds r24,wa+4
+ 617 0308 9091 0000 		lds r25,wa+4+1
+ 618 030c 0E94 0000 		call chThdCreateStatic
+ 619               	.LVL64:
+ 620 0310 9093 0000 		sts threads+4+1,r25
+ 621 0314 8093 0000 		sts threads+4,r24
+ 500:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, prio+4, thread10, "B");
+ 622               		.loc 1 500 0
+ 623 0318 4C2F      		mov r20,r28
+ 624 031a 4C5F      		subi r20,lo8(-(4))
+ 625 031c 00E0      		ldi r16,lo8(.LC2)
+ 626 031e 10E0      		ldi r17,hi8(.LC2)
+ 627 0320 20E0      		ldi r18,lo8(gs(thread10))
+ 628 0322 30E0      		ldi r19,hi8(gs(thread10))
+ 629 0324 67E9      		ldi r22,lo8(-105)
+ 630 0326 70E0      		ldi r23,0
+ 631 0328 8091 0000 		lds r24,wa+6
+ 632 032c 9091 0000 		lds r25,wa+6+1
+ 633 0330 0E94 0000 		call chThdCreateStatic
+ 634               	.LVL65:
+ 635 0334 9093 0000 		sts threads+6+1,r25
+ 636 0338 8093 0000 		sts threads+6,r24
+ 501:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread10, "A");
+ 637               		.loc 1 501 0
+ 638 033c 4C2F      		mov r20,r28
+ 639 033e 4B5F      		subi r20,lo8(-(5))
+ 640 0340 00E0      		ldi r16,lo8(.LC0)
+ 641 0342 10E0      		ldi r17,hi8(.LC0)
+ 642 0344 20E0      		ldi r18,lo8(gs(thread10))
+ 643 0346 30E0      		ldi r19,hi8(gs(thread10))
+ 644 0348 67E9      		ldi r22,lo8(-105)
+ 645 034a 70E0      		ldi r23,0
+ 646 034c 8091 0000 		lds r24,wa+8
+ 647 0350 9091 0000 		lds r25,wa+8+1
+ 648 0354 0E94 0000 		call chThdCreateStatic
+ 649               	.LVL66:
+ 650 0358 9093 0000 		sts threads+8+1,r25
+ 651 035c 8093 0000 		sts threads+8,r24
+ 502:../../test/testmtx.c ****   chSysLock();
+ 652               		.loc 1 502 0
+ 653               	/* #APP */
+ 654               	 ;  502 "../../test/testmtx.c" 1
+ 655 0360 F894      		cli
+ 656               	 ;  0 "" 2
+ 503:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 657               		.loc 1 503 0
+ 658               	/* #NOAPP */
+ 659 0362 80E0      		ldi r24,lo8(c1)
+ 660 0364 90E0      		ldi r25,hi8(c1)
+ 661 0366 0E94 0000 		call chCondSignalI
+ 662               	.LVL67:
+ 504:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 663               		.loc 1 504 0
+ 664 036a 80E0      		ldi r24,lo8(c1)
+ 665 036c 90E0      		ldi r25,hi8(c1)
+ 666 036e 0E94 0000 		call chCondSignalI
+ 667               	.LVL68:
+ 505:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 668               		.loc 1 505 0
+ 669 0372 80E0      		ldi r24,lo8(c1)
+ 670 0374 90E0      		ldi r25,hi8(c1)
+ 671 0376 0E94 0000 		call chCondSignalI
+ 672               	.LVL69:
+ 506:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 673               		.loc 1 506 0
+ 674 037a 80E0      		ldi r24,lo8(c1)
+ 675 037c 90E0      		ldi r25,hi8(c1)
+ 676 037e 0E94 0000 		call chCondSignalI
+ 677               	.LVL70:
+ 507:../../test/testmtx.c ****   chCondSignalI(&c1);
+ 678               		.loc 1 507 0
+ 679 0382 80E0      		ldi r24,lo8(c1)
+ 680 0384 90E0      		ldi r25,hi8(c1)
+ 681 0386 0E94 0000 		call chCondSignalI
+ 682               	.LVL71:
+ 508:../../test/testmtx.c ****   chSchRescheduleS();
+ 683               		.loc 1 508 0
+ 684 038a 0E94 0000 		call chSchRescheduleS
+ 685               	.LVL72:
+ 509:../../test/testmtx.c ****   chSysUnlock();
+ 686               		.loc 1 509 0
+ 687               	/* #APP */
+ 688               	 ;  509 "../../test/testmtx.c" 1
+ 689 038e 7894      		sei
+ 690               	 ;  0 "" 2
+ 510:../../test/testmtx.c ****   test_wait_threads();
+ 691               		.loc 1 510 0
+ 692               	/* #NOAPP */
+ 693 0390 0E94 0000 		call test_wait_threads
+ 694               	.LVL73:
+ 511:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 695               		.loc 1 511 0
+ 696 0394 60E0      		ldi r22,lo8(.LC6)
+ 697 0396 70E0      		ldi r23,hi8(.LC6)
+ 698 0398 81E0      		ldi r24,lo8(1)
+ 699 039a 90E0      		ldi r25,0
+ 700               	/* epilogue start */
+ 512:../../test/testmtx.c **** }
+ 701               		.loc 1 512 0
+ 702 039c CF91      		pop r28
+ 703               	.LVL74:
+ 704 039e 1F91      		pop r17
+ 705 03a0 0F91      		pop r16
+ 511:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 706               		.loc 1 511 0
+ 707 03a2 0C94 0000 		jmp _test_assert_sequence
+ 708               	.LVL75:
+ 709               	.LFE30:
+ 712               	mtx1_execute:
+ 713               	.LFB9:
+  97:../../test/testmtx.c **** static void mtx1_execute(void) {
+ 714               		.loc 1 97 0
+ 715 03a6 0F93      		push r16
+ 716               	.LCFI17:
+ 717 03a8 1F93      		push r17
+ 718               	.LCFI18:
+ 719 03aa CF93      		push r28
+ 720               	.LCFI19:
+ 721               	/* prologue: function */
+ 722               	/* frame size = 0 */
+ 723               	/* stack size = 3 */
+ 724               	.L__stack_usage = 3
+  99:../../test/testmtx.c ****   tprio_t prio = chThdGetPriority(); /* Because priority inheritance.*/
+ 725               		.loc 1 99 0
+ 726 03ac E091 0000 		lds r30,rlist+11
+ 727 03b0 F091 0000 		lds r31,rlist+11+1
+ 728 03b4 C481      		ldd r28,Z+4
+ 729               	.LVL76:
+ 100:../../test/testmtx.c ****   chMtxLock(&m1);
+ 730               		.loc 1 100 0
+ 731 03b6 80E0      		ldi r24,lo8(m1)
+ 732 03b8 90E0      		ldi r25,hi8(m1)
+ 733 03ba 0E94 0000 		call chMtxLock
+ 734               	.LVL77:
+ 101:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, prio+1, thread1, "E");
+ 735               		.loc 1 101 0
+ 736 03be 4C2F      		mov r20,r28
+ 737 03c0 4F5F      		subi r20,lo8(-(1))
+ 738 03c2 00E0      		ldi r16,lo8(.LC4)
+ 739 03c4 10E0      		ldi r17,hi8(.LC4)
+ 740 03c6 20E0      		ldi r18,lo8(gs(thread1))
+ 741 03c8 30E0      		ldi r19,hi8(gs(thread1))
+ 742 03ca 67E9      		ldi r22,lo8(-105)
+ 743 03cc 70E0      		ldi r23,0
+ 744 03ce 8091 0000 		lds r24,wa
+ 745 03d2 9091 0000 		lds r25,wa+1
+ 746 03d6 0E94 0000 		call chThdCreateStatic
+ 747               	.LVL78:
+ 748 03da 9093 0000 		sts threads+1,r25
+ 749 03de 8093 0000 		sts threads,r24
+ 102:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, prio+2, thread1, "D");
+ 750               		.loc 1 102 0
+ 751 03e2 4C2F      		mov r20,r28
+ 752 03e4 4E5F      		subi r20,lo8(-(2))
+ 753 03e6 00E0      		ldi r16,lo8(.LC5)
+ 754 03e8 10E0      		ldi r17,hi8(.LC5)
+ 755 03ea 20E0      		ldi r18,lo8(gs(thread1))
+ 756 03ec 30E0      		ldi r19,hi8(gs(thread1))
+ 757 03ee 67E9      		ldi r22,lo8(-105)
+ 758 03f0 70E0      		ldi r23,0
+ 759 03f2 8091 0000 		lds r24,wa+2
+ 760 03f6 9091 0000 		lds r25,wa+2+1
+ 761 03fa 0E94 0000 		call chThdCreateStatic
+ 762               	.LVL79:
+ 763 03fe 9093 0000 		sts threads+2+1,r25
+ 764 0402 8093 0000 		sts threads+2,r24
+ 103:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, prio+3, thread1, "C");
+ 765               		.loc 1 103 0
+ 766 0406 4C2F      		mov r20,r28
+ 767 0408 4D5F      		subi r20,lo8(-(3))
+ 768 040a 00E0      		ldi r16,lo8(.LC1)
+ 769 040c 10E0      		ldi r17,hi8(.LC1)
+ 770 040e 20E0      		ldi r18,lo8(gs(thread1))
+ 771 0410 30E0      		ldi r19,hi8(gs(thread1))
+ 772 0412 67E9      		ldi r22,lo8(-105)
+ 773 0414 70E0      		ldi r23,0
+ 774 0416 8091 0000 		lds r24,wa+4
+ 775 041a 9091 0000 		lds r25,wa+4+1
+ 776 041e 0E94 0000 		call chThdCreateStatic
+ 777               	.LVL80:
+ 778 0422 9093 0000 		sts threads+4+1,r25
+ 779 0426 8093 0000 		sts threads+4,r24
+ 104:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, prio+4, thread1, "B");
+ 780               		.loc 1 104 0
+ 781 042a 4C2F      		mov r20,r28
+ 782 042c 4C5F      		subi r20,lo8(-(4))
+ 783 042e 00E0      		ldi r16,lo8(.LC2)
+ 784 0430 10E0      		ldi r17,hi8(.LC2)
+ 785 0432 20E0      		ldi r18,lo8(gs(thread1))
+ 786 0434 30E0      		ldi r19,hi8(gs(thread1))
+ 787 0436 67E9      		ldi r22,lo8(-105)
+ 788 0438 70E0      		ldi r23,0
+ 789 043a 8091 0000 		lds r24,wa+6
+ 790 043e 9091 0000 		lds r25,wa+6+1
+ 791 0442 0E94 0000 		call chThdCreateStatic
+ 792               	.LVL81:
+ 793 0446 9093 0000 		sts threads+6+1,r25
+ 794 044a 8093 0000 		sts threads+6,r24
+ 105:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, prio+5, thread1, "A");
+ 795               		.loc 1 105 0
+ 796 044e 4C2F      		mov r20,r28
+ 797 0450 4B5F      		subi r20,lo8(-(5))
+ 798 0452 00E0      		ldi r16,lo8(.LC0)
+ 799 0454 10E0      		ldi r17,hi8(.LC0)
+ 800 0456 20E0      		ldi r18,lo8(gs(thread1))
+ 801 0458 30E0      		ldi r19,hi8(gs(thread1))
+ 802 045a 67E9      		ldi r22,lo8(-105)
+ 803 045c 70E0      		ldi r23,0
+ 804 045e 8091 0000 		lds r24,wa+8
+ 805 0462 9091 0000 		lds r25,wa+8+1
+ 806 0466 0E94 0000 		call chThdCreateStatic
+ 807               	.LVL82:
+ 808 046a 9093 0000 		sts threads+8+1,r25
+ 809 046e 8093 0000 		sts threads+8,r24
+ 106:../../test/testmtx.c ****   chMtxUnlock();
+ 810               		.loc 1 106 0
+ 811 0472 0E94 0000 		call chMtxUnlock
+ 812               	.LVL83:
+ 107:../../test/testmtx.c ****   test_wait_threads();
+ 813               		.loc 1 107 0
+ 814 0476 0E94 0000 		call test_wait_threads
+ 815               	.LVL84:
+ 108:../../test/testmtx.c ****   test_assert(1, prio == chThdGetPriority(), "wrong priority level");
+ 816               		.loc 1 108 0
+ 817 047a E091 0000 		lds r30,rlist+11
+ 818 047e F091 0000 		lds r31,rlist+11+1
+ 819 0482 61E0      		ldi r22,lo8(1)
+ 820 0484 8481      		ldd r24,Z+4
+ 821 0486 8C13      		cpse r24,r28
+ 822 0488 60E0      		ldi r22,0
+ 823               	.L17:
+ 824 048a 81E0      		ldi r24,lo8(1)
+ 825 048c 90E0      		ldi r25,0
+ 826 048e 0E94 0000 		call _test_assert
+ 827               	.LVL85:
+ 828 0492 8823      		tst r24
+ 829 0494 01F0      		breq .L20
+ 830               	/* epilogue start */
+ 110:../../test/testmtx.c **** }
+ 831               		.loc 1 110 0
+ 832 0496 CF91      		pop r28
+ 833               	.LVL86:
+ 834 0498 1F91      		pop r17
+ 835 049a 0F91      		pop r16
+ 836 049c 0895      		ret
+ 837               	.LVL87:
+ 838               	.L20:
+ 109:../../test/testmtx.c ****   test_assert_sequence(2, "ABCDE");
+ 839               		.loc 1 109 0
+ 840 049e 60E0      		ldi r22,lo8(.LC6)
+ 841 04a0 70E0      		ldi r23,hi8(.LC6)
+ 842 04a2 82E0      		ldi r24,lo8(2)
+ 843 04a4 90E0      		ldi r25,0
+ 844               	/* epilogue start */
+ 110:../../test/testmtx.c **** }
+ 845               		.loc 1 110 0
+ 846 04a6 CF91      		pop r28
+ 847               	.LVL88:
+ 848 04a8 1F91      		pop r17
+ 849 04aa 0F91      		pop r16
+ 109:../../test/testmtx.c ****   test_assert_sequence(2, "ABCDE");
+ 850               		.loc 1 109 0
+ 851 04ac 0C94 0000 		jmp _test_assert_sequence
+ 852               	.LVL89:
+ 853               	.LFE9:
+ 856               	mtx5_execute:
+ 857               	.LFB27:
+ 434:../../test/testmtx.c **** static void mtx5_execute(void) {
+ 858               		.loc 1 434 0
+ 859 04b0 CF93      		push r28
+ 860               	.LCFI20:
+ 861               	/* prologue: function */
+ 862               	/* frame size = 0 */
+ 863               	/* stack size = 1 */
+ 864               	.L__stack_usage = 1
+ 438:../../test/testmtx.c ****   prio = chThdGetPriority();
+ 865               		.loc 1 438 0
+ 866 04b2 E091 0000 		lds r30,rlist+11
+ 867 04b6 F091 0000 		lds r31,rlist+11+1
+ 868 04ba C481      		ldd r28,Z+4
+ 869               	.LVL90:
+ 440:../../test/testmtx.c ****   b = chMtxTryLock(&m1);
+ 870               		.loc 1 440 0
+ 871 04bc 80E0      		ldi r24,lo8(m1)
+ 872 04be 90E0      		ldi r25,hi8(m1)
+ 873 04c0 0E94 0000 		call chMtxTryLock
+ 874               	.LVL91:
+ 441:../../test/testmtx.c ****   test_assert(1, b, "already locked");
+ 875               		.loc 1 441 0
+ 876 04c4 682F      		mov r22,r24
+ 877 04c6 81E0      		ldi r24,lo8(1)
+ 878 04c8 90E0      		ldi r25,0
+ 879               	.LVL92:
+ 880 04ca 0E94 0000 		call _test_assert
+ 881               	.LVL93:
+ 882 04ce 8823      		tst r24
+ 883 04d0 01F0      		breq .L42
+ 884               	.L21:
+ 885               	/* epilogue start */
+ 458:../../test/testmtx.c **** }
+ 886               		.loc 1 458 0
+ 887 04d2 CF91      		pop r28
+ 888               	.LVL94:
+ 889 04d4 0895      		ret
+ 890               	.LVL95:
+ 891               	.L42:
+ 443:../../test/testmtx.c ****   b = chMtxTryLock(&m1);
+ 892               		.loc 1 443 0
+ 893 04d6 80E0      		ldi r24,lo8(m1)
+ 894 04d8 90E0      		ldi r25,hi8(m1)
+ 895 04da 0E94 0000 		call chMtxTryLock
+ 896               	.LVL96:
+ 444:../../test/testmtx.c ****   test_assert(2, !b, "not locked");
+ 897               		.loc 1 444 0
+ 898 04de 61E0      		ldi r22,lo8(1)
+ 899 04e0 6827      		eor r22,r24
+ 900 04e2 82E0      		ldi r24,lo8(2)
+ 901 04e4 90E0      		ldi r25,0
+ 902               	.LVL97:
+ 903 04e6 0E94 0000 		call _test_assert
+ 904               	.LVL98:
+ 905 04ea 8111      		cpse r24,__zero_reg__
+ 906 04ec 00C0      		rjmp .L21
+ 446:../../test/testmtx.c ****   chSysLock();
+ 907               		.loc 1 446 0
+ 908               	/* #APP */
+ 909               	 ;  446 "../../test/testmtx.c" 1
+ 910 04ee F894      		cli
+ 911               	 ;  0 "" 2
+ 447:../../test/testmtx.c ****   chMtxUnlockS();
+ 912               		.loc 1 447 0
+ 913               	/* #NOAPP */
+ 914 04f0 0E94 0000 		call chMtxUnlockS
+ 915               	.LVL99:
+ 448:../../test/testmtx.c ****   chSysUnlock();
+ 916               		.loc 1 448 0
+ 917               	/* #APP */
+ 918               	 ;  448 "../../test/testmtx.c" 1
+ 919 04f4 7894      		sei
+ 920               	 ;  0 "" 2
+ 450:../../test/testmtx.c ****   test_assert(3, isempty(&m1.m_queue), "queue not empty");
+ 921               		.loc 1 450 0
+ 922               	/* #NOAPP */
+ 923 04f6 61E0      		ldi r22,lo8(1)
+ 924 04f8 8091 0000 		lds r24,m1
+ 925 04fc 9091 0000 		lds r25,m1+1
+ 926 0500 8050      		subi r24,lo8(m1)
+ 927 0502 9040      		sbci r25,hi8(m1)
+ 928 0504 01F0      		breq .L25
+ 929 0506 60E0      		ldi r22,0
+ 930               	.L25:
+ 931 0508 83E0      		ldi r24,lo8(3)
+ 932 050a 90E0      		ldi r25,0
+ 933 050c 0E94 0000 		call _test_assert
+ 934               	.LVL100:
+ 935 0510 8111      		cpse r24,__zero_reg__
+ 936 0512 00C0      		rjmp .L21
+ 451:../../test/testmtx.c ****   test_assert(4, m1.m_owner == NULL, "still owned");
+ 937               		.loc 1 451 0
+ 938 0514 61E0      		ldi r22,lo8(1)
+ 939 0516 8091 0000 		lds r24,m1+4
+ 940 051a 9091 0000 		lds r25,m1+4+1
+ 941 051e 892B      		or r24,r25
+ 942 0520 01F4      		brne .L43
+ 943               	.L26:
+ 944 0522 84E0      		ldi r24,lo8(4)
+ 945 0524 90E0      		ldi r25,0
+ 946 0526 0E94 0000 		call _test_assert
+ 947               	.LVL101:
+ 948 052a 8111      		cpse r24,__zero_reg__
+ 949 052c 00C0      		rjmp .L21
+ 452:../../test/testmtx.c ****   test_assert(5, chThdGetPriority() == prio, "wrong priority level");
+ 950               		.loc 1 452 0
+ 951 052e E091 0000 		lds r30,rlist+11
+ 952 0532 F091 0000 		lds r31,rlist+11+1
+ 953 0536 61E0      		ldi r22,lo8(1)
+ 954 0538 8481      		ldd r24,Z+4
+ 955 053a 8C13      		cpse r24,r28
+ 956 053c 60E0      		ldi r22,0
+ 957               	.L27:
+ 958 053e 85E0      		ldi r24,lo8(5)
+ 959 0540 90E0      		ldi r25,0
+ 960 0542 0E94 0000 		call _test_assert
+ 961               	.LVL102:
+ 962 0546 8111      		cpse r24,__zero_reg__
+ 963 0548 00C0      		rjmp .L21
+ 454:../../test/testmtx.c ****   chMtxLock(&m1);
+ 964               		.loc 1 454 0
+ 965 054a 80E0      		ldi r24,lo8(m1)
+ 966 054c 90E0      		ldi r25,hi8(m1)
+ 967 054e 0E94 0000 		call chMtxLock
+ 968               	.LVL103:
+ 455:../../test/testmtx.c ****   chMtxUnlockAll();
+ 969               		.loc 1 455 0
+ 970 0552 0E94 0000 		call chMtxUnlockAll
+ 971               	.LVL104:
+ 456:../../test/testmtx.c ****   test_assert(6, isempty(&m1.m_queue), "queue not empty");
+ 972               		.loc 1 456 0
+ 973 0556 61E0      		ldi r22,lo8(1)
+ 974 0558 8091 0000 		lds r24,m1
+ 975 055c 9091 0000 		lds r25,m1+1
+ 976 0560 8050      		subi r24,lo8(m1)
+ 977 0562 9040      		sbci r25,hi8(m1)
+ 978 0564 01F0      		breq .L28
+ 979 0566 60E0      		ldi r22,0
+ 980               	.L28:
+ 981 0568 86E0      		ldi r24,lo8(6)
+ 982 056a 90E0      		ldi r25,0
+ 983 056c 0E94 0000 		call _test_assert
+ 984               	.LVL105:
+ 985 0570 8111      		cpse r24,__zero_reg__
+ 986 0572 00C0      		rjmp .L21
+ 457:../../test/testmtx.c ****   test_assert(7, m1.m_owner == NULL, "still owned");
+ 987               		.loc 1 457 0
+ 988 0574 61E0      		ldi r22,lo8(1)
+ 989 0576 8091 0000 		lds r24,m1+4
+ 990 057a 9091 0000 		lds r25,m1+4+1
+ 991 057e 892B      		or r24,r25
+ 992 0580 01F0      		breq .L29
+ 993 0582 60E0      		ldi r22,0
+ 994               	.L29:
+ 995 0584 87E0      		ldi r24,lo8(7)
+ 996 0586 90E0      		ldi r25,0
+ 997               	/* epilogue start */
+ 458:../../test/testmtx.c **** }
+ 998               		.loc 1 458 0
+ 999 0588 CF91      		pop r28
+ 1000               	.LVL106:
+ 457:../../test/testmtx.c ****   test_assert(7, m1.m_owner == NULL, "still owned");
+ 1001               		.loc 1 457 0
+ 1002 058a 0C94 0000 		jmp _test_assert
+ 1003               	.LVL107:
+ 1004               	.L43:
+ 451:../../test/testmtx.c ****   test_assert(4, m1.m_owner == NULL, "still owned");
+ 1005               		.loc 1 451 0
+ 1006 058e 60E0      		ldi r22,0
+ 1007 0590 00C0      		rjmp .L26
+ 1008               	.LFE27:
+ 1011               	mtx4_execute:
+ 1012               	.LFB25:
+ 365:../../test/testmtx.c **** static void mtx4_execute(void) {
+ 1013               		.loc 1 365 0
+ 1014 0592 BF92      		push r11
+ 1015               	.LCFI21:
+ 1016 0594 CF92      		push r12
+ 1017               	.LCFI22:
+ 1018 0596 DF92      		push r13
+ 1019               	.LCFI23:
+ 1020 0598 EF92      		push r14
+ 1021               	.LCFI24:
+ 1022 059a FF92      		push r15
+ 1023               	.LCFI25:
+ 1024 059c 0F93      		push r16
+ 1025               	.LCFI26:
+ 1026 059e 1F93      		push r17
+ 1027               	.LCFI27:
+ 1028 05a0 CF93      		push r28
+ 1029               	.LCFI28:
+ 1030 05a2 DF93      		push r29
+ 1031               	.LCFI29:
+ 1032               	/* prologue: function */
+ 1033               	/* frame size = 0 */
+ 1034               	/* stack size = 9 */
+ 1035               	.L__stack_usage = 9
+ 368:../../test/testmtx.c ****   p = chThdGetPriority();
+ 1036               		.loc 1 368 0
+ 1037 05a4 E091 0000 		lds r30,rlist+11
+ 1038 05a8 F091 0000 		lds r31,rlist+11+1
+ 1039 05ac D480      		ldd r13,Z+4
+ 1040               	.LVL108:
+ 369:../../test/testmtx.c ****   p1 = p + 1;
+ 1041               		.loc 1 369 0
+ 1042 05ae CD2C      		mov r12,r13
+ 1043 05b0 C394      		inc r12
+ 1044               	.LVL109:
+ 370:../../test/testmtx.c ****   p2 = p + 2;
+ 1045               		.loc 1 370 0
+ 1046 05b2 BD2C      		mov r11,r13
+ 1047 05b4 B394      		inc r11
+ 1048 05b6 B394      		inc r11
+ 1049               	.LVL110:
+ 371:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, p1, thread4a, "B");
+ 1050               		.loc 1 371 0
+ 1051 05b8 E090 0000 		lds r14,wa
+ 1052 05bc F090 0000 		lds r15,wa+1
+ 1053 05c0 00E0      		ldi r16,lo8(.LC2)
+ 1054 05c2 10E0      		ldi r17,hi8(.LC2)
+ 1055 05c4 20E0      		ldi r18,lo8(gs(thread4a))
+ 1056 05c6 30E0      		ldi r19,hi8(gs(thread4a))
+ 1057 05c8 4C2D      		mov r20,r12
+ 1058 05ca 67E9      		ldi r22,lo8(-105)
+ 1059 05cc 70E0      		ldi r23,0
+ 1060 05ce C701      		movw r24,r14
+ 1061 05d0 0E94 0000 		call chThdCreateStatic
+ 1062               	.LVL111:
+ 1063 05d4 9093 0000 		sts threads+1,r25
+ 1064 05d8 8093 0000 		sts threads,r24
+ 372:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, p2, thread4b, "A");
+ 1065               		.loc 1 372 0
+ 1066 05dc C091 0000 		lds r28,wa+2
+ 1067 05e0 D091 0000 		lds r29,wa+2+1
+ 1068 05e4 00E0      		ldi r16,lo8(.LC0)
+ 1069 05e6 10E0      		ldi r17,hi8(.LC0)
+ 1070 05e8 20E0      		ldi r18,lo8(gs(thread4b))
+ 1071 05ea 30E0      		ldi r19,hi8(gs(thread4b))
+ 1072 05ec 4B2D      		mov r20,r11
+ 1073 05ee 67E9      		ldi r22,lo8(-105)
+ 1074 05f0 70E0      		ldi r23,0
+ 1075 05f2 CE01      		movw r24,r28
+ 1076 05f4 0E94 0000 		call chThdCreateStatic
+ 1077               	.LVL112:
+ 1078 05f8 9093 0000 		sts threads+2+1,r25
+ 1079 05fc 8093 0000 		sts threads+2,r24
+ 373:../../test/testmtx.c ****   chMtxLock(&m2);
+ 1080               		.loc 1 373 0
+ 1081 0600 80E0      		ldi r24,lo8(m2)
+ 1082 0602 90E0      		ldi r25,hi8(m2)
+ 1083 0604 0E94 0000 		call chMtxLock
+ 1084               	.LVL113:
+ 374:../../test/testmtx.c ****   test_assert(1, chThdGetPriority() == p, "wrong priority level");
+ 1085               		.loc 1 374 0
+ 1086 0608 E091 0000 		lds r30,rlist+11
+ 1087 060c F091 0000 		lds r31,rlist+11+1
+ 1088 0610 61E0      		ldi r22,lo8(1)
+ 1089 0612 8481      		ldd r24,Z+4
+ 1090 0614 8D11      		cpse r24,r13
+ 1091 0616 60E0      		ldi r22,0
+ 1092               	.L45:
+ 1093 0618 81E0      		ldi r24,lo8(1)
+ 1094 061a 90E0      		ldi r25,0
+ 1095 061c 0E94 0000 		call _test_assert
+ 1096               	.LVL114:
+ 1097 0620 8823      		tst r24
+ 1098 0622 01F0      		breq .L62
+ 1099               	.L44:
+ 1100               	/* epilogue start */
+ 410:../../test/testmtx.c **** }
+ 1101               		.loc 1 410 0
+ 1102 0624 DF91      		pop r29
+ 1103 0626 CF91      		pop r28
+ 1104 0628 1F91      		pop r17
+ 1105 062a 0F91      		pop r16
+ 1106 062c FF90      		pop r15
+ 1107 062e EF90      		pop r14
+ 1108 0630 DF90      		pop r13
+ 1109               	.LVL115:
+ 1110 0632 CF90      		pop r12
+ 1111               	.LVL116:
+ 1112 0634 BF90      		pop r11
+ 1113               	.LVL117:
+ 1114 0636 0895      		ret
+ 1115               	.LVL118:
+ 1116               	.L62:
+ 375:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 1117               		.loc 1 375 0
+ 1118 0638 84E6      		ldi r24,lo8(100)
+ 1119 063a 90E0      		ldi r25,0
+ 1120 063c 0E94 0000 		call chThdSleep
+ 1121               	.LVL119:
+ 376:../../test/testmtx.c ****   test_assert(2, chThdGetPriority() == p1, "wrong priority level");
+ 1122               		.loc 1 376 0
+ 1123 0640 E091 0000 		lds r30,rlist+11
+ 1124 0644 F091 0000 		lds r31,rlist+11+1
+ 1125 0648 61E0      		ldi r22,lo8(1)
+ 1126 064a 8481      		ldd r24,Z+4
+ 1127 064c 8C11      		cpse r24,r12
+ 1128 064e 60E0      		ldi r22,0
+ 1129               	.L48:
+ 1130 0650 82E0      		ldi r24,lo8(2)
+ 1131 0652 90E0      		ldi r25,0
+ 1132 0654 0E94 0000 		call _test_assert
+ 1133               	.LVL120:
+ 1134 0658 8111      		cpse r24,__zero_reg__
+ 1135 065a 00C0      		rjmp .L44
+ 377:../../test/testmtx.c ****   chMtxLock(&m1);
+ 1136               		.loc 1 377 0
+ 1137 065c 80E0      		ldi r24,lo8(m1)
+ 1138 065e 90E0      		ldi r25,hi8(m1)
+ 1139 0660 0E94 0000 		call chMtxLock
+ 1140               	.LVL121:
+ 378:../../test/testmtx.c ****   test_assert(3, chThdGetPriority() == p1, "wrong priority level");
+ 1141               		.loc 1 378 0
+ 1142 0664 E091 0000 		lds r30,rlist+11
+ 1143 0668 F091 0000 		lds r31,rlist+11+1
+ 1144 066c 61E0      		ldi r22,lo8(1)
+ 1145 066e 8481      		ldd r24,Z+4
+ 1146 0670 8C11      		cpse r24,r12
+ 1147 0672 60E0      		ldi r22,0
+ 1148               	.L50:
+ 1149 0674 83E0      		ldi r24,lo8(3)
+ 1150 0676 90E0      		ldi r25,0
+ 1151 0678 0E94 0000 		call _test_assert
+ 1152               	.LVL122:
+ 1153 067c 8111      		cpse r24,__zero_reg__
+ 1154 067e 00C0      		rjmp .L44
+ 379:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 1155               		.loc 1 379 0
+ 1156 0680 84E6      		ldi r24,lo8(100)
+ 1157 0682 90E0      		ldi r25,0
+ 1158 0684 0E94 0000 		call chThdSleep
+ 1159               	.LVL123:
+ 380:../../test/testmtx.c ****   test_assert(4, chThdGetPriority() == p2, "wrong priority level");
+ 1160               		.loc 1 380 0
+ 1161 0688 E091 0000 		lds r30,rlist+11
+ 1162 068c F091 0000 		lds r31,rlist+11+1
+ 1163 0690 61E0      		ldi r22,lo8(1)
+ 1164 0692 8481      		ldd r24,Z+4
+ 1165 0694 8B11      		cpse r24,r11
+ 1166 0696 60E0      		ldi r22,0
+ 1167               	.L51:
+ 1168 0698 84E0      		ldi r24,lo8(4)
+ 1169 069a 90E0      		ldi r25,0
+ 1170 069c 0E94 0000 		call _test_assert
+ 1171               	.LVL124:
+ 1172 06a0 8111      		cpse r24,__zero_reg__
+ 1173 06a2 00C0      		rjmp .L44
+ 381:../../test/testmtx.c ****   chMtxUnlock();
+ 1174               		.loc 1 381 0
+ 1175 06a4 0E94 0000 		call chMtxUnlock
+ 1176               	.LVL125:
+ 382:../../test/testmtx.c ****   test_assert(5, chThdGetPriority() == p1, "wrong priority level");
+ 1177               		.loc 1 382 0
+ 1178 06a8 E091 0000 		lds r30,rlist+11
+ 1179 06ac F091 0000 		lds r31,rlist+11+1
+ 1180 06b0 61E0      		ldi r22,lo8(1)
+ 1181 06b2 8481      		ldd r24,Z+4
+ 1182 06b4 8C11      		cpse r24,r12
+ 1183 06b6 60E0      		ldi r22,0
+ 1184               	.L52:
+ 1185 06b8 85E0      		ldi r24,lo8(5)
+ 1186 06ba 90E0      		ldi r25,0
+ 1187 06bc 0E94 0000 		call _test_assert
+ 1188               	.LVL126:
+ 1189 06c0 8111      		cpse r24,__zero_reg__
+ 1190 06c2 00C0      		rjmp .L44
+ 383:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 1191               		.loc 1 383 0
+ 1192 06c4 84E6      		ldi r24,lo8(100)
+ 1193 06c6 90E0      		ldi r25,0
+ 1194 06c8 0E94 0000 		call chThdSleep
+ 1195               	.LVL127:
+ 384:../../test/testmtx.c ****   test_assert(6, chThdGetPriority() == p1, "wrong priority level");
+ 1196               		.loc 1 384 0
+ 1197 06cc E091 0000 		lds r30,rlist+11
+ 1198 06d0 F091 0000 		lds r31,rlist+11+1
+ 1199 06d4 61E0      		ldi r22,lo8(1)
+ 1200 06d6 8481      		ldd r24,Z+4
+ 1201 06d8 8C11      		cpse r24,r12
+ 1202 06da 60E0      		ldi r22,0
+ 1203               	.L53:
+ 1204 06dc 86E0      		ldi r24,lo8(6)
+ 1205 06de 90E0      		ldi r25,0
+ 1206 06e0 0E94 0000 		call _test_assert
+ 1207               	.LVL128:
+ 1208 06e4 8111      		cpse r24,__zero_reg__
+ 1209 06e6 00C0      		rjmp .L44
+ 385:../../test/testmtx.c ****   chMtxUnlockAll();
+ 1210               		.loc 1 385 0
+ 1211 06e8 0E94 0000 		call chMtxUnlockAll
+ 1212               	.LVL129:
+ 386:../../test/testmtx.c ****   test_assert(7, chThdGetPriority() == p, "wrong priority level");
+ 1213               		.loc 1 386 0
+ 1214 06ec E091 0000 		lds r30,rlist+11
+ 1215 06f0 F091 0000 		lds r31,rlist+11+1
+ 1216 06f4 61E0      		ldi r22,lo8(1)
+ 1217 06f6 8481      		ldd r24,Z+4
+ 1218 06f8 8D11      		cpse r24,r13
+ 1219 06fa 60E0      		ldi r22,0
+ 1220               	.L54:
+ 1221 06fc 87E0      		ldi r24,lo8(7)
+ 1222 06fe 90E0      		ldi r25,0
+ 1223 0700 0E94 0000 		call _test_assert
+ 1224               	.LVL130:
+ 1225 0704 8111      		cpse r24,__zero_reg__
+ 1226 0706 00C0      		rjmp .L44
+ 387:../../test/testmtx.c ****   test_wait_threads();
+ 1227               		.loc 1 387 0
+ 1228 0708 0E94 0000 		call test_wait_threads
+ 1229               	.LVL131:
+ 390:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, p1, thread4a, "D");
+ 1230               		.loc 1 390 0
+ 1231 070c 00E0      		ldi r16,lo8(.LC5)
+ 1232 070e 10E0      		ldi r17,hi8(.LC5)
+ 1233 0710 20E0      		ldi r18,lo8(gs(thread4a))
+ 1234 0712 30E0      		ldi r19,hi8(gs(thread4a))
+ 1235 0714 4C2D      		mov r20,r12
+ 1236 0716 67E9      		ldi r22,lo8(-105)
+ 1237 0718 70E0      		ldi r23,0
+ 1238 071a C701      		movw r24,r14
+ 1239 071c 0E94 0000 		call chThdCreateStatic
+ 1240               	.LVL132:
+ 1241 0720 9093 0000 		sts threads+1,r25
+ 1242 0724 8093 0000 		sts threads,r24
+ 391:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, p2, thread4b, "C");
+ 1243               		.loc 1 391 0
+ 1244 0728 00E0      		ldi r16,lo8(.LC1)
+ 1245 072a 10E0      		ldi r17,hi8(.LC1)
+ 1246 072c 20E0      		ldi r18,lo8(gs(thread4b))
+ 1247 072e 30E0      		ldi r19,hi8(gs(thread4b))
+ 1248 0730 4B2D      		mov r20,r11
+ 1249 0732 67E9      		ldi r22,lo8(-105)
+ 1250 0734 70E0      		ldi r23,0
+ 1251 0736 CE01      		movw r24,r28
+ 1252 0738 0E94 0000 		call chThdCreateStatic
+ 1253               	.LVL133:
+ 1254 073c 9093 0000 		sts threads+2+1,r25
+ 1255 0740 8093 0000 		sts threads+2,r24
+ 392:../../test/testmtx.c ****   chMtxLock(&m2);
+ 1256               		.loc 1 392 0
+ 1257 0744 80E0      		ldi r24,lo8(m2)
+ 1258 0746 90E0      		ldi r25,hi8(m2)
+ 1259 0748 0E94 0000 		call chMtxLock
+ 1260               	.LVL134:
+ 393:../../test/testmtx.c ****   test_assert(8, chThdGetPriority() == p, "wrong priority level");
+ 1261               		.loc 1 393 0
+ 1262 074c E091 0000 		lds r30,rlist+11
+ 1263 0750 F091 0000 		lds r31,rlist+11+1
+ 1264 0754 61E0      		ldi r22,lo8(1)
+ 1265 0756 8481      		ldd r24,Z+4
+ 1266 0758 8D11      		cpse r24,r13
+ 1267 075a 60E0      		ldi r22,0
+ 1268               	.L55:
+ 1269 075c 88E0      		ldi r24,lo8(8)
+ 1270 075e 90E0      		ldi r25,0
+ 1271 0760 0E94 0000 		call _test_assert
+ 1272               	.LVL135:
+ 1273 0764 8111      		cpse r24,__zero_reg__
+ 1274 0766 00C0      		rjmp .L44
+ 394:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 1275               		.loc 1 394 0
+ 1276 0768 84E6      		ldi r24,lo8(100)
+ 1277 076a 90E0      		ldi r25,0
+ 1278 076c 0E94 0000 		call chThdSleep
+ 1279               	.LVL136:
+ 395:../../test/testmtx.c ****   test_assert(9, chThdGetPriority() == p1, "wrong priority level");
+ 1280               		.loc 1 395 0
+ 1281 0770 E091 0000 		lds r30,rlist+11
+ 1282 0774 F091 0000 		lds r31,rlist+11+1
+ 1283 0778 61E0      		ldi r22,lo8(1)
+ 1284 077a 8481      		ldd r24,Z+4
+ 1285 077c 8C11      		cpse r24,r12
+ 1286 077e 60E0      		ldi r22,0
+ 1287               	.L56:
+ 1288 0780 89E0      		ldi r24,lo8(9)
+ 1289 0782 90E0      		ldi r25,0
+ 1290 0784 0E94 0000 		call _test_assert
+ 1291               	.LVL137:
+ 1292 0788 8111      		cpse r24,__zero_reg__
+ 1293 078a 00C0      		rjmp .L44
+ 396:../../test/testmtx.c ****   chMtxLock(&m1);
+ 1294               		.loc 1 396 0
+ 1295 078c 80E0      		ldi r24,lo8(m1)
+ 1296 078e 90E0      		ldi r25,hi8(m1)
+ 1297 0790 0E94 0000 		call chMtxLock
+ 1298               	.LVL138:
+ 397:../../test/testmtx.c ****   test_assert(10, chThdGetPriority() == p1, "wrong priority level");
+ 1299               		.loc 1 397 0
+ 1300 0794 E091 0000 		lds r30,rlist+11
+ 1301 0798 F091 0000 		lds r31,rlist+11+1
+ 1302 079c 61E0      		ldi r22,lo8(1)
+ 1303 079e 8481      		ldd r24,Z+4
+ 1304 07a0 8C11      		cpse r24,r12
+ 1305 07a2 60E0      		ldi r22,0
+ 1306               	.L57:
+ 1307 07a4 8AE0      		ldi r24,lo8(10)
+ 1308 07a6 90E0      		ldi r25,0
+ 1309 07a8 0E94 0000 		call _test_assert
+ 1310               	.LVL139:
+ 1311 07ac 8111      		cpse r24,__zero_reg__
+ 1312 07ae 00C0      		rjmp .L44
+ 398:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 1313               		.loc 1 398 0
+ 1314 07b0 84E6      		ldi r24,lo8(100)
+ 1315 07b2 90E0      		ldi r25,0
+ 1316 07b4 0E94 0000 		call chThdSleep
+ 1317               	.LVL140:
+ 399:../../test/testmtx.c ****   test_assert(11, chThdGetPriority() == p2, "wrong priority level");
+ 1318               		.loc 1 399 0
+ 1319 07b8 E091 0000 		lds r30,rlist+11
+ 1320 07bc F091 0000 		lds r31,rlist+11+1
+ 1321 07c0 61E0      		ldi r22,lo8(1)
+ 1322 07c2 8481      		ldd r24,Z+4
+ 1323 07c4 8B11      		cpse r24,r11
+ 1324 07c6 60E0      		ldi r22,0
+ 1325               	.L58:
+ 1326 07c8 8BE0      		ldi r24,lo8(11)
+ 1327 07ca 90E0      		ldi r25,0
+ 1328 07cc 0E94 0000 		call _test_assert
+ 1329               	.LVL141:
+ 1330 07d0 8111      		cpse r24,__zero_reg__
+ 1331 07d2 00C0      		rjmp .L44
+ 400:../../test/testmtx.c ****   chSysLock();
+ 1332               		.loc 1 400 0
+ 1333               	/* #APP */
+ 1334               	 ;  400 "../../test/testmtx.c" 1
+ 1335 07d4 F894      		cli
+ 1336               	 ;  0 "" 2
+ 401:../../test/testmtx.c ****   chMtxUnlockS();
+ 1337               		.loc 1 401 0
+ 1338               	/* #NOAPP */
+ 1339 07d6 0E94 0000 		call chMtxUnlockS
+ 1340               	.LVL142:
+ 402:../../test/testmtx.c ****   chSchRescheduleS();
+ 1341               		.loc 1 402 0
+ 1342 07da 0E94 0000 		call chSchRescheduleS
+ 1343               	.LVL143:
+ 403:../../test/testmtx.c ****   chSysUnlock();
+ 1344               		.loc 1 403 0
+ 1345               	/* #APP */
+ 1346               	 ;  403 "../../test/testmtx.c" 1
+ 1347 07de 7894      		sei
+ 1348               	 ;  0 "" 2
+ 404:../../test/testmtx.c ****   test_assert(12, chThdGetPriority() == p1, "wrong priority level");
+ 1349               		.loc 1 404 0
+ 1350               	/* #NOAPP */
+ 1351 07e0 E091 0000 		lds r30,rlist+11
+ 1352 07e4 F091 0000 		lds r31,rlist+11+1
+ 1353 07e8 61E0      		ldi r22,lo8(1)
+ 1354 07ea 8481      		ldd r24,Z+4
+ 1355 07ec 8C11      		cpse r24,r12
+ 1356 07ee 60E0      		ldi r22,0
+ 1357               	.L59:
+ 1358 07f0 8CE0      		ldi r24,lo8(12)
+ 1359 07f2 90E0      		ldi r25,0
+ 1360 07f4 0E94 0000 		call _test_assert
+ 1361               	.LVL144:
+ 1362 07f8 8111      		cpse r24,__zero_reg__
+ 1363 07fa 00C0      		rjmp .L44
+ 405:../../test/testmtx.c ****   chThdSleepMilliseconds(100);
+ 1364               		.loc 1 405 0
+ 1365 07fc 84E6      		ldi r24,lo8(100)
+ 1366 07fe 90E0      		ldi r25,0
+ 1367 0800 0E94 0000 		call chThdSleep
+ 1368               	.LVL145:
+ 406:../../test/testmtx.c ****   test_assert(13, chThdGetPriority() == p1, "wrong priority level");
+ 1369               		.loc 1 406 0
+ 1370 0804 E091 0000 		lds r30,rlist+11
+ 1371 0808 F091 0000 		lds r31,rlist+11+1
+ 1372 080c 61E0      		ldi r22,lo8(1)
+ 1373 080e 8481      		ldd r24,Z+4
+ 1374 0810 8C11      		cpse r24,r12
+ 1375 0812 60E0      		ldi r22,0
+ 1376               	.L60:
+ 1377 0814 8DE0      		ldi r24,lo8(13)
+ 1378 0816 90E0      		ldi r25,0
+ 1379 0818 0E94 0000 		call _test_assert
+ 1380               	.LVL146:
+ 1381 081c 8111      		cpse r24,__zero_reg__
+ 1382 081e 00C0      		rjmp .L44
+ 407:../../test/testmtx.c ****   chMtxUnlockAll();
+ 1383               		.loc 1 407 0
+ 1384 0820 0E94 0000 		call chMtxUnlockAll
+ 1385               	.LVL147:
+ 408:../../test/testmtx.c ****   test_assert(14, chThdGetPriority() == p, "wrong priority level");
+ 1386               		.loc 1 408 0
+ 1387 0824 E091 0000 		lds r30,rlist+11
+ 1388 0828 F091 0000 		lds r31,rlist+11+1
+ 1389 082c 61E0      		ldi r22,lo8(1)
+ 1390 082e 8481      		ldd r24,Z+4
+ 1391 0830 8D11      		cpse r24,r13
+ 1392 0832 60E0      		ldi r22,0
+ 1393               	.L61:
+ 1394 0834 8EE0      		ldi r24,lo8(14)
+ 1395 0836 90E0      		ldi r25,0
+ 1396 0838 0E94 0000 		call _test_assert
+ 1397               	.LVL148:
+ 1398 083c 8111      		cpse r24,__zero_reg__
+ 1399 083e 00C0      		rjmp .L44
+ 1400               	/* epilogue start */
+ 410:../../test/testmtx.c **** }
+ 1401               		.loc 1 410 0
+ 1402 0840 DF91      		pop r29
+ 1403 0842 CF91      		pop r28
+ 1404 0844 1F91      		pop r17
+ 1405 0846 0F91      		pop r16
+ 1406 0848 FF90      		pop r15
+ 1407 084a EF90      		pop r14
+ 1408 084c DF90      		pop r13
+ 1409               	.LVL149:
+ 1410 084e CF90      		pop r12
+ 1411               	.LVL150:
+ 1412 0850 BF90      		pop r11
+ 1413               	.LVL151:
+ 409:../../test/testmtx.c ****   test_wait_threads();
+ 1414               		.loc 1 409 0
+ 1415 0852 0C94 0000 		jmp test_wait_threads
+ 1416               	.LVL152:
+ 1417               	.LFE25:
+ 1420               	thread4b:
+ 1421               	.LFB24:
+ 356:../../test/testmtx.c **** static msg_t thread4b(void *p) {
+ 1422               		.loc 1 356 0
+ 1423               	.LVL153:
+ 1424               	/* prologue: function */
+ 1425               	/* frame size = 0 */
+ 1426               	/* stack size = 0 */
+ 1427               	.L__stack_usage = 0
+ 359:../../test/testmtx.c ****   chThdSleepMilliseconds(150);
+ 1428               		.loc 1 359 0
+ 1429 0856 86E9      		ldi r24,lo8(-106)
+ 1430 0858 90E0      		ldi r25,0
+ 1431               	.LVL154:
+ 1432 085a 0E94 0000 		call chThdSleep
+ 1433               	.LVL155:
+ 360:../../test/testmtx.c ****   chMtxLock(&m1);
+ 1434               		.loc 1 360 0
+ 1435 085e 80E0      		ldi r24,lo8(m1)
+ 1436 0860 90E0      		ldi r25,hi8(m1)
+ 1437 0862 0E94 0000 		call chMtxLock
+ 1438               	.LVL156:
+ 361:../../test/testmtx.c ****   chMtxUnlock();
+ 1439               		.loc 1 361 0
+ 1440 0866 0E94 0000 		call chMtxUnlock
+ 1441               	.LVL157:
+ 363:../../test/testmtx.c **** }
+ 1442               		.loc 1 363 0
+ 1443 086a 80E0      		ldi r24,0
+ 1444 086c 90E0      		ldi r25,0
+ 1445 086e 0895      		ret
+ 1446               	.LFE24:
+ 1449               	thread4a:
+ 1450               	.LFB23:
+ 347:../../test/testmtx.c **** static msg_t thread4a(void *p) {
+ 1451               		.loc 1 347 0
+ 1452               	.LVL158:
+ 1453               	/* prologue: function */
+ 1454               	/* frame size = 0 */
+ 1455               	/* stack size = 0 */
+ 1456               	.L__stack_usage = 0
+ 350:../../test/testmtx.c ****   chThdSleepMilliseconds(50);
+ 1457               		.loc 1 350 0
+ 1458 0870 82E3      		ldi r24,lo8(50)
+ 1459 0872 90E0      		ldi r25,0
+ 1460               	.LVL159:
+ 1461 0874 0E94 0000 		call chThdSleep
+ 1462               	.LVL160:
+ 351:../../test/testmtx.c ****   chMtxLock(&m2);
+ 1463               		.loc 1 351 0
+ 1464 0878 80E0      		ldi r24,lo8(m2)
+ 1465 087a 90E0      		ldi r25,hi8(m2)
+ 1466 087c 0E94 0000 		call chMtxLock
+ 1467               	.LVL161:
+ 352:../../test/testmtx.c ****   chMtxUnlock();
+ 1468               		.loc 1 352 0
+ 1469 0880 0E94 0000 		call chMtxUnlock
+ 1470               	.LVL162:
+ 354:../../test/testmtx.c **** }
+ 1471               		.loc 1 354 0
+ 1472 0884 80E0      		ldi r24,0
+ 1473 0886 90E0      		ldi r25,0
+ 1474 0888 0895      		ret
+ 1475               	.LFE23:
+ 1478               	mtx3_execute:
+ 1479               	.LFB21:
+ 308:../../test/testmtx.c **** static void mtx3_execute(void) {
+ 1480               		.loc 1 308 0
+ 1481 088a 0F93      		push r16
+ 1482               	.LCFI30:
+ 1483 088c 1F93      		push r17
+ 1484               	.LCFI31:
+ 1485 088e CF93      		push r28
+ 1486               	.LCFI32:
+ 1487 0890 DF93      		push r29
+ 1488               	.LCFI33:
+ 1489               	/* prologue: function */
+ 1490               	/* frame size = 0 */
+ 1491               	/* stack size = 4 */
+ 1492               	.L__stack_usage = 4
+ 311:../../test/testmtx.c ****   test_wait_tick();
+ 1493               		.loc 1 311 0
+ 1494 0892 0E94 0000 		call test_wait_tick
+ 1495               	.LVL163:
+ 312:../../test/testmtx.c ****   time = chTimeNow();
+ 1496               		.loc 1 312 0
+ 1497 0896 C091 0000 		lds r28,vtlist+6
+ 1498 089a D091 0000 		lds r29,vtlist+6+1
+ 1499               	.LVL164:
+ 313:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread3LL, 0);
+ 1500               		.loc 1 313 0
+ 1501 089e E091 0000 		lds r30,rlist+11
+ 1502 08a2 F091 0000 		lds r31,rlist+11+1
+ 1503 08a6 4481      		ldd r20,Z+4
+ 1504 08a8 4550      		subi r20,lo8(-(-5))
+ 1505 08aa 00E0      		ldi r16,0
+ 1506 08ac 10E0      		ldi r17,0
+ 1507 08ae 20E0      		ldi r18,lo8(gs(thread3LL))
+ 1508 08b0 30E0      		ldi r19,hi8(gs(thread3LL))
+ 1509 08b2 67E9      		ldi r22,lo8(-105)
+ 1510 08b4 70E0      		ldi r23,0
+ 1511 08b6 8091 0000 		lds r24,wa
+ 1512 08ba 9091 0000 		lds r25,wa+1
+ 1513 08be 0E94 0000 		call chThdCreateStatic
+ 1514               	.LVL165:
+ 1515 08c2 9093 0000 		sts threads+1,r25
+ 1516 08c6 8093 0000 		sts threads,r24
+ 314:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread3L, 0);
+ 1517               		.loc 1 314 0
+ 1518 08ca E091 0000 		lds r30,rlist+11
+ 1519 08ce F091 0000 		lds r31,rlist+11+1
+ 1520 08d2 4481      		ldd r20,Z+4
+ 1521 08d4 4450      		subi r20,lo8(-(-4))
+ 1522 08d6 20E0      		ldi r18,lo8(gs(thread3L))
+ 1523 08d8 30E0      		ldi r19,hi8(gs(thread3L))
+ 1524 08da 67E9      		ldi r22,lo8(-105)
+ 1525 08dc 70E0      		ldi r23,0
+ 1526 08de 8091 0000 		lds r24,wa+2
+ 1527 08e2 9091 0000 		lds r25,wa+2+1
+ 1528 08e6 0E94 0000 		call chThdCreateStatic
+ 1529               	.LVL166:
+ 1530 08ea 9093 0000 		sts threads+2+1,r25
+ 1531 08ee 8093 0000 		sts threads+2,r24
+ 315:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread3M, 0);
+ 1532               		.loc 1 315 0
+ 1533 08f2 E091 0000 		lds r30,rlist+11
+ 1534 08f6 F091 0000 		lds r31,rlist+11+1
+ 1535 08fa 4481      		ldd r20,Z+4
+ 1536 08fc 4350      		subi r20,lo8(-(-3))
+ 1537 08fe 20E0      		ldi r18,lo8(gs(thread3M))
+ 1538 0900 30E0      		ldi r19,hi8(gs(thread3M))
+ 1539 0902 67E9      		ldi r22,lo8(-105)
+ 1540 0904 70E0      		ldi r23,0
+ 1541 0906 8091 0000 		lds r24,wa+4
+ 1542 090a 9091 0000 		lds r25,wa+4+1
+ 1543 090e 0E94 0000 		call chThdCreateStatic
+ 1544               	.LVL167:
+ 1545 0912 9093 0000 		sts threads+4+1,r25
+ 1546 0916 8093 0000 		sts threads+4,r24
+ 316:../../test/testmtx.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread3H, 0);
+ 1547               		.loc 1 316 0
+ 1548 091a E091 0000 		lds r30,rlist+11
+ 1549 091e F091 0000 		lds r31,rlist+11+1
+ 1550 0922 4481      		ldd r20,Z+4
+ 1551 0924 4250      		subi r20,lo8(-(-2))
+ 1552 0926 20E0      		ldi r18,lo8(gs(thread3H))
+ 1553 0928 30E0      		ldi r19,hi8(gs(thread3H))
+ 1554 092a 67E9      		ldi r22,lo8(-105)
+ 1555 092c 70E0      		ldi r23,0
+ 1556 092e 8091 0000 		lds r24,wa+6
+ 1557 0932 9091 0000 		lds r25,wa+6+1
+ 1558 0936 0E94 0000 		call chThdCreateStatic
+ 1559               	.LVL168:
+ 1560 093a 9093 0000 		sts threads+6+1,r25
+ 1561 093e 8093 0000 		sts threads+6,r24
+ 317:../../test/testmtx.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread3HH, 0);
+ 1562               		.loc 1 317 0
+ 1563 0942 E091 0000 		lds r30,rlist+11
+ 1564 0946 F091 0000 		lds r31,rlist+11+1
+ 1565 094a 4481      		ldd r20,Z+4
+ 1566 094c 4150      		subi r20,lo8(-(-1))
+ 1567 094e 20E0      		ldi r18,lo8(gs(thread3HH))
+ 1568 0950 30E0      		ldi r19,hi8(gs(thread3HH))
+ 1569 0952 67E9      		ldi r22,lo8(-105)
+ 1570 0954 70E0      		ldi r23,0
+ 1571 0956 8091 0000 		lds r24,wa+8
+ 1572 095a 9091 0000 		lds r25,wa+8+1
+ 1573 095e 0E94 0000 		call chThdCreateStatic
+ 1574               	.LVL169:
+ 1575 0962 9093 0000 		sts threads+8+1,r25
+ 1576 0966 8093 0000 		sts threads+8,r24
+ 318:../../test/testmtx.c ****   test_wait_threads();
+ 1577               		.loc 1 318 0
+ 1578 096a 0E94 0000 		call test_wait_threads
+ 1579               	.LVL170:
+ 319:../../test/testmtx.c ****   test_assert_sequence(1, "ABCDE");
+ 1580               		.loc 1 319 0
+ 1581 096e 60E0      		ldi r22,lo8(.LC6)
+ 1582 0970 70E0      		ldi r23,hi8(.LC6)
+ 1583 0972 81E0      		ldi r24,lo8(1)
+ 1584 0974 90E0      		ldi r25,0
+ 1585 0976 0E94 0000 		call _test_assert_sequence
+ 1586               	.LVL171:
+ 1587 097a 8823      		tst r24
+ 1588 097c 01F0      		breq .L67
+ 1589               	/* epilogue start */
+ 321:../../test/testmtx.c **** }
+ 1590               		.loc 1 321 0
+ 1591 097e DF91      		pop r29
+ 1592 0980 CF91      		pop r28
+ 1593               	.LVL172:
+ 1594 0982 1F91      		pop r17
+ 1595 0984 0F91      		pop r16
+ 1596 0986 0895      		ret
+ 1597               	.LVL173:
+ 1598               	.L67:
+ 320:../../test/testmtx.c ****   test_assert_time_window(2, time + MS2ST(110), time + MS2ST(110) + ALLOWED_DELAY);
+ 1599               		.loc 1 320 0
+ 1600 0988 AE01      		movw r20,r28
+ 1601 098a 4D58      		subi r20,-115
+ 1602 098c 5F4F      		sbci r21,-1
+ 1603 098e BE01      		movw r22,r28
+ 1604 0990 6259      		subi r22,-110
+ 1605 0992 7F4F      		sbci r23,-1
+ 1606 0994 82E0      		ldi r24,lo8(2)
+ 1607 0996 90E0      		ldi r25,0
+ 1608               	/* epilogue start */
+ 321:../../test/testmtx.c **** }
+ 1609               		.loc 1 321 0
+ 1610 0998 DF91      		pop r29
+ 1611 099a CF91      		pop r28
+ 1612               	.LVL174:
+ 1613 099c 1F91      		pop r17
+ 1614 099e 0F91      		pop r16
+ 320:../../test/testmtx.c ****   test_assert_time_window(2, time + MS2ST(110), time + MS2ST(110) + ALLOWED_DELAY);
+ 1615               		.loc 1 320 0
+ 1616 09a0 0C94 0000 		jmp _test_assert_time_window
+ 1617               	.LVL175:
+ 1618               	.LFE21:
+ 1621               	mtx2_execute:
+ 1622               	.LFB14:
+ 190:../../test/testmtx.c **** static void mtx2_execute(void) {
+ 1623               		.loc 1 190 0
+ 1624 09a4 0F93      		push r16
+ 1625               	.LCFI34:
+ 1626 09a6 1F93      		push r17
+ 1627               	.LCFI35:
+ 1628 09a8 CF93      		push r28
+ 1629               	.LCFI36:
+ 1630 09aa DF93      		push r29
+ 1631               	.LCFI37:
+ 1632               	/* prologue: function */
+ 1633               	/* frame size = 0 */
+ 1634               	/* stack size = 4 */
+ 1635               	.L__stack_usage = 4
+ 193:../../test/testmtx.c ****   test_wait_tick();
+ 1636               		.loc 1 193 0
+ 1637 09ac 0E94 0000 		call test_wait_tick
+ 1638               	.LVL176:
+ 194:../../test/testmtx.c ****   time = chTimeNow();
+ 1639               		.loc 1 194 0
+ 1640 09b0 C091 0000 		lds r28,vtlist+6
+ 1641 09b4 D091 0000 		lds r29,vtlist+6+1
+ 1642               	.LVL177:
+ 195:../../test/testmtx.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread2H, 0);
+ 1643               		.loc 1 195 0
+ 1644 09b8 E091 0000 		lds r30,rlist+11
+ 1645 09bc F091 0000 		lds r31,rlist+11+1
+ 1646 09c0 4481      		ldd r20,Z+4
+ 1647 09c2 4150      		subi r20,lo8(-(-1))
+ 1648 09c4 00E0      		ldi r16,0
+ 1649 09c6 10E0      		ldi r17,0
+ 1650 09c8 20E0      		ldi r18,lo8(gs(thread2H))
+ 1651 09ca 30E0      		ldi r19,hi8(gs(thread2H))
+ 1652 09cc 67E9      		ldi r22,lo8(-105)
+ 1653 09ce 70E0      		ldi r23,0
+ 1654 09d0 8091 0000 		lds r24,wa
+ 1655 09d4 9091 0000 		lds r25,wa+1
+ 1656 09d8 0E94 0000 		call chThdCreateStatic
+ 1657               	.LVL178:
+ 1658 09dc 9093 0000 		sts threads+1,r25
+ 1659 09e0 8093 0000 		sts threads,r24
+ 196:../../test/testmtx.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-2, thread2M, 0);
+ 1660               		.loc 1 196 0
+ 1661 09e4 E091 0000 		lds r30,rlist+11
+ 1662 09e8 F091 0000 		lds r31,rlist+11+1
+ 1663 09ec 4481      		ldd r20,Z+4
+ 1664 09ee 4250      		subi r20,lo8(-(-2))
+ 1665 09f0 20E0      		ldi r18,lo8(gs(thread2M))
+ 1666 09f2 30E0      		ldi r19,hi8(gs(thread2M))
+ 1667 09f4 67E9      		ldi r22,lo8(-105)
+ 1668 09f6 70E0      		ldi r23,0
+ 1669 09f8 8091 0000 		lds r24,wa+2
+ 1670 09fc 9091 0000 		lds r25,wa+2+1
+ 1671 0a00 0E94 0000 		call chThdCreateStatic
+ 1672               	.LVL179:
+ 1673 0a04 9093 0000 		sts threads+2+1,r25
+ 1674 0a08 8093 0000 		sts threads+2,r24
+ 197:../../test/testmtx.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread2L, 0);
+ 1675               		.loc 1 197 0
+ 1676 0a0c E091 0000 		lds r30,rlist+11
+ 1677 0a10 F091 0000 		lds r31,rlist+11+1
+ 1678 0a14 4481      		ldd r20,Z+4
+ 1679 0a16 4350      		subi r20,lo8(-(-3))
+ 1680 0a18 20E0      		ldi r18,lo8(gs(thread2L))
+ 1681 0a1a 30E0      		ldi r19,hi8(gs(thread2L))
+ 1682 0a1c 67E9      		ldi r22,lo8(-105)
+ 1683 0a1e 70E0      		ldi r23,0
+ 1684 0a20 8091 0000 		lds r24,wa+4
+ 1685 0a24 9091 0000 		lds r25,wa+4+1
+ 1686 0a28 0E94 0000 		call chThdCreateStatic
+ 1687               	.LVL180:
+ 1688 0a2c 9093 0000 		sts threads+4+1,r25
+ 1689 0a30 8093 0000 		sts threads+4,r24
+ 198:../../test/testmtx.c ****   test_wait_threads();
+ 1690               		.loc 1 198 0
+ 1691 0a34 0E94 0000 		call test_wait_threads
+ 1692               	.LVL181:
+ 199:../../test/testmtx.c ****   test_assert_sequence(1, "ABC");
+ 1693               		.loc 1 199 0
+ 1694 0a38 60E0      		ldi r22,lo8(.LC3)
+ 1695 0a3a 70E0      		ldi r23,hi8(.LC3)
+ 1696 0a3c 81E0      		ldi r24,lo8(1)
+ 1697 0a3e 90E0      		ldi r25,0
+ 1698 0a40 0E94 0000 		call _test_assert_sequence
+ 1699               	.LVL182:
+ 1700 0a44 8823      		tst r24
+ 1701 0a46 01F0      		breq .L70
+ 1702               	/* epilogue start */
+ 201:../../test/testmtx.c **** }
+ 1703               		.loc 1 201 0
+ 1704 0a48 DF91      		pop r29
+ 1705 0a4a CF91      		pop r28
+ 1706               	.LVL183:
+ 1707 0a4c 1F91      		pop r17
+ 1708 0a4e 0F91      		pop r16
+ 1709 0a50 0895      		ret
+ 1710               	.LVL184:
+ 1711               	.L70:
+ 200:../../test/testmtx.c ****   test_assert_time_window(2, time + MS2ST(100), time + MS2ST(100) + ALLOWED_DELAY);
+ 1712               		.loc 1 200 0
+ 1713 0a52 AE01      		movw r20,r28
+ 1714 0a54 4759      		subi r20,-105
+ 1715 0a56 5F4F      		sbci r21,-1
+ 1716 0a58 BE01      		movw r22,r28
+ 1717 0a5a 6C59      		subi r22,-100
+ 1718 0a5c 7F4F      		sbci r23,-1
+ 1719 0a5e 82E0      		ldi r24,lo8(2)
+ 1720 0a60 90E0      		ldi r25,0
+ 1721               	/* epilogue start */
+ 201:../../test/testmtx.c **** }
+ 1722               		.loc 1 201 0
+ 1723 0a62 DF91      		pop r29
+ 1724 0a64 CF91      		pop r28
+ 1725               	.LVL185:
+ 1726 0a66 1F91      		pop r17
+ 1727 0a68 0F91      		pop r16
+ 200:../../test/testmtx.c ****   test_assert_time_window(2, time + MS2ST(100), time + MS2ST(100) + ALLOWED_DELAY);
+ 1728               		.loc 1 200 0
+ 1729 0a6a 0C94 0000 		jmp _test_assert_time_window
+ 1730               	.LVL186:
+ 1731               	.LFE14:
+ 1734               	thread3HH:
+ 1735               	.LFB20:
+ 297:../../test/testmtx.c **** static msg_t thread3HH(void *p) {
+ 1736               		.loc 1 297 0
+ 1737               	.LVL187:
+ 1738               	/* prologue: function */
+ 1739               	/* frame size = 0 */
+ 1740               	/* stack size = 0 */
+ 1741               	.L__stack_usage = 0
+ 300:../../test/testmtx.c ****   chThdSleepMilliseconds(50);
+ 1742               		.loc 1 300 0
+ 1743 0a6e 82E3      		ldi r24,lo8(50)
+ 1744 0a70 90E0      		ldi r25,0
+ 1745               	.LVL188:
+ 1746 0a72 0E94 0000 		call chThdSleep
+ 1747               	.LVL189:
+ 301:../../test/testmtx.c ****   chMtxLock(&m2);
+ 1748               		.loc 1 301 0
+ 1749 0a76 80E0      		ldi r24,lo8(m2)
+ 1750 0a78 90E0      		ldi r25,hi8(m2)
+ 1751 0a7a 0E94 0000 		call chMtxLock
+ 1752               	.LVL190:
+ 302:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 1753               		.loc 1 302 0
+ 1754 0a7e 8AE0      		ldi r24,lo8(10)
+ 1755 0a80 90E0      		ldi r25,0
+ 1756 0a82 0E94 0000 		call test_cpu_pulse
+ 1757               	.LVL191:
+ 303:../../test/testmtx.c ****   chMtxUnlock();
+ 1758               		.loc 1 303 0
+ 1759 0a86 0E94 0000 		call chMtxUnlock
+ 1760               	.LVL192:
+ 304:../../test/testmtx.c ****   test_emit_token('A');
+ 1761               		.loc 1 304 0
+ 1762 0a8a 81E4      		ldi r24,lo8(65)
+ 1763 0a8c 0E94 0000 		call test_emit_token
+ 1764               	.LVL193:
+ 306:../../test/testmtx.c **** }
+ 1765               		.loc 1 306 0
+ 1766 0a90 80E0      		ldi r24,0
+ 1767 0a92 90E0      		ldi r25,0
+ 1768 0a94 0895      		ret
+ 1769               	.LFE20:
+ 1772               	thread3H:
+ 1773               	.LFB19:
+ 287:../../test/testmtx.c **** static msg_t thread3H(void *p) {
+ 1774               		.loc 1 287 0
+ 1775               	.LVL194:
+ 1776               	/* prologue: function */
+ 1777               	/* frame size = 0 */
+ 1778               	/* stack size = 0 */
+ 1779               	.L__stack_usage = 0
+ 290:../../test/testmtx.c ****   chThdSleepMilliseconds(40);
+ 1780               		.loc 1 290 0
+ 1781 0a96 88E2      		ldi r24,lo8(40)
+ 1782 0a98 90E0      		ldi r25,0
+ 1783               	.LVL195:
+ 1784 0a9a 0E94 0000 		call chThdSleep
+ 1785               	.LVL196:
+ 291:../../test/testmtx.c ****   test_cpu_pulse(20);
+ 1786               		.loc 1 291 0
+ 1787 0a9e 84E1      		ldi r24,lo8(20)
+ 1788 0aa0 90E0      		ldi r25,0
+ 1789 0aa2 0E94 0000 		call test_cpu_pulse
+ 1790               	.LVL197:
+ 292:../../test/testmtx.c ****   test_emit_token('B');
+ 1791               		.loc 1 292 0
+ 1792 0aa6 82E4      		ldi r24,lo8(66)
+ 1793 0aa8 0E94 0000 		call test_emit_token
+ 1794               	.LVL198:
+ 294:../../test/testmtx.c **** }
+ 1795               		.loc 1 294 0
+ 1796 0aac 80E0      		ldi r24,0
+ 1797 0aae 90E0      		ldi r25,0
+ 1798 0ab0 0895      		ret
+ 1799               	.LFE19:
+ 1802               	thread3M:
+ 1803               	.LFB18:
+ 275:../../test/testmtx.c **** static msg_t thread3M(void *p) {
+ 1804               		.loc 1 275 0
+ 1805               	.LVL199:
+ 1806               	/* prologue: function */
+ 1807               	/* frame size = 0 */
+ 1808               	/* stack size = 0 */
+ 1809               	.L__stack_usage = 0
+ 278:../../test/testmtx.c ****   chThdSleepMilliseconds(20);
+ 1810               		.loc 1 278 0
+ 1811 0ab2 84E1      		ldi r24,lo8(20)
+ 1812 0ab4 90E0      		ldi r25,0
+ 1813               	.LVL200:
+ 1814 0ab6 0E94 0000 		call chThdSleep
+ 1815               	.LVL201:
+ 279:../../test/testmtx.c ****   chMtxLock(&m2);
+ 1816               		.loc 1 279 0
+ 1817 0aba 80E0      		ldi r24,lo8(m2)
+ 1818 0abc 90E0      		ldi r25,hi8(m2)
+ 1819 0abe 0E94 0000 		call chMtxLock
+ 1820               	.LVL202:
+ 280:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 1821               		.loc 1 280 0
+ 1822 0ac2 8AE0      		ldi r24,lo8(10)
+ 1823 0ac4 90E0      		ldi r25,0
+ 1824 0ac6 0E94 0000 		call test_cpu_pulse
+ 1825               	.LVL203:
+ 281:../../test/testmtx.c ****   chMtxUnlock();
+ 1826               		.loc 1 281 0
+ 1827 0aca 0E94 0000 		call chMtxUnlock
+ 1828               	.LVL204:
+ 282:../../test/testmtx.c ****   test_emit_token('C');
+ 1829               		.loc 1 282 0
+ 1830 0ace 83E4      		ldi r24,lo8(67)
+ 1831 0ad0 0E94 0000 		call test_emit_token
+ 1832               	.LVL205:
+ 284:../../test/testmtx.c **** }
+ 1833               		.loc 1 284 0
+ 1834 0ad4 80E0      		ldi r24,0
+ 1835 0ad6 90E0      		ldi r25,0
+ 1836 0ad8 0895      		ret
+ 1837               	.LFE18:
+ 1840               	thread3L:
+ 1841               	.LFB17:
+ 259:../../test/testmtx.c **** static msg_t thread3L(void *p) {
+ 1842               		.loc 1 259 0
+ 1843               	.LVL206:
+ 1844               	/* prologue: function */
+ 1845               	/* frame size = 0 */
+ 1846               	/* stack size = 0 */
+ 1847               	.L__stack_usage = 0
+ 262:../../test/testmtx.c ****   chThdSleepMilliseconds(10);
+ 1848               		.loc 1 262 0
+ 1849 0ada 8AE0      		ldi r24,lo8(10)
+ 1850 0adc 90E0      		ldi r25,0
+ 1851               	.LVL207:
+ 1852 0ade 0E94 0000 		call chThdSleep
+ 1853               	.LVL208:
+ 263:../../test/testmtx.c ****   chMtxLock(&m2);
+ 1854               		.loc 1 263 0
+ 1855 0ae2 80E0      		ldi r24,lo8(m2)
+ 1856 0ae4 90E0      		ldi r25,hi8(m2)
+ 1857 0ae6 0E94 0000 		call chMtxLock
+ 1858               	.LVL209:
+ 264:../../test/testmtx.c ****   test_cpu_pulse(20);
+ 1859               		.loc 1 264 0
+ 1860 0aea 84E1      		ldi r24,lo8(20)
+ 1861 0aec 90E0      		ldi r25,0
+ 1862 0aee 0E94 0000 		call test_cpu_pulse
+ 1863               	.LVL210:
+ 265:../../test/testmtx.c ****   chMtxLock(&m1);
+ 1864               		.loc 1 265 0
+ 1865 0af2 80E0      		ldi r24,lo8(m1)
+ 1866 0af4 90E0      		ldi r25,hi8(m1)
+ 1867 0af6 0E94 0000 		call chMtxLock
+ 1868               	.LVL211:
+ 266:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 1869               		.loc 1 266 0
+ 1870 0afa 8AE0      		ldi r24,lo8(10)
+ 1871 0afc 90E0      		ldi r25,0
+ 1872 0afe 0E94 0000 		call test_cpu_pulse
+ 1873               	.LVL212:
+ 267:../../test/testmtx.c ****   chMtxUnlock();
+ 1874               		.loc 1 267 0
+ 1875 0b02 0E94 0000 		call chMtxUnlock
+ 1876               	.LVL213:
+ 268:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 1877               		.loc 1 268 0
+ 1878 0b06 8AE0      		ldi r24,lo8(10)
+ 1879 0b08 90E0      		ldi r25,0
+ 1880 0b0a 0E94 0000 		call test_cpu_pulse
+ 1881               	.LVL214:
+ 269:../../test/testmtx.c ****   chMtxUnlock();
+ 1882               		.loc 1 269 0
+ 1883 0b0e 0E94 0000 		call chMtxUnlock
+ 1884               	.LVL215:
+ 270:../../test/testmtx.c ****   test_emit_token('D');
+ 1885               		.loc 1 270 0
+ 1886 0b12 84E4      		ldi r24,lo8(68)
+ 1887 0b14 0E94 0000 		call test_emit_token
+ 1888               	.LVL216:
+ 272:../../test/testmtx.c **** }
+ 1889               		.loc 1 272 0
+ 1890 0b18 80E0      		ldi r24,0
+ 1891 0b1a 90E0      		ldi r25,0
+ 1892 0b1c 0895      		ret
+ 1893               	.LFE17:
+ 1896               	thread3LL:
+ 1897               	.LFB16:
+ 248:../../test/testmtx.c **** static msg_t thread3LL(void *p) {
+ 1898               		.loc 1 248 0
+ 1899               	.LVL217:
+ 1900               	/* prologue: function */
+ 1901               	/* frame size = 0 */
+ 1902               	/* stack size = 0 */
+ 1903               	.L__stack_usage = 0
+ 251:../../test/testmtx.c ****   chMtxLock(&m1);
+ 1904               		.loc 1 251 0
+ 1905 0b1e 80E0      		ldi r24,lo8(m1)
+ 1906 0b20 90E0      		ldi r25,hi8(m1)
+ 1907               	.LVL218:
+ 1908 0b22 0E94 0000 		call chMtxLock
+ 1909               	.LVL219:
+ 252:../../test/testmtx.c ****   test_cpu_pulse(30);
+ 1910               		.loc 1 252 0
+ 1911 0b26 8EE1      		ldi r24,lo8(30)
+ 1912 0b28 90E0      		ldi r25,0
+ 1913 0b2a 0E94 0000 		call test_cpu_pulse
+ 1914               	.LVL220:
+ 253:../../test/testmtx.c ****   chMtxUnlock();
+ 1915               		.loc 1 253 0
+ 1916 0b2e 0E94 0000 		call chMtxUnlock
+ 1917               	.LVL221:
+ 254:../../test/testmtx.c ****   test_emit_token('E');
+ 1918               		.loc 1 254 0
+ 1919 0b32 85E4      		ldi r24,lo8(69)
+ 1920 0b34 0E94 0000 		call test_emit_token
+ 1921               	.LVL222:
+ 256:../../test/testmtx.c **** }
+ 1922               		.loc 1 256 0
+ 1923 0b38 80E0      		ldi r24,0
+ 1924 0b3a 90E0      		ldi r25,0
+ 1925 0b3c 0895      		ret
+ 1926               	.LFE16:
+ 1929               	thread2L:
+ 1930               	.LFB11:
+ 157:../../test/testmtx.c **** static msg_t thread2L(void *p) {
+ 1931               		.loc 1 157 0
+ 1932               	.LVL223:
+ 1933               	/* prologue: function */
+ 1934               	/* frame size = 0 */
+ 1935               	/* stack size = 0 */
+ 1936               	.L__stack_usage = 0
+ 160:../../test/testmtx.c ****   chMtxLock(&m1);
+ 1937               		.loc 1 160 0
+ 1938 0b3e 80E0      		ldi r24,lo8(m1)
+ 1939 0b40 90E0      		ldi r25,hi8(m1)
+ 1940               	.LVL224:
+ 1941 0b42 0E94 0000 		call chMtxLock
+ 1942               	.LVL225:
+ 161:../../test/testmtx.c ****   test_cpu_pulse(40);
+ 1943               		.loc 1 161 0
+ 1944 0b46 88E2      		ldi r24,lo8(40)
+ 1945 0b48 90E0      		ldi r25,0
+ 1946 0b4a 0E94 0000 		call test_cpu_pulse
+ 1947               	.LVL226:
+ 162:../../test/testmtx.c ****   chMtxUnlock();
+ 1948               		.loc 1 162 0
+ 1949 0b4e 0E94 0000 		call chMtxUnlock
+ 1950               	.LVL227:
+ 163:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 1951               		.loc 1 163 0
+ 1952 0b52 8AE0      		ldi r24,lo8(10)
+ 1953 0b54 90E0      		ldi r25,0
+ 1954 0b56 0E94 0000 		call test_cpu_pulse
+ 1955               	.LVL228:
+ 164:../../test/testmtx.c ****   test_emit_token('C');
+ 1956               		.loc 1 164 0
+ 1957 0b5a 83E4      		ldi r24,lo8(67)
+ 1958 0b5c 0E94 0000 		call test_emit_token
+ 1959               	.LVL229:
+ 166:../../test/testmtx.c **** }
+ 1960               		.loc 1 166 0
+ 1961 0b60 80E0      		ldi r24,0
+ 1962 0b62 90E0      		ldi r25,0
+ 1963 0b64 0895      		ret
+ 1964               	.LFE11:
+ 1967               	thread2M:
+ 1968               	.LFB12:
+ 169:../../test/testmtx.c **** static msg_t thread2M(void *p) {
+ 1969               		.loc 1 169 0
+ 1970               	.LVL230:
+ 1971               	/* prologue: function */
+ 1972               	/* frame size = 0 */
+ 1973               	/* stack size = 0 */
+ 1974               	.L__stack_usage = 0
+ 172:../../test/testmtx.c ****   chThdSleepMilliseconds(20);
+ 1975               		.loc 1 172 0
+ 1976 0b66 84E1      		ldi r24,lo8(20)
+ 1977 0b68 90E0      		ldi r25,0
+ 1978               	.LVL231:
+ 1979 0b6a 0E94 0000 		call chThdSleep
+ 1980               	.LVL232:
+ 173:../../test/testmtx.c ****   test_cpu_pulse(40);
+ 1981               		.loc 1 173 0
+ 1982 0b6e 88E2      		ldi r24,lo8(40)
+ 1983 0b70 90E0      		ldi r25,0
+ 1984 0b72 0E94 0000 		call test_cpu_pulse
+ 1985               	.LVL233:
+ 174:../../test/testmtx.c ****   test_emit_token('B');
+ 1986               		.loc 1 174 0
+ 1987 0b76 82E4      		ldi r24,lo8(66)
+ 1988 0b78 0E94 0000 		call test_emit_token
+ 1989               	.LVL234:
+ 176:../../test/testmtx.c **** }
+ 1990               		.loc 1 176 0
+ 1991 0b7c 80E0      		ldi r24,0
+ 1992 0b7e 90E0      		ldi r25,0
+ 1993 0b80 0895      		ret
+ 1994               	.LFE12:
+ 1997               	thread2H:
+ 1998               	.LFB13:
+ 179:../../test/testmtx.c **** static msg_t thread2H(void *p) {
+ 1999               		.loc 1 179 0
+ 2000               	.LVL235:
+ 2001               	/* prologue: function */
+ 2002               	/* frame size = 0 */
+ 2003               	/* stack size = 0 */
+ 2004               	.L__stack_usage = 0
+ 182:../../test/testmtx.c ****   chThdSleepMilliseconds(40);
+ 2005               		.loc 1 182 0
+ 2006 0b82 88E2      		ldi r24,lo8(40)
+ 2007 0b84 90E0      		ldi r25,0
+ 2008               	.LVL236:
+ 2009 0b86 0E94 0000 		call chThdSleep
+ 2010               	.LVL237:
+ 183:../../test/testmtx.c ****   chMtxLock(&m1);
+ 2011               		.loc 1 183 0
+ 2012 0b8a 80E0      		ldi r24,lo8(m1)
+ 2013 0b8c 90E0      		ldi r25,hi8(m1)
+ 2014 0b8e 0E94 0000 		call chMtxLock
+ 2015               	.LVL238:
+ 184:../../test/testmtx.c ****   test_cpu_pulse(10);
+ 2016               		.loc 1 184 0
+ 2017 0b92 8AE0      		ldi r24,lo8(10)
+ 2018 0b94 90E0      		ldi r25,0
+ 2019 0b96 0E94 0000 		call test_cpu_pulse
+ 2020               	.LVL239:
+ 185:../../test/testmtx.c ****   chMtxUnlock();
+ 2021               		.loc 1 185 0
+ 2022 0b9a 0E94 0000 		call chMtxUnlock
+ 2023               	.LVL240:
+ 186:../../test/testmtx.c ****   test_emit_token('A');
+ 2024               		.loc 1 186 0
+ 2025 0b9e 81E4      		ldi r24,lo8(65)
+ 2026 0ba0 0E94 0000 		call test_emit_token
+ 2027               	.LVL241:
+ 188:../../test/testmtx.c **** }
+ 2028               		.loc 1 188 0
+ 2029 0ba4 80E0      		ldi r24,0
+ 2030 0ba6 90E0      		ldi r25,0
+ 2031 0ba8 0895      		ret
+ 2032               	.LFE13:
+ 2034               	.global	patternmtx
+ 2035               		.section	.rodata
+ 2038               	patternmtx:
+ 2039 0000 0000      		.word	testmtx1
+ 2040 0002 0000      		.word	testmtx2
+ 2041 0004 0000      		.word	testmtx3
+ 2042 0006 0000      		.word	testmtx4
+ 2043 0008 0000      		.word	testmtx5
+ 2044 000a 0000      		.word	testmtx6
+ 2045 000c 0000      		.word	testmtx7
+ 2046 000e 0000      		.word	testmtx8
+ 2047 0010 0000      		.word	0
+ 2048               	.global	testmtx8
+ 2049               		.section	.rodata.str1.1
+ 2050               	.LC7:
+ 2051 0014 436F 6E64 		.string	"CondVar, boost test"
+ 2051      5661 722C 
+ 2051      2062 6F6F 
+ 2051      7374 2074 
+ 2051      6573 7400 
+ 2052               		.section	.rodata
+ 2055               	testmtx8:
+ 2056 0012 0000      		.word	.LC7
+ 2057 0014 0000      		.word	gs(mtx8_setup)
+ 2058 0016 0000      		.word	0
+ 2059 0018 0000      		.word	gs(mtx8_execute)
+ 2060               	.global	testmtx7
+ 2061               		.section	.rodata.str1.1
+ 2062               	.LC8:
+ 2063 0028 436F 6E64 		.string	"CondVar, broadcast test"
+ 2063      5661 722C 
+ 2063      2062 726F 
+ 2063      6164 6361 
+ 2063      7374 2074 
+ 2064               		.section	.rodata
+ 2067               	testmtx7:
+ 2068 001a 0000      		.word	.LC8
+ 2069 001c 0000      		.word	gs(mtx7_setup)
+ 2070 001e 0000      		.word	0
+ 2071 0020 0000      		.word	gs(mtx7_execute)
+ 2072               	.global	testmtx6
+ 2073               		.section	.rodata.str1.1
+ 2074               	.LC9:
+ 2075 0040 436F 6E64 		.string	"CondVar, signal test"
+ 2075      5661 722C 
+ 2075      2073 6967 
+ 2075      6E61 6C20 
+ 2075      7465 7374 
+ 2076               		.section	.rodata
+ 2079               	testmtx6:
+ 2080 0022 0000      		.word	.LC9
+ 2081 0024 0000      		.word	gs(mtx6_setup)
+ 2082 0026 0000      		.word	0
+ 2083 0028 0000      		.word	gs(mtx6_execute)
+ 2084               	.global	testmtx5
+ 2085               		.section	.rodata.str1.1
+ 2086               	.LC10:
+ 2087 0055 4D75 7465 		.string	"Mutexes, status"
+ 2087      7865 732C 
+ 2087      2073 7461 
+ 2087      7475 7300 
+ 2088               		.section	.rodata
+ 2091               	testmtx5:
+ 2092 002a 0000      		.word	.LC10
+ 2093 002c 0000      		.word	gs(mtx5_setup)
+ 2094 002e 0000      		.word	0
+ 2095 0030 0000      		.word	gs(mtx5_execute)
+ 2096               	.global	testmtx4
+ 2097               		.section	.rodata.str1.1
+ 2098               	.LC11:
+ 2099 0065 4D75 7465 		.string	"Mutexes, priority return"
+ 2099      7865 732C 
+ 2099      2070 7269 
+ 2099      6F72 6974 
+ 2099      7920 7265 
+ 2100               		.section	.rodata
+ 2103               	testmtx4:
+ 2104 0032 0000      		.word	.LC11
+ 2105 0034 0000      		.word	gs(mtx4_setup)
+ 2106 0036 0000      		.word	0
+ 2107 0038 0000      		.word	gs(mtx4_execute)
+ 2108               	.global	testmtx3
+ 2109               		.section	.rodata.str1.1
+ 2110               	.LC12:
+ 2111 007e 4D75 7465 		.string	"Mutexes, priority inheritance, complex case"
+ 2111      7865 732C 
+ 2111      2070 7269 
+ 2111      6F72 6974 
+ 2111      7920 696E 
+ 2112               		.section	.rodata
+ 2115               	testmtx3:
+ 2116 003a 0000      		.word	.LC12
+ 2117 003c 0000      		.word	gs(mtx3_setup)
+ 2118 003e 0000      		.word	0
+ 2119 0040 0000      		.word	gs(mtx3_execute)
+ 2120               	.global	testmtx2
+ 2121               		.section	.rodata.str1.1
+ 2122               	.LC13:
+ 2123 00aa 4D75 7465 		.string	"Mutexes, priority inheritance, simple case"
+ 2123      7865 732C 
+ 2123      2070 7269 
+ 2123      6F72 6974 
+ 2123      7920 696E 
+ 2124               		.section	.rodata
+ 2127               	testmtx2:
+ 2128 0042 0000      		.word	.LC13
+ 2129 0044 0000      		.word	gs(mtx2_setup)
+ 2130 0046 0000      		.word	0
+ 2131 0048 0000      		.word	gs(mtx2_execute)
+ 2132               	.global	testmtx1
+ 2133               		.section	.rodata.str1.1
+ 2134               	.LC14:
+ 2135 00d5 4D75 7465 		.string	"Mutexes, priority enqueuing test"
+ 2135      7865 732C 
+ 2135      2070 7269 
+ 2135      6F72 6974 
+ 2135      7920 656E 
+ 2136               		.section	.rodata
+ 2139               	testmtx1:
+ 2140 004a 0000      		.word	.LC14
+ 2141 004c 0000      		.word	gs(mtx1_setup)
+ 2142 004e 0000      		.word	0
+ 2143 0050 0000      		.word	gs(mtx1_execute)
+ 2144               		.data
+ 2147               	m1:
+ 2148 0000 0000      		.word	m1
+ 2149 0002 0000      		.word	m1
+ 2150 0004 0000      		.word	0
+ 2151 0006 0000      		.word	0
+ 2154               	m2:
+ 2155 0008 0000      		.word	m2
+ 2156 000a 0000      		.word	m2
+ 2157 000c 0000      		.word	0
+ 2158 000e 0000      		.word	0
+ 2161               	c1:
+ 2162 0010 0000      		.word	c1
+ 2163 0012 0000      		.word	c1
+ 2650               	.Letext0:
+ 2651               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 2652               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 2653               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 2654               		.file 5 "../../os/kernel/include/chlists.h"
+ 2655               		.file 6 "../../os/kernel/include/chthreads.h"
+ 2656               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 2657               		.file 8 "../../os/kernel/include/chvt.h"
+ 2658               		.file 9 "../../os/kernel/include/chschd.h"
+ 2659               		.file 10 "../../os/kernel/include/chmtx.h"
+ 2660               		.file 11 "../../os/kernel/include/chcond.h"
+ 2661               		.file 12 "../../test/test.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testmtx.c
+     /tmp/ccpn599D.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccpn599D.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccpn599D.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccpn599D.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/ccpn599D.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccpn599D.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccpn599D.s:21     .text:0000000000000000 mtx8_execute
+     /tmp/ccpn599D.s:231    .text:0000000000000110 thread11
+     /tmp/ccpn599D.s:189    .text:00000000000000e6 thread10
+     /tmp/ccpn599D.s:115    .text:00000000000000a2 thread12
+     /tmp/ccpn599D.s:2161   .data:0000000000000010 c1
+     /tmp/ccpn599D.s:2154   .data:0000000000000008 m2
+     /tmp/ccpn599D.s:152    .text:00000000000000c4 thread1
+     /tmp/ccpn599D.s:2147   .data:0000000000000000 m1
+     /tmp/ccpn599D.s:283    .text:000000000000014a mtx8_setup
+     /tmp/ccpn599D.s:308    .text:0000000000000162 mtx7_setup
+     /tmp/ccpn599D.s:328    .text:0000000000000172 mtx6_setup
+     /tmp/ccpn599D.s:348    .text:0000000000000182 mtx5_setup
+     /tmp/ccpn599D.s:363    .text:000000000000018a mtx4_setup
+     /tmp/ccpn599D.s:383    .text:000000000000019a mtx3_setup
+     /tmp/ccpn599D.s:403    .text:00000000000001aa mtx2_setup
+     /tmp/ccpn599D.s:418    .text:00000000000001b2 mtx1_setup
+     /tmp/ccpn599D.s:441    .text:00000000000001ba mtx7_execute
+     /tmp/ccpn599D.s:559    .text:000000000000029c mtx6_execute
+     /tmp/ccpn599D.s:712    .text:00000000000003a6 mtx1_execute
+     /tmp/ccpn599D.s:856    .text:00000000000004b0 mtx5_execute
+     /tmp/ccpn599D.s:1011   .text:0000000000000592 mtx4_execute
+     /tmp/ccpn599D.s:1449   .text:0000000000000870 thread4a
+     /tmp/ccpn599D.s:1420   .text:0000000000000856 thread4b
+     /tmp/ccpn599D.s:1478   .text:000000000000088a mtx3_execute
+     /tmp/ccpn599D.s:1896   .text:0000000000000b1e thread3LL
+     /tmp/ccpn599D.s:1840   .text:0000000000000ada thread3L
+     /tmp/ccpn599D.s:1802   .text:0000000000000ab2 thread3M
+     /tmp/ccpn599D.s:1772   .text:0000000000000a96 thread3H
+     /tmp/ccpn599D.s:1734   .text:0000000000000a6e thread3HH
+     /tmp/ccpn599D.s:1621   .text:00000000000009a4 mtx2_execute
+     /tmp/ccpn599D.s:1997   .text:0000000000000b82 thread2H
+     /tmp/ccpn599D.s:1967   .text:0000000000000b66 thread2M
+     /tmp/ccpn599D.s:1929   .text:0000000000000b3e thread2L
+     /tmp/ccpn599D.s:2038   .rodata:0000000000000000 patternmtx
+     /tmp/ccpn599D.s:2139   .rodata:000000000000004a testmtx1
+     /tmp/ccpn599D.s:2127   .rodata:0000000000000042 testmtx2
+     /tmp/ccpn599D.s:2115   .rodata:000000000000003a testmtx3
+     /tmp/ccpn599D.s:2103   .rodata:0000000000000032 testmtx4
+     /tmp/ccpn599D.s:2091   .rodata:000000000000002a testmtx5
+     /tmp/ccpn599D.s:2079   .rodata:0000000000000022 testmtx6
+     /tmp/ccpn599D.s:2067   .rodata:000000000000001a testmtx7
+     /tmp/ccpn599D.s:2055   .rodata:0000000000000012 testmtx8
+
+UNDEFINED SYMBOLS
+rlist
+wa
+chThdCreateStatic
+threads
+chCondSignal
+test_wait_threads
+_test_assert_sequence
+chMtxLock
+test_emit_token
+chMtxUnlock
+chCondWait
+chCondWaitTimeout
+chCondInit
+chMtxInit
+chCondBroadcast
+chCondSignalI
+chSchRescheduleS
+_test_assert
+chMtxTryLock
+chMtxUnlockS
+chMtxUnlockAll
+chThdSleep
+test_wait_tick
+vtlist
+_test_assert_time_window
+test_cpu_pulse
+__do_copy_data

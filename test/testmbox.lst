@@ -1,0 +1,1536 @@
+   1               		.file	"testmbox.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  10               		.section	.rodata.str1.1,"aMS",@progbits,1
+  11               	.LC0:
+  12 0000 4142 4344 		.string	"ABCDE"
+  12      4500 
+  13               		.text
+  15               	mbox1_execute:
+  16               	.LFB8:
+  17               		.file 1 "../../test/testmbox.c"
+   1:../../test/testmbox.c **** /*
+   2:../../test/testmbox.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testmbox.c **** 
+   4:../../test/testmbox.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testmbox.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testmbox.c ****     You may obtain a copy of the License at
+   7:../../test/testmbox.c **** 
+   8:../../test/testmbox.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testmbox.c **** 
+  10:../../test/testmbox.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testmbox.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testmbox.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testmbox.c ****     See the License for the specific language governing permissions and
+  14:../../test/testmbox.c ****     limitations under the License.
+  15:../../test/testmbox.c **** */
+  16:../../test/testmbox.c **** 
+  17:../../test/testmbox.c **** #include "ch.h"
+  18:../../test/testmbox.c **** #include "test.h"
+  19:../../test/testmbox.c **** 
+  20:../../test/testmbox.c **** /**
+  21:../../test/testmbox.c ****  * @page test_mbox Mailboxes test
+  22:../../test/testmbox.c ****  *
+  23:../../test/testmbox.c ****  * File: @ref testmbox.c
+  24:../../test/testmbox.c ****  *
+  25:../../test/testmbox.c ****  * <h2>Description</h2>
+  26:../../test/testmbox.c ****  * This module implements the test sequence for the @ref mailboxes subsystem.
+  27:../../test/testmbox.c ****  *
+  28:../../test/testmbox.c ****  * <h2>Objective</h2>
+  29:../../test/testmbox.c ****  * Objective of the test module is to cover 100% of the @ref mailboxes
+  30:../../test/testmbox.c ****  * subsystem code.<br>
+  31:../../test/testmbox.c ****  * Note that the @ref mailboxes subsystem depends on the @ref semaphores
+  32:../../test/testmbox.c ****  * subsystem that has to met its testing objectives as well.
+  33:../../test/testmbox.c ****  *
+  34:../../test/testmbox.c ****  * <h2>Preconditions</h2>
+  35:../../test/testmbox.c ****  * The module requires the following kernel options:
+  36:../../test/testmbox.c ****  * - @p CH_USE_MAILBOXES
+  37:../../test/testmbox.c ****  * .
+  38:../../test/testmbox.c ****  * In case some of the required options are not enabled then some or all tests
+  39:../../test/testmbox.c ****  * may be skipped.
+  40:../../test/testmbox.c ****  *
+  41:../../test/testmbox.c ****  * <h2>Test Cases</h2>
+  42:../../test/testmbox.c ****  * - @subpage test_mbox_001
+  43:../../test/testmbox.c ****  * .
+  44:../../test/testmbox.c ****  * @file testmbox.c
+  45:../../test/testmbox.c ****  * @brief Mailboxes test source file
+  46:../../test/testmbox.c ****  * @file testmbox.h
+  47:../../test/testmbox.c ****  * @brief Mailboxes header file
+  48:../../test/testmbox.c ****  */
+  49:../../test/testmbox.c **** 
+  50:../../test/testmbox.c **** #if CH_USE_MAILBOXES || defined(__DOXYGEN__)
+  51:../../test/testmbox.c **** 
+  52:../../test/testmbox.c **** #define ALLOWED_DELAY MS2ST(5)
+  53:../../test/testmbox.c **** #define MB_SIZE 5
+  54:../../test/testmbox.c **** 
+  55:../../test/testmbox.c **** /*
+  56:../../test/testmbox.c ****  * Note, the static initializers are not really required because the
+  57:../../test/testmbox.c ****  * variables are explicitly initialized in each test case. It is done in order
+  58:../../test/testmbox.c ****  * to test the macros.
+  59:../../test/testmbox.c ****  */
+  60:../../test/testmbox.c **** static MAILBOX_DECL(mb1, test.wa.T0, MB_SIZE);
+  61:../../test/testmbox.c **** 
+  62:../../test/testmbox.c **** /**
+  63:../../test/testmbox.c ****  * @page test_mbox_001 Queuing and timeouts
+  64:../../test/testmbox.c ****  *
+  65:../../test/testmbox.c ****  * <h2>Description</h2>
+  66:../../test/testmbox.c ****  * Messages are posted/fetched from a mailbox in carefully designed sequences
+  67:../../test/testmbox.c ****  * in order to stimulate all the possible code paths inside the mailbox.<br>
+  68:../../test/testmbox.c ****  * The test expects to find a consistent mailbox status after each operation.
+  69:../../test/testmbox.c ****  */
+  70:../../test/testmbox.c **** 
+  71:../../test/testmbox.c **** static void mbox1_setup(void) {
+  72:../../test/testmbox.c **** 
+  73:../../test/testmbox.c ****   chMBInit(&mb1, (msg_t *)test.wa.T0, MB_SIZE);
+  74:../../test/testmbox.c **** }
+  75:../../test/testmbox.c **** 
+  76:../../test/testmbox.c **** static void mbox1_execute(void) {
+  18               		.loc 1 76 0
+  19 0000 0F93      		push r16
+  20               	.LCFI0:
+  21 0002 1F93      		push r17
+  22               	.LCFI1:
+  23 0004 CF93      		push r28
+  24               	.LCFI2:
+  25 0006 DF93      		push r29
+  26               	.LCFI3:
+  27 0008 1F92      		push __zero_reg__
+  28 000a 1F92      		push __zero_reg__
+  29               	.LCFI4:
+  30 000c CDB7      		in r28,__SP_L__
+  31 000e DEB7      		in r29,__SP_H__
+  32               	.LCFI5:
+  33               	/* prologue: function */
+  34               	/* frame size = 2 */
+  35               	/* stack size = 6 */
+  36               	.L__stack_usage = 6
+  77:../../test/testmbox.c ****   msg_t msg1, msg2;
+  78:../../test/testmbox.c ****   unsigned i;
+  79:../../test/testmbox.c **** 
+  80:../../test/testmbox.c ****   /*
+  81:../../test/testmbox.c ****    * Testing initial space.
+  82:../../test/testmbox.c ****    */
+  83:../../test/testmbox.c ****   test_assert(1, chMBGetFreeCountI(&mb1) == MB_SIZE, "wrong size");
+  37               		.loc 1 83 0
+  38 0010 61E0      		ldi r22,lo8(1)
+  39 0012 8091 0000 		lds r24,mb1+17
+  40 0016 8530      		cpi r24,lo8(5)
+  41 0018 01F0      		breq .L2
+  42 001a 60E0      		ldi r22,0
+  43               	.L2:
+  44 001c 81E0      		ldi r24,lo8(1)
+  45 001e 90E0      		ldi r25,0
+  46 0020 0E94 0000 		call _test_assert
+  47               	.LVL0:
+  48 0024 8111      		cpse r24,__zero_reg__
+  49 0026 00C0      		rjmp .L1
+  50 0028 02E4      		ldi r16,lo8(66)
+  51 002a 10E0      		ldi r17,0
+  52               	.L5:
+  84:../../test/testmbox.c **** 
+  85:../../test/testmbox.c ****   /*
+  86:../../test/testmbox.c ****    * Testing enqueuing and backward circularity.
+  87:../../test/testmbox.c ****    */
+  88:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE - 1; i++) {
+  89:../../test/testmbox.c ****     msg1 = chMBPost(&mb1, 'B' + i, TIME_INFINITE);
+  53               		.loc 1 89 0
+  54 002c 4FEF      		ldi r20,lo8(-1)
+  55 002e 5FEF      		ldi r21,lo8(-1)
+  56 0030 B801      		movw r22,r16
+  57 0032 80E0      		ldi r24,lo8(mb1)
+  58 0034 90E0      		ldi r25,hi8(mb1)
+  59 0036 0E94 0000 		call chMBPost
+  60               	.LVL1:
+  90:../../test/testmbox.c ****     test_assert(2, msg1 == RDY_OK, "wrong wake-up message");
+  61               		.loc 1 90 0
+  62 003a 61E0      		ldi r22,lo8(1)
+  63 003c 892B      		or r24,r25
+  64 003e 01F0      		breq .L4
+  65 0040 60E0      		ldi r22,0
+  66               	.L4:
+  67 0042 82E0      		ldi r24,lo8(2)
+  68 0044 90E0      		ldi r25,0
+  69               	.LVL2:
+  70 0046 0E94 0000 		call _test_assert
+  71               	.LVL3:
+  72 004a 8111      		cpse r24,__zero_reg__
+  73 004c 00C0      		rjmp .L1
+  74               	.LVL4:
+  75 004e 0F5F      		subi r16,-1
+  76 0050 1F4F      		sbci r17,-1
+  88:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE - 1; i++) {
+  77               		.loc 1 88 0
+  78 0052 0634      		cpi r16,70
+  79 0054 1105      		cpc r17,__zero_reg__
+  80 0056 01F4      		brne .L5
+  91:../../test/testmbox.c ****   }
+  92:../../test/testmbox.c ****   msg1 = chMBPostAhead(&mb1, 'A', TIME_INFINITE);
+  81               		.loc 1 92 0
+  82 0058 4FEF      		ldi r20,lo8(-1)
+  83 005a 5FEF      		ldi r21,lo8(-1)
+  84 005c 61E4      		ldi r22,lo8(65)
+  85 005e 70E0      		ldi r23,0
+  86 0060 80E0      		ldi r24,lo8(mb1)
+  87 0062 90E0      		ldi r25,hi8(mb1)
+  88 0064 0E94 0000 		call chMBPostAhead
+  89               	.LVL5:
+  93:../../test/testmbox.c ****   test_assert(3, msg1 == RDY_OK, "wrong wake-up message");
+  90               		.loc 1 93 0
+  91 0068 61E0      		ldi r22,lo8(1)
+  92 006a 892B      		or r24,r25
+  93 006c 01F0      		breq .L6
+  94 006e 60E0      		ldi r22,0
+  95               	.L6:
+  96 0070 83E0      		ldi r24,lo8(3)
+  97 0072 90E0      		ldi r25,0
+  98               	.LVL6:
+  99 0074 0E94 0000 		call _test_assert
+ 100               	.LVL7:
+ 101 0078 8823      		tst r24
+ 102 007a 01F0      		breq .L174
+ 103               	.LVL8:
+ 104               	.L1:
+ 105               	/* epilogue start */
+  94:../../test/testmbox.c **** 
+  95:../../test/testmbox.c ****   /*
+  96:../../test/testmbox.c ****    * Testing post timeout.
+  97:../../test/testmbox.c ****    */
+  98:../../test/testmbox.c ****   msg1 = chMBPost(&mb1, 'X', 1);
+  99:../../test/testmbox.c ****   test_assert(4, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 100:../../test/testmbox.c ****   chSysLock();
+ 101:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'X');
+ 102:../../test/testmbox.c ****   chSysUnlock();
+ 103:../../test/testmbox.c ****   test_assert(5, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 104:../../test/testmbox.c ****   msg1 = chMBPostAhead(&mb1, 'X', 1);
+ 105:../../test/testmbox.c ****   test_assert(6, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 106:../../test/testmbox.c ****   chSysLock();
+ 107:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'X');
+ 108:../../test/testmbox.c ****   chSysUnlock();
+ 109:../../test/testmbox.c ****   test_assert(7, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 110:../../test/testmbox.c **** 
+ 111:../../test/testmbox.c ****   /*
+ 112:../../test/testmbox.c ****    * Testing final conditions.
+ 113:../../test/testmbox.c ****    */
+ 114:../../test/testmbox.c ****   test_assert_lock(8, chMBGetFreeCountI(&mb1) == 0, "still empty");
+ 115:../../test/testmbox.c ****   test_assert_lock(9, chMBGetUsedCountI(&mb1) == MB_SIZE, "not full");
+ 116:../../test/testmbox.c ****   test_assert_lock(10, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 117:../../test/testmbox.c **** 
+ 118:../../test/testmbox.c ****   /*
+ 119:../../test/testmbox.c ****    * Testing dequeuing.
+ 120:../../test/testmbox.c ****    */
+ 121:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE; i++) {
+ 122:../../test/testmbox.c ****     msg1 = chMBFetch(&mb1, &msg2, TIME_INFINITE);
+ 123:../../test/testmbox.c ****     test_assert(11, msg1 == RDY_OK, "wrong wake-up message");
+ 124:../../test/testmbox.c ****     test_emit_token(msg2);
+ 125:../../test/testmbox.c ****   }
+ 126:../../test/testmbox.c ****   test_assert_sequence(12, "ABCDE");
+ 127:../../test/testmbox.c **** 
+ 128:../../test/testmbox.c ****   /*
+ 129:../../test/testmbox.c ****    * Testing buffer circularity.
+ 130:../../test/testmbox.c ****    */
+ 131:../../test/testmbox.c ****   msg1 = chMBPost(&mb1, 'B' + i, TIME_INFINITE);
+ 132:../../test/testmbox.c ****   test_assert(13, msg1 == RDY_OK, "wrong wake-up message");
+ 133:../../test/testmbox.c ****   msg1 = chMBFetch(&mb1, &msg2, TIME_INFINITE);
+ 134:../../test/testmbox.c ****   test_assert(14, msg1 == RDY_OK, "wrong wake-up message");
+ 135:../../test/testmbox.c ****   test_assert(15, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
+ 136:../../test/testmbox.c ****   test_assert(16, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
+ 137:../../test/testmbox.c **** 
+ 138:../../test/testmbox.c ****   /*
+ 139:../../test/testmbox.c ****    * Testing fetch timeout.
+ 140:../../test/testmbox.c ****    */
+ 141:../../test/testmbox.c ****   msg1 = chMBFetch(&mb1, &msg2, 1);
+ 142:../../test/testmbox.c ****   test_assert(17, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 143:../../test/testmbox.c ****   chSysLock();
+ 144:../../test/testmbox.c ****   msg1 = chMBFetchI(&mb1, &msg2);
+ 145:../../test/testmbox.c ****   chSysUnlock();
+ 146:../../test/testmbox.c ****   test_assert(18, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 147:../../test/testmbox.c **** 
+ 148:../../test/testmbox.c ****   /*
+ 149:../../test/testmbox.c ****    * Testing final conditions.
+ 150:../../test/testmbox.c ****    */
+ 151:../../test/testmbox.c ****   test_assert_lock(19, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 152:../../test/testmbox.c ****   test_assert_lock(20, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 153:../../test/testmbox.c ****   test_assert_lock(21, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 154:../../test/testmbox.c **** 
+ 155:../../test/testmbox.c ****   /*
+ 156:../../test/testmbox.c ****    * Testing I-Class.
+ 157:../../test/testmbox.c ****    */
+ 158:../../test/testmbox.c ****   chSysLock();
+ 159:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'A');
+ 160:../../test/testmbox.c ****   test_assert(22, msg1 == RDY_OK, "wrong wake-up message");
+ 161:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'B');
+ 162:../../test/testmbox.c ****   test_assert(23, msg1 == RDY_OK, "wrong wake-up message");
+ 163:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'C');
+ 164:../../test/testmbox.c ****   test_assert(24, msg1 == RDY_OK, "wrong wake-up message");
+ 165:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'D');
+ 166:../../test/testmbox.c ****   test_assert(25, msg1 == RDY_OK, "wrong wake-up message");
+ 167:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'E');
+ 168:../../test/testmbox.c ****   chSysUnlock();
+ 169:../../test/testmbox.c ****   test_assert(26, msg1 == RDY_OK, "wrong wake-up message");
+ 170:../../test/testmbox.c ****   test_assert(27, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 171:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE; i++) {
+ 172:../../test/testmbox.c ****     chSysLock();
+ 173:../../test/testmbox.c ****     msg1 = chMBFetchI(&mb1, &msg2);
+ 174:../../test/testmbox.c ****     chSysUnlock();
+ 175:../../test/testmbox.c ****     test_assert(28, msg1 == RDY_OK, "wrong wake-up message");
+ 176:../../test/testmbox.c ****     test_emit_token(msg2);
+ 177:../../test/testmbox.c ****   }
+ 178:../../test/testmbox.c ****   test_assert_sequence(29, "ABCDE");
+ 179:../../test/testmbox.c ****   test_assert_lock(30, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 180:../../test/testmbox.c ****   test_assert_lock(31, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 181:../../test/testmbox.c ****   test_assert(32, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 182:../../test/testmbox.c **** 
+ 183:../../test/testmbox.c ****   chSysLock();
+ 184:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'E');
+ 185:../../test/testmbox.c ****   test_assert(33, msg1 == RDY_OK, "wrong wake-up message");
+ 186:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'D');
+ 187:../../test/testmbox.c ****   test_assert(34, msg1 == RDY_OK, "wrong wake-up message");
+ 188:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'C');
+ 189:../../test/testmbox.c ****   test_assert(35, msg1 == RDY_OK, "wrong wake-up message");
+ 190:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'B');
+ 191:../../test/testmbox.c ****   test_assert(36, msg1 == RDY_OK, "wrong wake-up message");
+ 192:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'A');
+ 193:../../test/testmbox.c ****   chSysUnlock();
+ 194:../../test/testmbox.c ****   test_assert(37, msg1 == RDY_OK, "wrong wake-up message");
+ 195:../../test/testmbox.c ****   test_assert(38, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 196:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE; i++) {
+ 197:../../test/testmbox.c ****     chSysLock();
+ 198:../../test/testmbox.c ****     msg1 = chMBFetchI(&mb1, &msg2);
+ 199:../../test/testmbox.c ****     chSysUnlock();
+ 200:../../test/testmbox.c ****     test_assert(39, msg1 == RDY_OK, "wrong wake-up message");
+ 201:../../test/testmbox.c ****     test_emit_token(msg2);
+ 202:../../test/testmbox.c ****   }
+ 203:../../test/testmbox.c ****   test_assert_sequence(40, "ABCDE");
+ 204:../../test/testmbox.c ****   test_assert_lock(41, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 205:../../test/testmbox.c ****   test_assert_lock(42, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 206:../../test/testmbox.c ****   test_assert(43, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 207:../../test/testmbox.c **** 
+ 208:../../test/testmbox.c ****   /*
+ 209:../../test/testmbox.c ****    * Testing reset.
+ 210:../../test/testmbox.c ****    */
+ 211:../../test/testmbox.c ****   chMBReset(&mb1);
+ 212:../../test/testmbox.c **** 
+ 213:../../test/testmbox.c ****   /*
+ 214:../../test/testmbox.c ****    * Re-testing final conditions.
+ 215:../../test/testmbox.c ****    */
+ 216:../../test/testmbox.c ****   test_assert_lock(44, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 217:../../test/testmbox.c ****   test_assert_lock(45, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 218:../../test/testmbox.c ****   test_assert_lock(46, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
+ 219:../../test/testmbox.c ****   test_assert_lock(47, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
+ 220:../../test/testmbox.c **** }
+ 106               		.loc 1 220 0
+ 107 007c 0F90      		pop __tmp_reg__
+ 108 007e 0F90      		pop __tmp_reg__
+ 109 0080 DF91      		pop r29
+ 110 0082 CF91      		pop r28
+ 111 0084 1F91      		pop r17
+ 112 0086 0F91      		pop r16
+ 113 0088 0895      		ret
+ 114               	.L174:
+  98:../../test/testmbox.c ****   msg1 = chMBPost(&mb1, 'X', 1);
+ 115               		.loc 1 98 0
+ 116 008a 41E0      		ldi r20,lo8(1)
+ 117 008c 50E0      		ldi r21,0
+ 118 008e 68E5      		ldi r22,lo8(88)
+ 119 0090 70E0      		ldi r23,0
+ 120 0092 80E0      		ldi r24,lo8(mb1)
+ 121 0094 90E0      		ldi r25,hi8(mb1)
+ 122 0096 0E94 0000 		call chMBPost
+ 123               	.LVL9:
+  99:../../test/testmbox.c ****   test_assert(4, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 124               		.loc 1 99 0
+ 125 009a 61E0      		ldi r22,lo8(1)
+ 126 009c 0196      		adiw r24,1
+ 127 009e 01F0      		breq .L7
+ 128 00a0 60E0      		ldi r22,0
+ 129               	.L7:
+ 130 00a2 84E0      		ldi r24,lo8(4)
+ 131 00a4 90E0      		ldi r25,0
+ 132               	.LVL10:
+ 133 00a6 0E94 0000 		call _test_assert
+ 134               	.LVL11:
+ 135 00aa 8111      		cpse r24,__zero_reg__
+ 136 00ac 00C0      		rjmp .L1
+ 100:../../test/testmbox.c ****   chSysLock();
+ 137               		.loc 1 100 0
+ 138               	/* #APP */
+ 139               	 ;  100 "../../test/testmbox.c" 1
+ 140 00ae F894      		cli
+ 141               	 ;  0 "" 2
+ 101:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'X');
+ 142               		.loc 1 101 0
+ 143               	/* #NOAPP */
+ 144 00b0 68E5      		ldi r22,lo8(88)
+ 145 00b2 70E0      		ldi r23,0
+ 146 00b4 80E0      		ldi r24,lo8(mb1)
+ 147 00b6 90E0      		ldi r25,hi8(mb1)
+ 148 00b8 0E94 0000 		call chMBPostI
+ 149               	.LVL12:
+ 102:../../test/testmbox.c ****   chSysUnlock();
+ 150               		.loc 1 102 0
+ 151               	/* #APP */
+ 152               	 ;  102 "../../test/testmbox.c" 1
+ 153 00bc 7894      		sei
+ 154               	 ;  0 "" 2
+ 103:../../test/testmbox.c ****   test_assert(5, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 155               		.loc 1 103 0
+ 156               	/* #NOAPP */
+ 157 00be 61E0      		ldi r22,lo8(1)
+ 158 00c0 0196      		adiw r24,1
+ 159 00c2 01F0      		breq .L8
+ 160 00c4 60E0      		ldi r22,0
+ 161               	.L8:
+ 162 00c6 85E0      		ldi r24,lo8(5)
+ 163 00c8 90E0      		ldi r25,0
+ 164               	.LVL13:
+ 165 00ca 0E94 0000 		call _test_assert
+ 166               	.LVL14:
+ 167 00ce 8111      		cpse r24,__zero_reg__
+ 168 00d0 00C0      		rjmp .L1
+ 104:../../test/testmbox.c ****   msg1 = chMBPostAhead(&mb1, 'X', 1);
+ 169               		.loc 1 104 0
+ 170 00d2 41E0      		ldi r20,lo8(1)
+ 171 00d4 50E0      		ldi r21,0
+ 172 00d6 68E5      		ldi r22,lo8(88)
+ 173 00d8 70E0      		ldi r23,0
+ 174 00da 80E0      		ldi r24,lo8(mb1)
+ 175 00dc 90E0      		ldi r25,hi8(mb1)
+ 176 00de 0E94 0000 		call chMBPostAhead
+ 177               	.LVL15:
+ 105:../../test/testmbox.c ****   test_assert(6, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 178               		.loc 1 105 0
+ 179 00e2 61E0      		ldi r22,lo8(1)
+ 180 00e4 0196      		adiw r24,1
+ 181 00e6 01F0      		breq .L9
+ 182 00e8 60E0      		ldi r22,0
+ 183               	.L9:
+ 184 00ea 86E0      		ldi r24,lo8(6)
+ 185 00ec 90E0      		ldi r25,0
+ 186               	.LVL16:
+ 187 00ee 0E94 0000 		call _test_assert
+ 188               	.LVL17:
+ 189 00f2 8111      		cpse r24,__zero_reg__
+ 190 00f4 00C0      		rjmp .L1
+ 106:../../test/testmbox.c ****   chSysLock();
+ 191               		.loc 1 106 0
+ 192               	/* #APP */
+ 193               	 ;  106 "../../test/testmbox.c" 1
+ 194 00f6 F894      		cli
+ 195               	 ;  0 "" 2
+ 107:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'X');
+ 196               		.loc 1 107 0
+ 197               	/* #NOAPP */
+ 198 00f8 68E5      		ldi r22,lo8(88)
+ 199 00fa 70E0      		ldi r23,0
+ 200 00fc 80E0      		ldi r24,lo8(mb1)
+ 201 00fe 90E0      		ldi r25,hi8(mb1)
+ 202 0100 0E94 0000 		call chMBPostAheadI
+ 203               	.LVL18:
+ 108:../../test/testmbox.c ****   chSysUnlock();
+ 204               		.loc 1 108 0
+ 205               	/* #APP */
+ 206               	 ;  108 "../../test/testmbox.c" 1
+ 207 0104 7894      		sei
+ 208               	 ;  0 "" 2
+ 109:../../test/testmbox.c ****   test_assert(7, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 209               		.loc 1 109 0
+ 210               	/* #NOAPP */
+ 211 0106 61E0      		ldi r22,lo8(1)
+ 212 0108 0196      		adiw r24,1
+ 213 010a 01F0      		breq .L10
+ 214 010c 60E0      		ldi r22,0
+ 215               	.L10:
+ 216 010e 87E0      		ldi r24,lo8(7)
+ 217 0110 90E0      		ldi r25,0
+ 218               	.LVL19:
+ 219 0112 0E94 0000 		call _test_assert
+ 220               	.LVL20:
+ 221 0116 8111      		cpse r24,__zero_reg__
+ 222 0118 00C0      		rjmp .L1
+ 114:../../test/testmbox.c ****   test_assert_lock(8, chMBGetFreeCountI(&mb1) == 0, "still empty");
+ 223               		.loc 1 114 0
+ 224               	/* #APP */
+ 225               	 ;  114 "../../test/testmbox.c" 1
+ 226 011a F894      		cli
+ 227               	 ;  0 "" 2
+ 228               	/* #NOAPP */
+ 229 011c 61E0      		ldi r22,lo8(1)
+ 230 011e 8091 0000 		lds r24,mb1+17
+ 231 0122 8111      		cpse r24,__zero_reg__
+ 232 0124 60E0      		ldi r22,0
+ 233               	.L11:
+ 234 0126 88E0      		ldi r24,lo8(8)
+ 235 0128 90E0      		ldi r25,0
+ 236 012a 0E94 0000 		call _test_assert
+ 237               	.LVL21:
+ 238               	/* #APP */
+ 239               	 ;  114 "../../test/testmbox.c" 1
+ 240 012e 7894      		sei
+ 241               	 ;  0 "" 2
+ 242               	/* #NOAPP */
+ 243 0130 8111      		cpse r24,__zero_reg__
+ 244 0132 00C0      		rjmp .L1
+ 115:../../test/testmbox.c ****   test_assert_lock(9, chMBGetUsedCountI(&mb1) == MB_SIZE, "not full");
+ 245               		.loc 1 115 0 discriminator 2
+ 246               	/* #APP */
+ 247               	 ;  115 "../../test/testmbox.c" 1
+ 248 0134 F894      		cli
+ 249               	 ;  0 "" 2
+ 250               	/* #NOAPP */
+ 251 0136 61E0      		ldi r22,lo8(1)
+ 252 0138 8091 0000 		lds r24,mb1+12
+ 253 013c 8530      		cpi r24,lo8(5)
+ 254 013e 01F0      		breq .L14
+ 255 0140 60E0      		ldi r22,0
+ 256               	.L14:
+ 257 0142 89E0      		ldi r24,lo8(9)
+ 258 0144 90E0      		ldi r25,0
+ 259 0146 0E94 0000 		call _test_assert
+ 260               	.LVL22:
+ 261               	/* #APP */
+ 262               	 ;  115 "../../test/testmbox.c" 1
+ 263 014a 7894      		sei
+ 264               	 ;  0 "" 2
+ 265               	/* #NOAPP */
+ 266 014c 8111      		cpse r24,__zero_reg__
+ 267 014e 00C0      		rjmp .L1
+ 116:../../test/testmbox.c ****   test_assert_lock(10, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 268               		.loc 1 116 0 discriminator 2
+ 269               	/* #APP */
+ 270               	 ;  116 "../../test/testmbox.c" 1
+ 271 0150 F894      		cli
+ 272               	 ;  0 "" 2
+ 273               	/* #NOAPP */
+ 274 0152 61E0      		ldi r22,lo8(1)
+ 275 0154 2091 0000 		lds r18,mb1+6
+ 276 0158 3091 0000 		lds r19,mb1+6+1
+ 277 015c 8091 0000 		lds r24,mb1+4
+ 278 0160 9091 0000 		lds r25,mb1+4+1
+ 279 0164 2817      		cp r18,r24
+ 280 0166 3907      		cpc r19,r25
+ 281 0168 01F0      		breq .L16
+ 282 016a 60E0      		ldi r22,0
+ 283               	.L16:
+ 284 016c 8AE0      		ldi r24,lo8(10)
+ 285 016e 90E0      		ldi r25,0
+ 286 0170 0E94 0000 		call _test_assert
+ 287               	.LVL23:
+ 288               	/* #APP */
+ 289               	 ;  116 "../../test/testmbox.c" 1
+ 290 0174 7894      		sei
+ 291               	 ;  0 "" 2
+ 292               	/* #NOAPP */
+ 293 0176 8111      		cpse r24,__zero_reg__
+ 294 0178 00C0      		rjmp .L1
+ 295               	.LVL24:
+ 296 017a 05E0      		ldi r16,lo8(5)
+ 297 017c 10E0      		ldi r17,0
+ 298 017e 00C0      		rjmp .L19
+ 299               	.LVL25:
+ 300               	.L176:
+ 124:../../test/testmbox.c ****     test_emit_token(msg2);
+ 301               		.loc 1 124 0
+ 302 0180 8981      		ldd r24,Y+1
+ 303 0182 0E94 0000 		call test_emit_token
+ 304               	.LVL26:
+ 305 0186 0150      		subi r16,1
+ 306 0188 1109      		sbc r17,__zero_reg__
+ 121:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE; i++) {
+ 307               		.loc 1 121 0
+ 308 018a 01F0      		breq .L175
+ 309               	.L19:
+ 122:../../test/testmbox.c ****     msg1 = chMBFetch(&mb1, &msg2, TIME_INFINITE);
+ 310               		.loc 1 122 0
+ 311 018c 4FEF      		ldi r20,lo8(-1)
+ 312 018e 5FEF      		ldi r21,lo8(-1)
+ 313 0190 BE01      		movw r22,r28
+ 314 0192 6F5F      		subi r22,-1
+ 315 0194 7F4F      		sbci r23,-1
+ 316 0196 80E0      		ldi r24,lo8(mb1)
+ 317 0198 90E0      		ldi r25,hi8(mb1)
+ 318 019a 0E94 0000 		call chMBFetch
+ 319               	.LVL27:
+ 123:../../test/testmbox.c ****     test_assert(11, msg1 == RDY_OK, "wrong wake-up message");
+ 320               		.loc 1 123 0
+ 321 019e 61E0      		ldi r22,lo8(1)
+ 322 01a0 892B      		or r24,r25
+ 323 01a2 01F0      		breq .L18
+ 324 01a4 60E0      		ldi r22,0
+ 325               	.L18:
+ 326 01a6 8BE0      		ldi r24,lo8(11)
+ 327 01a8 90E0      		ldi r25,0
+ 328               	.LVL28:
+ 329 01aa 0E94 0000 		call _test_assert
+ 330               	.LVL29:
+ 331 01ae 8823      		tst r24
+ 332 01b0 01F0      		breq .L176
+ 333 01b2 00C0      		rjmp .L1
+ 334               	.L175:
+ 126:../../test/testmbox.c ****   test_assert_sequence(12, "ABCDE");
+ 335               		.loc 1 126 0
+ 336 01b4 60E0      		ldi r22,lo8(.LC0)
+ 337 01b6 70E0      		ldi r23,hi8(.LC0)
+ 338 01b8 8CE0      		ldi r24,lo8(12)
+ 339 01ba 90E0      		ldi r25,0
+ 340 01bc 0E94 0000 		call _test_assert_sequence
+ 341               	.LVL30:
+ 342 01c0 8111      		cpse r24,__zero_reg__
+ 343 01c2 00C0      		rjmp .L1
+ 131:../../test/testmbox.c ****   msg1 = chMBPost(&mb1, 'B' + i, TIME_INFINITE);
+ 344               		.loc 1 131 0
+ 345 01c4 4FEF      		ldi r20,lo8(-1)
+ 346 01c6 5FEF      		ldi r21,lo8(-1)
+ 347 01c8 67E4      		ldi r22,lo8(71)
+ 348 01ca 70E0      		ldi r23,0
+ 349 01cc 80E0      		ldi r24,lo8(mb1)
+ 350 01ce 90E0      		ldi r25,hi8(mb1)
+ 351 01d0 0E94 0000 		call chMBPost
+ 352               	.LVL31:
+ 132:../../test/testmbox.c ****   test_assert(13, msg1 == RDY_OK, "wrong wake-up message");
+ 353               		.loc 1 132 0
+ 354 01d4 61E0      		ldi r22,lo8(1)
+ 355 01d6 892B      		or r24,r25
+ 356 01d8 01F0      		breq .L20
+ 357 01da 60E0      		ldi r22,0
+ 358               	.L20:
+ 359 01dc 8DE0      		ldi r24,lo8(13)
+ 360 01de 90E0      		ldi r25,0
+ 361               	.LVL32:
+ 362 01e0 0E94 0000 		call _test_assert
+ 363               	.LVL33:
+ 364 01e4 8111      		cpse r24,__zero_reg__
+ 365 01e6 00C0      		rjmp .L1
+ 133:../../test/testmbox.c ****   msg1 = chMBFetch(&mb1, &msg2, TIME_INFINITE);
+ 366               		.loc 1 133 0
+ 367 01e8 4FEF      		ldi r20,lo8(-1)
+ 368 01ea 5FEF      		ldi r21,lo8(-1)
+ 369 01ec BE01      		movw r22,r28
+ 370 01ee 6F5F      		subi r22,-1
+ 371 01f0 7F4F      		sbci r23,-1
+ 372 01f2 80E0      		ldi r24,lo8(mb1)
+ 373 01f4 90E0      		ldi r25,hi8(mb1)
+ 374 01f6 0E94 0000 		call chMBFetch
+ 375               	.LVL34:
+ 134:../../test/testmbox.c ****   test_assert(14, msg1 == RDY_OK, "wrong wake-up message");
+ 376               		.loc 1 134 0
+ 377 01fa 61E0      		ldi r22,lo8(1)
+ 378 01fc 892B      		or r24,r25
+ 379 01fe 01F0      		breq .L21
+ 380 0200 60E0      		ldi r22,0
+ 381               	.L21:
+ 382 0202 8EE0      		ldi r24,lo8(14)
+ 383 0204 90E0      		ldi r25,0
+ 384               	.LVL35:
+ 385 0206 0E94 0000 		call _test_assert
+ 386               	.LVL36:
+ 387 020a 8111      		cpse r24,__zero_reg__
+ 388 020c 00C0      		rjmp .L1
+ 135:../../test/testmbox.c ****   test_assert(15, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
+ 389               		.loc 1 135 0
+ 390 020e 61E0      		ldi r22,lo8(1)
+ 391 0210 2091 0000 		lds r18,mb1
+ 392 0214 3091 0000 		lds r19,mb1+1
+ 393 0218 8091 0000 		lds r24,mb1+4
+ 394 021c 9091 0000 		lds r25,mb1+4+1
+ 395 0220 2817      		cp r18,r24
+ 396 0222 3907      		cpc r19,r25
+ 397 0224 01F0      		breq .L22
+ 398 0226 60E0      		ldi r22,0
+ 399               	.L22:
+ 400 0228 8FE0      		ldi r24,lo8(15)
+ 401 022a 90E0      		ldi r25,0
+ 402 022c 0E94 0000 		call _test_assert
+ 403               	.LVL37:
+ 404 0230 8111      		cpse r24,__zero_reg__
+ 405 0232 00C0      		rjmp .L1
+ 136:../../test/testmbox.c ****   test_assert(16, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
+ 406               		.loc 1 136 0
+ 407 0234 61E0      		ldi r22,lo8(1)
+ 408 0236 2091 0000 		lds r18,mb1
+ 409 023a 3091 0000 		lds r19,mb1+1
+ 410 023e 8091 0000 		lds r24,mb1+6
+ 411 0242 9091 0000 		lds r25,mb1+6+1
+ 412 0246 2817      		cp r18,r24
+ 413 0248 3907      		cpc r19,r25
+ 414 024a 01F0      		breq .L23
+ 415 024c 60E0      		ldi r22,0
+ 416               	.L23:
+ 417 024e 80E1      		ldi r24,lo8(16)
+ 418 0250 90E0      		ldi r25,0
+ 419 0252 0E94 0000 		call _test_assert
+ 420               	.LVL38:
+ 421 0256 8111      		cpse r24,__zero_reg__
+ 422 0258 00C0      		rjmp .L1
+ 141:../../test/testmbox.c ****   msg1 = chMBFetch(&mb1, &msg2, 1);
+ 423               		.loc 1 141 0
+ 424 025a 41E0      		ldi r20,lo8(1)
+ 425 025c 50E0      		ldi r21,0
+ 426 025e BE01      		movw r22,r28
+ 427 0260 6F5F      		subi r22,-1
+ 428 0262 7F4F      		sbci r23,-1
+ 429 0264 80E0      		ldi r24,lo8(mb1)
+ 430 0266 90E0      		ldi r25,hi8(mb1)
+ 431 0268 0E94 0000 		call chMBFetch
+ 432               	.LVL39:
+ 142:../../test/testmbox.c ****   test_assert(17, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 433               		.loc 1 142 0
+ 434 026c 61E0      		ldi r22,lo8(1)
+ 435 026e 0196      		adiw r24,1
+ 436 0270 01F0      		breq .L24
+ 437 0272 60E0      		ldi r22,0
+ 438               	.L24:
+ 439 0274 81E1      		ldi r24,lo8(17)
+ 440 0276 90E0      		ldi r25,0
+ 441               	.LVL40:
+ 442 0278 0E94 0000 		call _test_assert
+ 443               	.LVL41:
+ 444 027c 8111      		cpse r24,__zero_reg__
+ 445 027e 00C0      		rjmp .L1
+ 143:../../test/testmbox.c ****   chSysLock();
+ 446               		.loc 1 143 0
+ 447               	/* #APP */
+ 448               	 ;  143 "../../test/testmbox.c" 1
+ 449 0280 F894      		cli
+ 450               	 ;  0 "" 2
+ 144:../../test/testmbox.c ****   msg1 = chMBFetchI(&mb1, &msg2);
+ 451               		.loc 1 144 0
+ 452               	/* #NOAPP */
+ 453 0282 BE01      		movw r22,r28
+ 454 0284 6F5F      		subi r22,-1
+ 455 0286 7F4F      		sbci r23,-1
+ 456 0288 80E0      		ldi r24,lo8(mb1)
+ 457 028a 90E0      		ldi r25,hi8(mb1)
+ 458 028c 0E94 0000 		call chMBFetchI
+ 459               	.LVL42:
+ 145:../../test/testmbox.c ****   chSysUnlock();
+ 460               		.loc 1 145 0
+ 461               	/* #APP */
+ 462               	 ;  145 "../../test/testmbox.c" 1
+ 463 0290 7894      		sei
+ 464               	 ;  0 "" 2
+ 146:../../test/testmbox.c ****   test_assert(18, msg1 == RDY_TIMEOUT, "wrong wake-up message");
+ 465               		.loc 1 146 0
+ 466               	/* #NOAPP */
+ 467 0292 61E0      		ldi r22,lo8(1)
+ 468 0294 0196      		adiw r24,1
+ 469 0296 01F0      		breq .L25
+ 470 0298 60E0      		ldi r22,0
+ 471               	.L25:
+ 472 029a 82E1      		ldi r24,lo8(18)
+ 473 029c 90E0      		ldi r25,0
+ 474               	.LVL43:
+ 475 029e 0E94 0000 		call _test_assert
+ 476               	.LVL44:
+ 477 02a2 8111      		cpse r24,__zero_reg__
+ 478 02a4 00C0      		rjmp .L1
+ 151:../../test/testmbox.c ****   test_assert_lock(19, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 479               		.loc 1 151 0
+ 480               	/* #APP */
+ 481               	 ;  151 "../../test/testmbox.c" 1
+ 482 02a6 F894      		cli
+ 483               	 ;  0 "" 2
+ 484               	/* #NOAPP */
+ 485 02a8 61E0      		ldi r22,lo8(1)
+ 486 02aa 8091 0000 		lds r24,mb1+17
+ 487 02ae 8530      		cpi r24,lo8(5)
+ 488 02b0 01F0      		breq .L26
+ 489 02b2 60E0      		ldi r22,0
+ 490               	.L26:
+ 491 02b4 83E1      		ldi r24,lo8(19)
+ 492 02b6 90E0      		ldi r25,0
+ 493 02b8 0E94 0000 		call _test_assert
+ 494               	.LVL45:
+ 495               	/* #APP */
+ 496               	 ;  151 "../../test/testmbox.c" 1
+ 497 02bc 7894      		sei
+ 498               	 ;  0 "" 2
+ 499               	/* #NOAPP */
+ 500 02be 8111      		cpse r24,__zero_reg__
+ 501 02c0 00C0      		rjmp .L1
+ 152:../../test/testmbox.c ****   test_assert_lock(20, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 502               		.loc 1 152 0 discriminator 2
+ 503               	/* #APP */
+ 504               	 ;  152 "../../test/testmbox.c" 1
+ 505 02c2 F894      		cli
+ 506               	 ;  0 "" 2
+ 507               	/* #NOAPP */
+ 508 02c4 61E0      		ldi r22,lo8(1)
+ 509 02c6 8091 0000 		lds r24,mb1+12
+ 510 02ca 8111      		cpse r24,__zero_reg__
+ 511 02cc 60E0      		ldi r22,0
+ 512               	.L28:
+ 513 02ce 84E1      		ldi r24,lo8(20)
+ 514 02d0 90E0      		ldi r25,0
+ 515 02d2 0E94 0000 		call _test_assert
+ 516               	.LVL46:
+ 517               	/* #APP */
+ 518               	 ;  152 "../../test/testmbox.c" 1
+ 519 02d6 7894      		sei
+ 520               	 ;  0 "" 2
+ 521               	/* #NOAPP */
+ 522 02d8 8111      		cpse r24,__zero_reg__
+ 523 02da 00C0      		rjmp .L1
+ 153:../../test/testmbox.c ****   test_assert_lock(21, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 524               		.loc 1 153 0 discriminator 2
+ 525               	/* #APP */
+ 526               	 ;  153 "../../test/testmbox.c" 1
+ 527 02dc F894      		cli
+ 528               	 ;  0 "" 2
+ 529               	/* #NOAPP */
+ 530 02de 61E0      		ldi r22,lo8(1)
+ 531 02e0 2091 0000 		lds r18,mb1+6
+ 532 02e4 3091 0000 		lds r19,mb1+6+1
+ 533 02e8 8091 0000 		lds r24,mb1+4
+ 534 02ec 9091 0000 		lds r25,mb1+4+1
+ 535 02f0 2817      		cp r18,r24
+ 536 02f2 3907      		cpc r19,r25
+ 537 02f4 01F0      		breq .L30
+ 538 02f6 60E0      		ldi r22,0
+ 539               	.L30:
+ 540 02f8 85E1      		ldi r24,lo8(21)
+ 541 02fa 90E0      		ldi r25,0
+ 542 02fc 0E94 0000 		call _test_assert
+ 543               	.LVL47:
+ 544               	/* #APP */
+ 545               	 ;  153 "../../test/testmbox.c" 1
+ 546 0300 7894      		sei
+ 547               	 ;  0 "" 2
+ 548               	/* #NOAPP */
+ 549 0302 8111      		cpse r24,__zero_reg__
+ 550 0304 00C0      		rjmp .L1
+ 158:../../test/testmbox.c ****   chSysLock();
+ 551               		.loc 1 158 0 discriminator 2
+ 552               	/* #APP */
+ 553               	 ;  158 "../../test/testmbox.c" 1
+ 554 0306 F894      		cli
+ 555               	 ;  0 "" 2
+ 159:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'A');
+ 556               		.loc 1 159 0 discriminator 2
+ 557               	/* #NOAPP */
+ 558 0308 61E4      		ldi r22,lo8(65)
+ 559 030a 70E0      		ldi r23,0
+ 560 030c 80E0      		ldi r24,lo8(mb1)
+ 561 030e 90E0      		ldi r25,hi8(mb1)
+ 562 0310 0E94 0000 		call chMBPostI
+ 563               	.LVL48:
+ 160:../../test/testmbox.c ****   test_assert(22, msg1 == RDY_OK, "wrong wake-up message");
+ 564               		.loc 1 160 0 discriminator 2
+ 565 0314 61E0      		ldi r22,lo8(1)
+ 566 0316 892B      		or r24,r25
+ 567 0318 01F0      		breq .L32
+ 568 031a 60E0      		ldi r22,0
+ 569               	.L32:
+ 570 031c 86E1      		ldi r24,lo8(22)
+ 571 031e 90E0      		ldi r25,0
+ 572               	.LVL49:
+ 573 0320 0E94 0000 		call _test_assert
+ 574               	.LVL50:
+ 575 0324 8111      		cpse r24,__zero_reg__
+ 576 0326 00C0      		rjmp .L1
+ 161:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'B');
+ 577               		.loc 1 161 0
+ 578 0328 62E4      		ldi r22,lo8(66)
+ 579 032a 70E0      		ldi r23,0
+ 580 032c 80E0      		ldi r24,lo8(mb1)
+ 581 032e 90E0      		ldi r25,hi8(mb1)
+ 582 0330 0E94 0000 		call chMBPostI
+ 583               	.LVL51:
+ 162:../../test/testmbox.c ****   test_assert(23, msg1 == RDY_OK, "wrong wake-up message");
+ 584               		.loc 1 162 0
+ 585 0334 61E0      		ldi r22,lo8(1)
+ 586 0336 892B      		or r24,r25
+ 587 0338 01F0      		breq .L33
+ 588 033a 60E0      		ldi r22,0
+ 589               	.L33:
+ 590 033c 87E1      		ldi r24,lo8(23)
+ 591 033e 90E0      		ldi r25,0
+ 592               	.LVL52:
+ 593 0340 0E94 0000 		call _test_assert
+ 594               	.LVL53:
+ 595 0344 8111      		cpse r24,__zero_reg__
+ 596 0346 00C0      		rjmp .L1
+ 163:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'C');
+ 597               		.loc 1 163 0
+ 598 0348 63E4      		ldi r22,lo8(67)
+ 599 034a 70E0      		ldi r23,0
+ 600 034c 80E0      		ldi r24,lo8(mb1)
+ 601 034e 90E0      		ldi r25,hi8(mb1)
+ 602 0350 0E94 0000 		call chMBPostI
+ 603               	.LVL54:
+ 164:../../test/testmbox.c ****   test_assert(24, msg1 == RDY_OK, "wrong wake-up message");
+ 604               		.loc 1 164 0
+ 605 0354 61E0      		ldi r22,lo8(1)
+ 606 0356 892B      		or r24,r25
+ 607 0358 01F0      		breq .L34
+ 608 035a 60E0      		ldi r22,0
+ 609               	.L34:
+ 610 035c 88E1      		ldi r24,lo8(24)
+ 611 035e 90E0      		ldi r25,0
+ 612               	.LVL55:
+ 613 0360 0E94 0000 		call _test_assert
+ 614               	.LVL56:
+ 615 0364 8111      		cpse r24,__zero_reg__
+ 616 0366 00C0      		rjmp .L1
+ 165:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'D');
+ 617               		.loc 1 165 0
+ 618 0368 64E4      		ldi r22,lo8(68)
+ 619 036a 70E0      		ldi r23,0
+ 620 036c 80E0      		ldi r24,lo8(mb1)
+ 621 036e 90E0      		ldi r25,hi8(mb1)
+ 622 0370 0E94 0000 		call chMBPostI
+ 623               	.LVL57:
+ 166:../../test/testmbox.c ****   test_assert(25, msg1 == RDY_OK, "wrong wake-up message");
+ 624               		.loc 1 166 0
+ 625 0374 61E0      		ldi r22,lo8(1)
+ 626 0376 892B      		or r24,r25
+ 627 0378 01F0      		breq .L35
+ 628 037a 60E0      		ldi r22,0
+ 629               	.L35:
+ 630 037c 89E1      		ldi r24,lo8(25)
+ 631 037e 90E0      		ldi r25,0
+ 632               	.LVL58:
+ 633 0380 0E94 0000 		call _test_assert
+ 634               	.LVL59:
+ 635 0384 8111      		cpse r24,__zero_reg__
+ 636 0386 00C0      		rjmp .L1
+ 167:../../test/testmbox.c ****   msg1 = chMBPostI(&mb1, 'E');
+ 637               		.loc 1 167 0
+ 638 0388 65E4      		ldi r22,lo8(69)
+ 639 038a 70E0      		ldi r23,0
+ 640 038c 80E0      		ldi r24,lo8(mb1)
+ 641 038e 90E0      		ldi r25,hi8(mb1)
+ 642 0390 0E94 0000 		call chMBPostI
+ 643               	.LVL60:
+ 168:../../test/testmbox.c ****   chSysUnlock();
+ 644               		.loc 1 168 0
+ 645               	/* #APP */
+ 646               	 ;  168 "../../test/testmbox.c" 1
+ 647 0394 7894      		sei
+ 648               	 ;  0 "" 2
+ 169:../../test/testmbox.c ****   test_assert(26, msg1 == RDY_OK, "wrong wake-up message");
+ 649               		.loc 1 169 0
+ 650               	/* #NOAPP */
+ 651 0396 61E0      		ldi r22,lo8(1)
+ 652 0398 892B      		or r24,r25
+ 653 039a 01F0      		breq .L36
+ 654 039c 60E0      		ldi r22,0
+ 655               	.L36:
+ 656 039e 8AE1      		ldi r24,lo8(26)
+ 657 03a0 90E0      		ldi r25,0
+ 658               	.LVL61:
+ 659 03a2 0E94 0000 		call _test_assert
+ 660               	.LVL62:
+ 661 03a6 8111      		cpse r24,__zero_reg__
+ 662 03a8 00C0      		rjmp .L1
+ 170:../../test/testmbox.c ****   test_assert(27, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 663               		.loc 1 170 0
+ 664 03aa 61E0      		ldi r22,lo8(1)
+ 665 03ac 2091 0000 		lds r18,mb1+6
+ 666 03b0 3091 0000 		lds r19,mb1+6+1
+ 667 03b4 8091 0000 		lds r24,mb1+4
+ 668 03b8 9091 0000 		lds r25,mb1+4+1
+ 669 03bc 2817      		cp r18,r24
+ 670 03be 3907      		cpc r19,r25
+ 671 03c0 01F0      		breq .L37
+ 672 03c2 60E0      		ldi r22,0
+ 673               	.L37:
+ 674 03c4 8BE1      		ldi r24,lo8(27)
+ 675 03c6 90E0      		ldi r25,0
+ 676 03c8 0E94 0000 		call _test_assert
+ 677               	.LVL63:
+ 678 03cc 8111      		cpse r24,__zero_reg__
+ 679 03ce 00C0      		rjmp .L1
+ 680 03d0 05E0      		ldi r16,lo8(5)
+ 681 03d2 10E0      		ldi r17,0
+ 682               	.L39:
+ 172:../../test/testmbox.c ****     chSysLock();
+ 683               		.loc 1 172 0
+ 684               	/* #APP */
+ 685               	 ;  172 "../../test/testmbox.c" 1
+ 686 03d4 F894      		cli
+ 687               	 ;  0 "" 2
+ 173:../../test/testmbox.c ****     msg1 = chMBFetchI(&mb1, &msg2);
+ 688               		.loc 1 173 0
+ 689               	/* #NOAPP */
+ 690 03d6 BE01      		movw r22,r28
+ 691 03d8 6F5F      		subi r22,-1
+ 692 03da 7F4F      		sbci r23,-1
+ 693 03dc 80E0      		ldi r24,lo8(mb1)
+ 694 03de 90E0      		ldi r25,hi8(mb1)
+ 695 03e0 0E94 0000 		call chMBFetchI
+ 696               	.LVL64:
+ 174:../../test/testmbox.c ****     chSysUnlock();
+ 697               		.loc 1 174 0
+ 698               	/* #APP */
+ 699               	 ;  174 "../../test/testmbox.c" 1
+ 700 03e4 7894      		sei
+ 701               	 ;  0 "" 2
+ 175:../../test/testmbox.c ****     test_assert(28, msg1 == RDY_OK, "wrong wake-up message");
+ 702               		.loc 1 175 0
+ 703               	/* #NOAPP */
+ 704 03e6 61E0      		ldi r22,lo8(1)
+ 705 03e8 892B      		or r24,r25
+ 706 03ea 01F0      		breq .L38
+ 707 03ec 60E0      		ldi r22,0
+ 708               	.L38:
+ 709 03ee 8CE1      		ldi r24,lo8(28)
+ 710 03f0 90E0      		ldi r25,0
+ 711               	.LVL65:
+ 712 03f2 0E94 0000 		call _test_assert
+ 713               	.LVL66:
+ 714 03f6 8111      		cpse r24,__zero_reg__
+ 715 03f8 00C0      		rjmp .L1
+ 176:../../test/testmbox.c ****     test_emit_token(msg2);
+ 716               		.loc 1 176 0
+ 717 03fa 8981      		ldd r24,Y+1
+ 718 03fc 0E94 0000 		call test_emit_token
+ 719               	.LVL67:
+ 720 0400 0150      		subi r16,1
+ 721 0402 1109      		sbc r17,__zero_reg__
+ 171:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE; i++) {
+ 722               		.loc 1 171 0
+ 723 0404 01F4      		brne .L39
+ 178:../../test/testmbox.c ****   test_assert_sequence(29, "ABCDE");
+ 724               		.loc 1 178 0
+ 725 0406 60E0      		ldi r22,lo8(.LC0)
+ 726 0408 70E0      		ldi r23,hi8(.LC0)
+ 727 040a 8DE1      		ldi r24,lo8(29)
+ 728 040c 90E0      		ldi r25,0
+ 729 040e 0E94 0000 		call _test_assert_sequence
+ 730               	.LVL68:
+ 731 0412 8111      		cpse r24,__zero_reg__
+ 732 0414 00C0      		rjmp .L1
+ 179:../../test/testmbox.c ****   test_assert_lock(30, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 733               		.loc 1 179 0
+ 734               	/* #APP */
+ 735               	 ;  179 "../../test/testmbox.c" 1
+ 736 0416 F894      		cli
+ 737               	 ;  0 "" 2
+ 738               	/* #NOAPP */
+ 739 0418 61E0      		ldi r22,lo8(1)
+ 740 041a 8091 0000 		lds r24,mb1+17
+ 741 041e 8530      		cpi r24,lo8(5)
+ 742 0420 01F0      		breq .L40
+ 743 0422 60E0      		ldi r22,0
+ 744               	.L40:
+ 745 0424 8EE1      		ldi r24,lo8(30)
+ 746 0426 90E0      		ldi r25,0
+ 747 0428 0E94 0000 		call _test_assert
+ 748               	.LVL69:
+ 749               	/* #APP */
+ 750               	 ;  179 "../../test/testmbox.c" 1
+ 751 042c 7894      		sei
+ 752               	 ;  0 "" 2
+ 753               	/* #NOAPP */
+ 754 042e 8111      		cpse r24,__zero_reg__
+ 755 0430 00C0      		rjmp .L1
+ 180:../../test/testmbox.c ****   test_assert_lock(31, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 756               		.loc 1 180 0 discriminator 2
+ 757               	/* #APP */
+ 758               	 ;  180 "../../test/testmbox.c" 1
+ 759 0432 F894      		cli
+ 760               	 ;  0 "" 2
+ 761               	/* #NOAPP */
+ 762 0434 61E0      		ldi r22,lo8(1)
+ 763 0436 8091 0000 		lds r24,mb1+12
+ 764 043a 8111      		cpse r24,__zero_reg__
+ 765 043c 60E0      		ldi r22,0
+ 766               	.L42:
+ 767 043e 8FE1      		ldi r24,lo8(31)
+ 768 0440 90E0      		ldi r25,0
+ 769 0442 0E94 0000 		call _test_assert
+ 770               	.LVL70:
+ 771               	/* #APP */
+ 772               	 ;  180 "../../test/testmbox.c" 1
+ 773 0446 7894      		sei
+ 774               	 ;  0 "" 2
+ 775               	/* #NOAPP */
+ 776 0448 8111      		cpse r24,__zero_reg__
+ 777 044a 00C0      		rjmp .L1
+ 181:../../test/testmbox.c ****   test_assert(32, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 778               		.loc 1 181 0 discriminator 2
+ 779 044c 61E0      		ldi r22,lo8(1)
+ 780 044e 2091 0000 		lds r18,mb1+6
+ 781 0452 3091 0000 		lds r19,mb1+6+1
+ 782 0456 8091 0000 		lds r24,mb1+4
+ 783 045a 9091 0000 		lds r25,mb1+4+1
+ 784 045e 2817      		cp r18,r24
+ 785 0460 3907      		cpc r19,r25
+ 786 0462 01F0      		breq .L44
+ 787 0464 60E0      		ldi r22,0
+ 788               	.L44:
+ 789 0466 80E2      		ldi r24,lo8(32)
+ 790 0468 90E0      		ldi r25,0
+ 791 046a 0E94 0000 		call _test_assert
+ 792               	.LVL71:
+ 793 046e 8111      		cpse r24,__zero_reg__
+ 794 0470 00C0      		rjmp .L1
+ 183:../../test/testmbox.c ****   chSysLock();
+ 795               		.loc 1 183 0
+ 796               	/* #APP */
+ 797               	 ;  183 "../../test/testmbox.c" 1
+ 798 0472 F894      		cli
+ 799               	 ;  0 "" 2
+ 184:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'E');
+ 800               		.loc 1 184 0
+ 801               	/* #NOAPP */
+ 802 0474 65E4      		ldi r22,lo8(69)
+ 803 0476 70E0      		ldi r23,0
+ 804 0478 80E0      		ldi r24,lo8(mb1)
+ 805 047a 90E0      		ldi r25,hi8(mb1)
+ 806 047c 0E94 0000 		call chMBPostAheadI
+ 807               	.LVL72:
+ 185:../../test/testmbox.c ****   test_assert(33, msg1 == RDY_OK, "wrong wake-up message");
+ 808               		.loc 1 185 0
+ 809 0480 61E0      		ldi r22,lo8(1)
+ 810 0482 892B      		or r24,r25
+ 811 0484 01F0      		breq .L45
+ 812 0486 60E0      		ldi r22,0
+ 813               	.L45:
+ 814 0488 81E2      		ldi r24,lo8(33)
+ 815 048a 90E0      		ldi r25,0
+ 816               	.LVL73:
+ 817 048c 0E94 0000 		call _test_assert
+ 818               	.LVL74:
+ 819 0490 8111      		cpse r24,__zero_reg__
+ 820 0492 00C0      		rjmp .L1
+ 186:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'D');
+ 821               		.loc 1 186 0
+ 822 0494 64E4      		ldi r22,lo8(68)
+ 823 0496 70E0      		ldi r23,0
+ 824 0498 80E0      		ldi r24,lo8(mb1)
+ 825 049a 90E0      		ldi r25,hi8(mb1)
+ 826 049c 0E94 0000 		call chMBPostAheadI
+ 827               	.LVL75:
+ 187:../../test/testmbox.c ****   test_assert(34, msg1 == RDY_OK, "wrong wake-up message");
+ 828               		.loc 1 187 0
+ 829 04a0 61E0      		ldi r22,lo8(1)
+ 830 04a2 892B      		or r24,r25
+ 831 04a4 01F0      		breq .L46
+ 832 04a6 60E0      		ldi r22,0
+ 833               	.L46:
+ 834 04a8 82E2      		ldi r24,lo8(34)
+ 835 04aa 90E0      		ldi r25,0
+ 836               	.LVL76:
+ 837 04ac 0E94 0000 		call _test_assert
+ 838               	.LVL77:
+ 839 04b0 8111      		cpse r24,__zero_reg__
+ 840 04b2 00C0      		rjmp .L1
+ 188:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'C');
+ 841               		.loc 1 188 0
+ 842 04b4 63E4      		ldi r22,lo8(67)
+ 843 04b6 70E0      		ldi r23,0
+ 844 04b8 80E0      		ldi r24,lo8(mb1)
+ 845 04ba 90E0      		ldi r25,hi8(mb1)
+ 846 04bc 0E94 0000 		call chMBPostAheadI
+ 847               	.LVL78:
+ 189:../../test/testmbox.c ****   test_assert(35, msg1 == RDY_OK, "wrong wake-up message");
+ 848               		.loc 1 189 0
+ 849 04c0 61E0      		ldi r22,lo8(1)
+ 850 04c2 892B      		or r24,r25
+ 851 04c4 01F0      		breq .L47
+ 852 04c6 60E0      		ldi r22,0
+ 853               	.L47:
+ 854 04c8 83E2      		ldi r24,lo8(35)
+ 855 04ca 90E0      		ldi r25,0
+ 856               	.LVL79:
+ 857 04cc 0E94 0000 		call _test_assert
+ 858               	.LVL80:
+ 859 04d0 8111      		cpse r24,__zero_reg__
+ 860 04d2 00C0      		rjmp .L1
+ 190:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'B');
+ 861               		.loc 1 190 0
+ 862 04d4 62E4      		ldi r22,lo8(66)
+ 863 04d6 70E0      		ldi r23,0
+ 864 04d8 80E0      		ldi r24,lo8(mb1)
+ 865 04da 90E0      		ldi r25,hi8(mb1)
+ 866 04dc 0E94 0000 		call chMBPostAheadI
+ 867               	.LVL81:
+ 191:../../test/testmbox.c ****   test_assert(36, msg1 == RDY_OK, "wrong wake-up message");
+ 868               		.loc 1 191 0
+ 869 04e0 61E0      		ldi r22,lo8(1)
+ 870 04e2 892B      		or r24,r25
+ 871 04e4 01F0      		breq .L48
+ 872 04e6 60E0      		ldi r22,0
+ 873               	.L48:
+ 874 04e8 84E2      		ldi r24,lo8(36)
+ 875 04ea 90E0      		ldi r25,0
+ 876               	.LVL82:
+ 877 04ec 0E94 0000 		call _test_assert
+ 878               	.LVL83:
+ 879 04f0 8111      		cpse r24,__zero_reg__
+ 880 04f2 00C0      		rjmp .L1
+ 192:../../test/testmbox.c ****   msg1 = chMBPostAheadI(&mb1, 'A');
+ 881               		.loc 1 192 0
+ 882 04f4 61E4      		ldi r22,lo8(65)
+ 883 04f6 70E0      		ldi r23,0
+ 884 04f8 80E0      		ldi r24,lo8(mb1)
+ 885 04fa 90E0      		ldi r25,hi8(mb1)
+ 886 04fc 0E94 0000 		call chMBPostAheadI
+ 887               	.LVL84:
+ 193:../../test/testmbox.c ****   chSysUnlock();
+ 888               		.loc 1 193 0
+ 889               	/* #APP */
+ 890               	 ;  193 "../../test/testmbox.c" 1
+ 891 0500 7894      		sei
+ 892               	 ;  0 "" 2
+ 194:../../test/testmbox.c ****   test_assert(37, msg1 == RDY_OK, "wrong wake-up message");
+ 893               		.loc 1 194 0
+ 894               	/* #NOAPP */
+ 895 0502 61E0      		ldi r22,lo8(1)
+ 896 0504 892B      		or r24,r25
+ 897 0506 01F0      		breq .L49
+ 898 0508 60E0      		ldi r22,0
+ 899               	.L49:
+ 900 050a 85E2      		ldi r24,lo8(37)
+ 901 050c 90E0      		ldi r25,0
+ 902               	.LVL85:
+ 903 050e 0E94 0000 		call _test_assert
+ 904               	.LVL86:
+ 905 0512 8111      		cpse r24,__zero_reg__
+ 906 0514 00C0      		rjmp .L1
+ 195:../../test/testmbox.c ****   test_assert(38, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 907               		.loc 1 195 0
+ 908 0516 61E0      		ldi r22,lo8(1)
+ 909 0518 2091 0000 		lds r18,mb1+6
+ 910 051c 3091 0000 		lds r19,mb1+6+1
+ 911 0520 8091 0000 		lds r24,mb1+4
+ 912 0524 9091 0000 		lds r25,mb1+4+1
+ 913 0528 2817      		cp r18,r24
+ 914 052a 3907      		cpc r19,r25
+ 915 052c 01F0      		breq .L50
+ 916 052e 60E0      		ldi r22,0
+ 917               	.L50:
+ 918 0530 86E2      		ldi r24,lo8(38)
+ 919 0532 90E0      		ldi r25,0
+ 920 0534 0E94 0000 		call _test_assert
+ 921               	.LVL87:
+ 922 0538 8111      		cpse r24,__zero_reg__
+ 923 053a 00C0      		rjmp .L1
+ 924 053c 05E0      		ldi r16,lo8(5)
+ 925 053e 10E0      		ldi r17,0
+ 926               	.L52:
+ 197:../../test/testmbox.c ****     chSysLock();
+ 927               		.loc 1 197 0
+ 928               	/* #APP */
+ 929               	 ;  197 "../../test/testmbox.c" 1
+ 930 0540 F894      		cli
+ 931               	 ;  0 "" 2
+ 198:../../test/testmbox.c ****     msg1 = chMBFetchI(&mb1, &msg2);
+ 932               		.loc 1 198 0
+ 933               	/* #NOAPP */
+ 934 0542 BE01      		movw r22,r28
+ 935 0544 6F5F      		subi r22,-1
+ 936 0546 7F4F      		sbci r23,-1
+ 937 0548 80E0      		ldi r24,lo8(mb1)
+ 938 054a 90E0      		ldi r25,hi8(mb1)
+ 939 054c 0E94 0000 		call chMBFetchI
+ 940               	.LVL88:
+ 199:../../test/testmbox.c ****     chSysUnlock();
+ 941               		.loc 1 199 0
+ 942               	/* #APP */
+ 943               	 ;  199 "../../test/testmbox.c" 1
+ 944 0550 7894      		sei
+ 945               	 ;  0 "" 2
+ 200:../../test/testmbox.c ****     test_assert(39, msg1 == RDY_OK, "wrong wake-up message");
+ 946               		.loc 1 200 0
+ 947               	/* #NOAPP */
+ 948 0552 61E0      		ldi r22,lo8(1)
+ 949 0554 892B      		or r24,r25
+ 950 0556 01F0      		breq .L51
+ 951 0558 60E0      		ldi r22,0
+ 952               	.L51:
+ 953 055a 87E2      		ldi r24,lo8(39)
+ 954 055c 90E0      		ldi r25,0
+ 955               	.LVL89:
+ 956 055e 0E94 0000 		call _test_assert
+ 957               	.LVL90:
+ 958 0562 8111      		cpse r24,__zero_reg__
+ 959 0564 00C0      		rjmp .L1
+ 201:../../test/testmbox.c ****     test_emit_token(msg2);
+ 960               		.loc 1 201 0
+ 961 0566 8981      		ldd r24,Y+1
+ 962 0568 0E94 0000 		call test_emit_token
+ 963               	.LVL91:
+ 964 056c 0150      		subi r16,1
+ 965 056e 1109      		sbc r17,__zero_reg__
+ 196:../../test/testmbox.c ****   for (i = 0; i < MB_SIZE; i++) {
+ 966               		.loc 1 196 0
+ 967 0570 01F4      		brne .L52
+ 203:../../test/testmbox.c ****   test_assert_sequence(40, "ABCDE");
+ 968               		.loc 1 203 0
+ 969 0572 60E0      		ldi r22,lo8(.LC0)
+ 970 0574 70E0      		ldi r23,hi8(.LC0)
+ 971 0576 88E2      		ldi r24,lo8(40)
+ 972 0578 90E0      		ldi r25,0
+ 973 057a 0E94 0000 		call _test_assert_sequence
+ 974               	.LVL92:
+ 975 057e 8111      		cpse r24,__zero_reg__
+ 976 0580 00C0      		rjmp .L1
+ 204:../../test/testmbox.c ****   test_assert_lock(41, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 977               		.loc 1 204 0
+ 978               	/* #APP */
+ 979               	 ;  204 "../../test/testmbox.c" 1
+ 980 0582 F894      		cli
+ 981               	 ;  0 "" 2
+ 982               	/* #NOAPP */
+ 983 0584 61E0      		ldi r22,lo8(1)
+ 984 0586 8091 0000 		lds r24,mb1+17
+ 985 058a 8530      		cpi r24,lo8(5)
+ 986 058c 01F0      		breq .L53
+ 987 058e 60E0      		ldi r22,0
+ 988               	.L53:
+ 989 0590 89E2      		ldi r24,lo8(41)
+ 990 0592 90E0      		ldi r25,0
+ 991 0594 0E94 0000 		call _test_assert
+ 992               	.LVL93:
+ 993               	/* #APP */
+ 994               	 ;  204 "../../test/testmbox.c" 1
+ 995 0598 7894      		sei
+ 996               	 ;  0 "" 2
+ 997               	/* #NOAPP */
+ 998 059a 8111      		cpse r24,__zero_reg__
+ 999 059c 00C0      		rjmp .L1
+ 205:../../test/testmbox.c ****   test_assert_lock(42, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 1000               		.loc 1 205 0 discriminator 2
+ 1001               	/* #APP */
+ 1002               	 ;  205 "../../test/testmbox.c" 1
+ 1003 059e F894      		cli
+ 1004               	 ;  0 "" 2
+ 1005               	/* #NOAPP */
+ 1006 05a0 61E0      		ldi r22,lo8(1)
+ 1007 05a2 8091 0000 		lds r24,mb1+12
+ 1008 05a6 8111      		cpse r24,__zero_reg__
+ 1009 05a8 60E0      		ldi r22,0
+ 1010               	.L55:
+ 1011 05aa 8AE2      		ldi r24,lo8(42)
+ 1012 05ac 90E0      		ldi r25,0
+ 1013 05ae 0E94 0000 		call _test_assert
+ 1014               	.LVL94:
+ 1015               	/* #APP */
+ 1016               	 ;  205 "../../test/testmbox.c" 1
+ 1017 05b2 7894      		sei
+ 1018               	 ;  0 "" 2
+ 1019               	/* #NOAPP */
+ 1020 05b4 8111      		cpse r24,__zero_reg__
+ 1021 05b6 00C0      		rjmp .L1
+ 206:../../test/testmbox.c ****   test_assert(43, mb1.mb_rdptr == mb1.mb_wrptr, "pointers not aligned");
+ 1022               		.loc 1 206 0 discriminator 2
+ 1023 05b8 61E0      		ldi r22,lo8(1)
+ 1024 05ba 2091 0000 		lds r18,mb1+6
+ 1025 05be 3091 0000 		lds r19,mb1+6+1
+ 1026 05c2 8091 0000 		lds r24,mb1+4
+ 1027 05c6 9091 0000 		lds r25,mb1+4+1
+ 1028 05ca 2817      		cp r18,r24
+ 1029 05cc 3907      		cpc r19,r25
+ 1030 05ce 01F0      		breq .L57
+ 1031 05d0 60E0      		ldi r22,0
+ 1032               	.L57:
+ 1033 05d2 8BE2      		ldi r24,lo8(43)
+ 1034 05d4 90E0      		ldi r25,0
+ 1035 05d6 0E94 0000 		call _test_assert
+ 1036               	.LVL95:
+ 1037 05da 8111      		cpse r24,__zero_reg__
+ 1038 05dc 00C0      		rjmp .L1
+ 211:../../test/testmbox.c ****   chMBReset(&mb1);
+ 1039               		.loc 1 211 0
+ 1040 05de 80E0      		ldi r24,lo8(mb1)
+ 1041 05e0 90E0      		ldi r25,hi8(mb1)
+ 1042 05e2 0E94 0000 		call chMBReset
+ 1043               	.LVL96:
+ 216:../../test/testmbox.c ****   test_assert_lock(44, chMBGetFreeCountI(&mb1) == MB_SIZE, "not empty");
+ 1044               		.loc 1 216 0
+ 1045               	/* #APP */
+ 1046               	 ;  216 "../../test/testmbox.c" 1
+ 1047 05e6 F894      		cli
+ 1048               	 ;  0 "" 2
+ 1049               	/* #NOAPP */
+ 1050 05e8 61E0      		ldi r22,lo8(1)
+ 1051 05ea 8091 0000 		lds r24,mb1+17
+ 1052 05ee 8530      		cpi r24,lo8(5)
+ 1053 05f0 01F0      		breq .L58
+ 1054 05f2 60E0      		ldi r22,0
+ 1055               	.L58:
+ 1056 05f4 8CE2      		ldi r24,lo8(44)
+ 1057 05f6 90E0      		ldi r25,0
+ 1058 05f8 0E94 0000 		call _test_assert
+ 1059               	.LVL97:
+ 1060               	/* #APP */
+ 1061               	 ;  216 "../../test/testmbox.c" 1
+ 1062 05fc 7894      		sei
+ 1063               	 ;  0 "" 2
+ 1064               	/* #NOAPP */
+ 1065 05fe 8111      		cpse r24,__zero_reg__
+ 1066 0600 00C0      		rjmp .L1
+ 217:../../test/testmbox.c ****   test_assert_lock(45, chMBGetUsedCountI(&mb1) == 0, "still full");
+ 1067               		.loc 1 217 0 discriminator 2
+ 1068               	/* #APP */
+ 1069               	 ;  217 "../../test/testmbox.c" 1
+ 1070 0602 F894      		cli
+ 1071               	 ;  0 "" 2
+ 1072               	/* #NOAPP */
+ 1073 0604 61E0      		ldi r22,lo8(1)
+ 1074 0606 8091 0000 		lds r24,mb1+12
+ 1075 060a 8111      		cpse r24,__zero_reg__
+ 1076 060c 60E0      		ldi r22,0
+ 1077               	.L60:
+ 1078 060e 8DE2      		ldi r24,lo8(45)
+ 1079 0610 90E0      		ldi r25,0
+ 1080 0612 0E94 0000 		call _test_assert
+ 1081               	.LVL98:
+ 1082               	/* #APP */
+ 1083               	 ;  217 "../../test/testmbox.c" 1
+ 1084 0616 7894      		sei
+ 1085               	 ;  0 "" 2
+ 1086               	/* #NOAPP */
+ 1087 0618 8111      		cpse r24,__zero_reg__
+ 1088 061a 00C0      		rjmp .L1
+ 218:../../test/testmbox.c ****   test_assert_lock(46, mb1.mb_buffer == mb1.mb_wrptr, "write pointer not aligned to base");
+ 1089               		.loc 1 218 0 discriminator 2
+ 1090               	/* #APP */
+ 1091               	 ;  218 "../../test/testmbox.c" 1
+ 1092 061c F894      		cli
+ 1093               	 ;  0 "" 2
+ 1094               	/* #NOAPP */
+ 1095 061e 61E0      		ldi r22,lo8(1)
+ 1096 0620 2091 0000 		lds r18,mb1
+ 1097 0624 3091 0000 		lds r19,mb1+1
+ 1098 0628 8091 0000 		lds r24,mb1+4
+ 1099 062c 9091 0000 		lds r25,mb1+4+1
+ 1100 0630 2817      		cp r18,r24
+ 1101 0632 3907      		cpc r19,r25
+ 1102 0634 01F0      		breq .L62
+ 1103 0636 60E0      		ldi r22,0
+ 1104               	.L62:
+ 1105 0638 8EE2      		ldi r24,lo8(46)
+ 1106 063a 90E0      		ldi r25,0
+ 1107 063c 0E94 0000 		call _test_assert
+ 1108               	.LVL99:
+ 1109               	/* #APP */
+ 1110               	 ;  218 "../../test/testmbox.c" 1
+ 1111 0640 7894      		sei
+ 1112               	 ;  0 "" 2
+ 1113               	/* #NOAPP */
+ 1114 0642 8111      		cpse r24,__zero_reg__
+ 1115 0644 00C0      		rjmp .L1
+ 219:../../test/testmbox.c ****   test_assert_lock(47, mb1.mb_buffer == mb1.mb_rdptr, "read pointer not aligned to base");
+ 1116               		.loc 1 219 0 discriminator 2
+ 1117               	/* #APP */
+ 1118               	 ;  219 "../../test/testmbox.c" 1
+ 1119 0646 F894      		cli
+ 1120               	 ;  0 "" 2
+ 1121               	/* #NOAPP */
+ 1122 0648 61E0      		ldi r22,lo8(1)
+ 1123 064a 2091 0000 		lds r18,mb1
+ 1124 064e 3091 0000 		lds r19,mb1+1
+ 1125 0652 8091 0000 		lds r24,mb1+6
+ 1126 0656 9091 0000 		lds r25,mb1+6+1
+ 1127 065a 2817      		cp r18,r24
+ 1128 065c 3907      		cpc r19,r25
+ 1129 065e 01F0      		breq .L64
+ 1130 0660 60E0      		ldi r22,0
+ 1131               	.L64:
+ 1132 0662 8FE2      		ldi r24,lo8(47)
+ 1133 0664 90E0      		ldi r25,0
+ 1134 0666 0E94 0000 		call _test_assert
+ 1135               	.LVL100:
+ 1136               	/* #APP */
+ 1137               	 ;  219 "../../test/testmbox.c" 1
+ 1138 066a 7894      		sei
+ 1139               	 ;  0 "" 2
+ 1140               	/* #NOAPP */
+ 1141 066c 00C0      		rjmp .L1
+ 1142               	.LFE8:
+ 1145               	mbox1_setup:
+ 1146               	.LFB7:
+  71:../../test/testmbox.c **** static void mbox1_setup(void) {
+ 1147               		.loc 1 71 0
+ 1148               	/* prologue: function */
+ 1149               	/* frame size = 0 */
+ 1150               	/* stack size = 0 */
+ 1151               	.L__stack_usage = 0
+  73:../../test/testmbox.c ****   chMBInit(&mb1, (msg_t *)test.wa.T0, MB_SIZE);
+ 1152               		.loc 1 73 0
+ 1153 066e 45E0      		ldi r20,lo8(5)
+ 1154 0670 60E0      		ldi r22,lo8(test)
+ 1155 0672 70E0      		ldi r23,hi8(test)
+ 1156 0674 80E0      		ldi r24,lo8(mb1)
+ 1157 0676 90E0      		ldi r25,hi8(mb1)
+ 1158 0678 0C94 0000 		jmp chMBInit
+ 1159               	.LVL101:
+ 1160               	.LFE7:
+ 1162               	.global	patternmbox
+ 1163               		.section	.rodata
+ 1166               	patternmbox:
+ 1167 0000 0000      		.word	testmbox1
+ 1168 0002 0000      		.word	0
+ 1169               	.global	testmbox1
+ 1170               		.section	.rodata.str1.1
+ 1171               	.LC1:
+ 1172 0006 4D61 696C 		.string	"Mailboxes, queuing and timeouts"
+ 1172      626F 7865 
+ 1172      732C 2071 
+ 1172      7565 7569 
+ 1172      6E67 2061 
+ 1173               		.section	.rodata
+ 1176               	testmbox1:
+ 1177 0004 0000      		.word	.LC1
+ 1178 0006 0000      		.word	gs(mbox1_setup)
+ 1179 0008 0000      		.word	0
+ 1180 000a 0000      		.word	gs(mbox1_execute)
+ 1181               		.data
+ 1184               	mb1:
+ 1185 0000 0000      		.word	test
+ 1186 0002 0000      		.word	test+10
+ 1187 0004 0000      		.word	test
+ 1188 0006 0000      		.word	test
+ 1189 0008 0000      		.word	mb1+8
+ 1190 000a 0000      		.word	mb1+8
+ 1191 000c 00        		.byte	0
+ 1192 000d 0000      		.word	mb1+13
+ 1193 000f 0000      		.word	mb1+13
+ 1194 0011 05        		.byte	5
+ 1261               	.Letext0:
+ 1262               		.file 2 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 1263               		.file 3 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 1264               		.file 4 "../../os/kernel/include/chlists.h"
+ 1265               		.file 5 "../../os/kernel/include/chthreads.h"
+ 1266               		.file 6 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 1267               		.file 7 "../../os/kernel/include/chsem.h"
+ 1268               		.file 8 "../../os/kernel/include/chmtx.h"
+ 1269               		.file 9 "../../os/kernel/include/chmboxes.h"
+ 1270               		.file 10 "../../test/test.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testmbox.c
+     /tmp/ccF7WPnU.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccF7WPnU.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccF7WPnU.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccF7WPnU.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/ccF7WPnU.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccF7WPnU.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccF7WPnU.s:15     .text:0000000000000000 mbox1_execute
+     /tmp/ccF7WPnU.s:1184   .data:0000000000000000 mb1
+     /tmp/ccF7WPnU.s:1145   .text:000000000000066e mbox1_setup
+     /tmp/ccF7WPnU.s:1166   .rodata:0000000000000000 patternmbox
+     /tmp/ccF7WPnU.s:1176   .rodata:0000000000000004 testmbox1
+
+UNDEFINED SYMBOLS
+_test_assert
+chMBPost
+chMBPostAhead
+chMBPostI
+chMBPostAheadI
+test_emit_token
+chMBFetch
+_test_assert_sequence
+chMBFetchI
+chMBReset
+test
+chMBInit
+__do_copy_data

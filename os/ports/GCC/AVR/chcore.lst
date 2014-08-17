@@ -1,0 +1,419 @@
+   1               		.file	"chcore.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  10               		.weak	port_switch
+  12               	port_switch:
+  13               	.LFB7:
+  14               		.file 1 "../../os/ports/GCC/AVR/chcore.c"
+   1:../../os/ports/GCC/AVR/chcore.c **** /*
+   2:../../os/ports/GCC/AVR/chcore.c ****     ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
+   3:../../os/ports/GCC/AVR/chcore.c ****                  2011,2012,2013 Giovanni Di Sirio.
+   4:../../os/ports/GCC/AVR/chcore.c **** 
+   5:../../os/ports/GCC/AVR/chcore.c ****     This file is part of ChibiOS/RT.
+   6:../../os/ports/GCC/AVR/chcore.c **** 
+   7:../../os/ports/GCC/AVR/chcore.c ****     ChibiOS/RT is free software; you can redistribute it and/or modify
+   8:../../os/ports/GCC/AVR/chcore.c ****     it under the terms of the GNU General Public License as published by
+   9:../../os/ports/GCC/AVR/chcore.c ****     the Free Software Foundation; either version 3 of the License, or
+  10:../../os/ports/GCC/AVR/chcore.c ****     (at your option) any later version.
+  11:../../os/ports/GCC/AVR/chcore.c **** 
+  12:../../os/ports/GCC/AVR/chcore.c ****     ChibiOS/RT is distributed in the hope that it will be useful,
+  13:../../os/ports/GCC/AVR/chcore.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  14:../../os/ports/GCC/AVR/chcore.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  15:../../os/ports/GCC/AVR/chcore.c ****     GNU General Public License for more details.
+  16:../../os/ports/GCC/AVR/chcore.c **** 
+  17:../../os/ports/GCC/AVR/chcore.c ****     You should have received a copy of the GNU General Public License
+  18:../../os/ports/GCC/AVR/chcore.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  19:../../os/ports/GCC/AVR/chcore.c **** 
+  20:../../os/ports/GCC/AVR/chcore.c ****                                       ---
+  21:../../os/ports/GCC/AVR/chcore.c **** 
+  22:../../os/ports/GCC/AVR/chcore.c ****     A special exception to the GPL can be applied should you wish to distribute
+  23:../../os/ports/GCC/AVR/chcore.c ****     a combined work that includes ChibiOS/RT, without being obliged to provide
+  24:../../os/ports/GCC/AVR/chcore.c ****     the source code for any proprietary components. See the file exception.txt
+  25:../../os/ports/GCC/AVR/chcore.c ****     for full details of how and when the exception can be applied.
+  26:../../os/ports/GCC/AVR/chcore.c **** */
+  27:../../os/ports/GCC/AVR/chcore.c **** 
+  28:../../os/ports/GCC/AVR/chcore.c **** /**
+  29:../../os/ports/GCC/AVR/chcore.c ****  * @file    AVR/chcore.c
+  30:../../os/ports/GCC/AVR/chcore.c ****  * @brief   AVR architecture port code.
+  31:../../os/ports/GCC/AVR/chcore.c ****  *
+  32:../../os/ports/GCC/AVR/chcore.c ****  * @addtogroup AVR_CORE
+  33:../../os/ports/GCC/AVR/chcore.c ****  * @{
+  34:../../os/ports/GCC/AVR/chcore.c ****  */
+  35:../../os/ports/GCC/AVR/chcore.c **** 
+  36:../../os/ports/GCC/AVR/chcore.c **** #include "ch.h"
+  37:../../os/ports/GCC/AVR/chcore.c **** 
+  38:../../os/ports/GCC/AVR/chcore.c **** /**
+  39:../../os/ports/GCC/AVR/chcore.c ****  * @brief   Performs a context switch between two threads.
+  40:../../os/ports/GCC/AVR/chcore.c ****  * @details This is the most critical code in any port, this function
+  41:../../os/ports/GCC/AVR/chcore.c ****  *          is responsible for the context switch between 2 threads.
+  42:../../os/ports/GCC/AVR/chcore.c ****  * @note    The implementation of this code affects <b>directly</b> the context
+  43:../../os/ports/GCC/AVR/chcore.c ****  *          switch performance so optimize here as much as you can.
+  44:../../os/ports/GCC/AVR/chcore.c ****  * @note    The function is declared as a weak symbol, it is possible to
+  45:../../os/ports/GCC/AVR/chcore.c ****  *          redefine it in your application code.
+  46:../../os/ports/GCC/AVR/chcore.c ****  *
+  47:../../os/ports/GCC/AVR/chcore.c ****  * @param[in] ntp       the thread to be switched in
+  48:../../os/ports/GCC/AVR/chcore.c ****  * @param[in] otp       the thread to be switched out
+  49:../../os/ports/GCC/AVR/chcore.c ****  */
+  50:../../os/ports/GCC/AVR/chcore.c **** #if !defined(__DOXYGEN__)
+  51:../../os/ports/GCC/AVR/chcore.c **** __attribute__((naked, weak))
+  52:../../os/ports/GCC/AVR/chcore.c **** #endif
+  53:../../os/ports/GCC/AVR/chcore.c **** void port_switch(Thread *ntp, Thread *otp) {
+  15               		.loc 1 53 0
+  16               	.LVL0:
+  17               	/* prologue: naked */
+  18               	/* frame size = 0 */
+  19               	/* stack size = 0 */
+  20               	.L__stack_usage = 0
+  54:../../os/ports/GCC/AVR/chcore.c **** 
+  55:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r2");
+  21               		.loc 1 55 0
+  22               	/* #APP */
+  23               	 ;  55 "../../os/ports/GCC/AVR/chcore.c" 1
+  24 0000 2F92      		push    r2
+  25               	 ;  0 "" 2
+  56:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r3");
+  26               		.loc 1 56 0
+  27               	 ;  56 "../../os/ports/GCC/AVR/chcore.c" 1
+  28 0002 3F92      		push    r3
+  29               	 ;  0 "" 2
+  57:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r4");
+  30               		.loc 1 57 0
+  31               	 ;  57 "../../os/ports/GCC/AVR/chcore.c" 1
+  32 0004 4F92      		push    r4
+  33               	 ;  0 "" 2
+  58:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r5");
+  34               		.loc 1 58 0
+  35               	 ;  58 "../../os/ports/GCC/AVR/chcore.c" 1
+  36 0006 5F92      		push    r5
+  37               	 ;  0 "" 2
+  59:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r6");
+  38               		.loc 1 59 0
+  39               	 ;  59 "../../os/ports/GCC/AVR/chcore.c" 1
+  40 0008 6F92      		push    r6
+  41               	 ;  0 "" 2
+  60:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r7");
+  42               		.loc 1 60 0
+  43               	 ;  60 "../../os/ports/GCC/AVR/chcore.c" 1
+  44 000a 7F92      		push    r7
+  45               	 ;  0 "" 2
+  61:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r8");
+  46               		.loc 1 61 0
+  47               	 ;  61 "../../os/ports/GCC/AVR/chcore.c" 1
+  48 000c 8F92      		push    r8
+  49               	 ;  0 "" 2
+  62:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r9");
+  50               		.loc 1 62 0
+  51               	 ;  62 "../../os/ports/GCC/AVR/chcore.c" 1
+  52 000e 9F92      		push    r9
+  53               	 ;  0 "" 2
+  63:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r10");
+  54               		.loc 1 63 0
+  55               	 ;  63 "../../os/ports/GCC/AVR/chcore.c" 1
+  56 0010 AF92      		push    r10
+  57               	 ;  0 "" 2
+  64:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r11");
+  58               		.loc 1 64 0
+  59               	 ;  64 "../../os/ports/GCC/AVR/chcore.c" 1
+  60 0012 BF92      		push    r11
+  61               	 ;  0 "" 2
+  65:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r12");
+  62               		.loc 1 65 0
+  63               	 ;  65 "../../os/ports/GCC/AVR/chcore.c" 1
+  64 0014 CF92      		push    r12
+  65               	 ;  0 "" 2
+  66:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r13");
+  66               		.loc 1 66 0
+  67               	 ;  66 "../../os/ports/GCC/AVR/chcore.c" 1
+  68 0016 DF92      		push    r13
+  69               	 ;  0 "" 2
+  67:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r14");
+  70               		.loc 1 67 0
+  71               	 ;  67 "../../os/ports/GCC/AVR/chcore.c" 1
+  72 0018 EF92      		push    r14
+  73               	 ;  0 "" 2
+  68:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r15");
+  74               		.loc 1 68 0
+  75               	 ;  68 "../../os/ports/GCC/AVR/chcore.c" 1
+  76 001a FF92      		push    r15
+  77               	 ;  0 "" 2
+  69:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r16");
+  78               		.loc 1 69 0
+  79               	 ;  69 "../../os/ports/GCC/AVR/chcore.c" 1
+  80 001c 0F93      		push    r16
+  81               	 ;  0 "" 2
+  70:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r17");
+  82               		.loc 1 70 0
+  83               	 ;  70 "../../os/ports/GCC/AVR/chcore.c" 1
+  84 001e 1F93      		push    r17
+  85               	 ;  0 "" 2
+  71:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r28");
+  86               		.loc 1 71 0
+  87               	 ;  71 "../../os/ports/GCC/AVR/chcore.c" 1
+  88 0020 CF93      		push    r28
+  89               	 ;  0 "" 2
+  72:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("push    r29");
+  90               		.loc 1 72 0
+  91               	 ;  72 "../../os/ports/GCC/AVR/chcore.c" 1
+  92 0022 DF93      		push    r29
+  93               	 ;  0 "" 2
+  73:../../os/ports/GCC/AVR/chcore.c **** 
+  74:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("movw    r30, r22");
+  94               		.loc 1 74 0
+  95               	 ;  74 "../../os/ports/GCC/AVR/chcore.c" 1
+  96 0024 FB01      		movw    r30, r22
+  97               	 ;  0 "" 2
+  75:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("in      r0, 0x3d");
+  98               		.loc 1 75 0
+  99               	 ;  75 "../../os/ports/GCC/AVR/chcore.c" 1
+ 100 0026 0DB6      		in      r0, 0x3d
+ 101               	 ;  0 "" 2
+  76:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("std     Z+5, r0");
+ 102               		.loc 1 76 0
+ 103               	 ;  76 "../../os/ports/GCC/AVR/chcore.c" 1
+ 104 0028 0582      		std     Z+5, r0
+ 105               	 ;  0 "" 2
+  77:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("in      r0, 0x3e");
+ 106               		.loc 1 77 0
+ 107               	 ;  77 "../../os/ports/GCC/AVR/chcore.c" 1
+ 108 002a 0EB6      		in      r0, 0x3e
+ 109               	 ;  0 "" 2
+  78:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("std     Z+6, r0");
+ 110               		.loc 1 78 0
+ 111               	 ;  78 "../../os/ports/GCC/AVR/chcore.c" 1
+ 112 002c 0682      		std     Z+6, r0
+ 113               	 ;  0 "" 2
+  79:../../os/ports/GCC/AVR/chcore.c **** 
+  80:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("movw    r30, r24");
+ 114               		.loc 1 80 0
+ 115               	 ;  80 "../../os/ports/GCC/AVR/chcore.c" 1
+ 116 002e FC01      		movw    r30, r24
+ 117               	 ;  0 "" 2
+  81:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("ldd     r0, Z+5");
+ 118               		.loc 1 81 0
+ 119               	 ;  81 "../../os/ports/GCC/AVR/chcore.c" 1
+ 120 0030 0580      		ldd     r0, Z+5
+ 121               	 ;  0 "" 2
+  82:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("out     0x3d, r0");
+ 122               		.loc 1 82 0
+ 123               	 ;  82 "../../os/ports/GCC/AVR/chcore.c" 1
+ 124 0032 0DBE      		out     0x3d, r0
+ 125               	 ;  0 "" 2
+  83:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("ldd     r0, Z+6");
+ 126               		.loc 1 83 0
+ 127               	 ;  83 "../../os/ports/GCC/AVR/chcore.c" 1
+ 128 0034 0680      		ldd     r0, Z+6
+ 129               	 ;  0 "" 2
+  84:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("out     0x3e, r0");
+ 130               		.loc 1 84 0
+ 131               	 ;  84 "../../os/ports/GCC/AVR/chcore.c" 1
+ 132 0036 0EBE      		out     0x3e, r0
+ 133               	 ;  0 "" 2
+  85:../../os/ports/GCC/AVR/chcore.c **** 
+  86:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r29");
+ 134               		.loc 1 86 0
+ 135               	 ;  86 "../../os/ports/GCC/AVR/chcore.c" 1
+ 136 0038 DF91      		pop     r29
+ 137               	 ;  0 "" 2
+  87:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r28");
+ 138               		.loc 1 87 0
+ 139               	 ;  87 "../../os/ports/GCC/AVR/chcore.c" 1
+ 140 003a CF91      		pop     r28
+ 141               	 ;  0 "" 2
+  88:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r17");
+ 142               		.loc 1 88 0
+ 143               	 ;  88 "../../os/ports/GCC/AVR/chcore.c" 1
+ 144 003c 1F91      		pop     r17
+ 145               	 ;  0 "" 2
+  89:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r16");
+ 146               		.loc 1 89 0
+ 147               	 ;  89 "../../os/ports/GCC/AVR/chcore.c" 1
+ 148 003e 0F91      		pop     r16
+ 149               	 ;  0 "" 2
+  90:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r15");
+ 150               		.loc 1 90 0
+ 151               	 ;  90 "../../os/ports/GCC/AVR/chcore.c" 1
+ 152 0040 FF90      		pop     r15
+ 153               	 ;  0 "" 2
+  91:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r14");
+ 154               		.loc 1 91 0
+ 155               	 ;  91 "../../os/ports/GCC/AVR/chcore.c" 1
+ 156 0042 EF90      		pop     r14
+ 157               	 ;  0 "" 2
+  92:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r13");
+ 158               		.loc 1 92 0
+ 159               	 ;  92 "../../os/ports/GCC/AVR/chcore.c" 1
+ 160 0044 DF90      		pop     r13
+ 161               	 ;  0 "" 2
+  93:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r12");
+ 162               		.loc 1 93 0
+ 163               	 ;  93 "../../os/ports/GCC/AVR/chcore.c" 1
+ 164 0046 CF90      		pop     r12
+ 165               	 ;  0 "" 2
+  94:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r11");
+ 166               		.loc 1 94 0
+ 167               	 ;  94 "../../os/ports/GCC/AVR/chcore.c" 1
+ 168 0048 BF90      		pop     r11
+ 169               	 ;  0 "" 2
+  95:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r10");
+ 170               		.loc 1 95 0
+ 171               	 ;  95 "../../os/ports/GCC/AVR/chcore.c" 1
+ 172 004a AF90      		pop     r10
+ 173               	 ;  0 "" 2
+  96:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r9");
+ 174               		.loc 1 96 0
+ 175               	 ;  96 "../../os/ports/GCC/AVR/chcore.c" 1
+ 176 004c 9F90      		pop     r9
+ 177               	 ;  0 "" 2
+  97:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r8");
+ 178               		.loc 1 97 0
+ 179               	 ;  97 "../../os/ports/GCC/AVR/chcore.c" 1
+ 180 004e 8F90      		pop     r8
+ 181               	 ;  0 "" 2
+  98:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r7");
+ 182               		.loc 1 98 0
+ 183               	 ;  98 "../../os/ports/GCC/AVR/chcore.c" 1
+ 184 0050 7F90      		pop     r7
+ 185               	 ;  0 "" 2
+  99:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r6");
+ 186               		.loc 1 99 0
+ 187               	 ;  99 "../../os/ports/GCC/AVR/chcore.c" 1
+ 188 0052 6F90      		pop     r6
+ 189               	 ;  0 "" 2
+ 100:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r5");
+ 190               		.loc 1 100 0
+ 191               	 ;  100 "../../os/ports/GCC/AVR/chcore.c" 1
+ 192 0054 5F90      		pop     r5
+ 193               	 ;  0 "" 2
+ 101:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r4");
+ 194               		.loc 1 101 0
+ 195               	 ;  101 "../../os/ports/GCC/AVR/chcore.c" 1
+ 196 0056 4F90      		pop     r4
+ 197               	 ;  0 "" 2
+ 102:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r3");
+ 198               		.loc 1 102 0
+ 199               	 ;  102 "../../os/ports/GCC/AVR/chcore.c" 1
+ 200 0058 3F90      		pop     r3
+ 201               	 ;  0 "" 2
+ 103:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("pop     r2");
+ 202               		.loc 1 103 0
+ 203               	 ;  103 "../../os/ports/GCC/AVR/chcore.c" 1
+ 204 005a 2F90      		pop     r2
+ 205               	 ;  0 "" 2
+ 104:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("ret");
+ 206               		.loc 1 104 0
+ 207               	 ;  104 "../../os/ports/GCC/AVR/chcore.c" 1
+ 208 005c 0895      		ret
+ 209               	 ;  0 "" 2
+ 210               	/* epilogue start */
+ 105:../../os/ports/GCC/AVR/chcore.c **** }
+ 211               		.loc 1 105 0
+ 212               	/* #NOAPP */
+ 213               	.LFE7:
+ 215               		.weak	port_halt
+ 217               	port_halt:
+ 218               	.LFB8:
+ 106:../../os/ports/GCC/AVR/chcore.c **** 
+ 107:../../os/ports/GCC/AVR/chcore.c **** /**
+ 108:../../os/ports/GCC/AVR/chcore.c ****  * @brief   Halts the system.
+ 109:../../os/ports/GCC/AVR/chcore.c ****  * @details This function is invoked by the operating system when an
+ 110:../../os/ports/GCC/AVR/chcore.c ****  *          unrecoverable error is detected (for example because a programming
+ 111:../../os/ports/GCC/AVR/chcore.c ****  *          error in the application code that triggers an assertion while in
+ 112:../../os/ports/GCC/AVR/chcore.c ****  *          debug mode).
+ 113:../../os/ports/GCC/AVR/chcore.c ****  * @note    The function is declared as a weak symbol, it is possible to
+ 114:../../os/ports/GCC/AVR/chcore.c ****  *          redefine it in your application code.
+ 115:../../os/ports/GCC/AVR/chcore.c ****  */
+ 116:../../os/ports/GCC/AVR/chcore.c **** #if !defined(__DOXYGEN__)
+ 117:../../os/ports/GCC/AVR/chcore.c **** __attribute__((weak))
+ 118:../../os/ports/GCC/AVR/chcore.c **** #endif
+ 119:../../os/ports/GCC/AVR/chcore.c **** void port_halt(void) {
+ 219               		.loc 1 119 0
+ 220               	/* prologue: function */
+ 221               	/* frame size = 0 */
+ 222               	/* stack size = 0 */
+ 223               	.L__stack_usage = 0
+ 120:../../os/ports/GCC/AVR/chcore.c **** 
+ 121:../../os/ports/GCC/AVR/chcore.c ****   port_disable();
+ 224               		.loc 1 121 0
+ 225               	/* #APP */
+ 226               	 ;  121 "../../os/ports/GCC/AVR/chcore.c" 1
+ 227 005e F894      		cli
+ 228               	 ;  0 "" 2
+ 229               	/* #NOAPP */
+ 230               	.L3:
+ 231 0060 00C0      		rjmp .L3
+ 232               	.LFE8:
+ 234               	.global	_port_thread_start
+ 236               	_port_thread_start:
+ 237               	.LFB9:
+ 122:../../os/ports/GCC/AVR/chcore.c ****   while (TRUE) {
+ 123:../../os/ports/GCC/AVR/chcore.c ****   }
+ 124:../../os/ports/GCC/AVR/chcore.c **** }
+ 125:../../os/ports/GCC/AVR/chcore.c **** 
+ 126:../../os/ports/GCC/AVR/chcore.c **** /**
+ 127:../../os/ports/GCC/AVR/chcore.c ****  * @brief   Start a thread by invoking its work function.
+ 128:../../os/ports/GCC/AVR/chcore.c ****  * @details If the work function returns @p chThdExit() is automatically
+ 129:../../os/ports/GCC/AVR/chcore.c ****  *          invoked.
+ 130:../../os/ports/GCC/AVR/chcore.c ****  */
+ 131:../../os/ports/GCC/AVR/chcore.c **** void _port_thread_start(void) {
+ 238               		.loc 1 131 0
+ 239               	/* prologue: function */
+ 240               	/* frame size = 0 */
+ 241               	/* stack size = 0 */
+ 242               	.L__stack_usage = 0
+ 132:../../os/ports/GCC/AVR/chcore.c **** 
+ 133:../../os/ports/GCC/AVR/chcore.c ****   chSysUnlock();
+ 243               		.loc 1 133 0
+ 244               	/* #APP */
+ 245               	 ;  133 "../../os/ports/GCC/AVR/chcore.c" 1
+ 246 0062 7894      		sei
+ 247               	 ;  0 "" 2
+ 134:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("movw    r24, r4");
+ 248               		.loc 1 134 0
+ 249               	 ;  134 "../../os/ports/GCC/AVR/chcore.c" 1
+ 250 0064 C201      		movw    r24, r4
+ 251               	 ;  0 "" 2
+ 135:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("movw    r30, r2");
+ 252               		.loc 1 135 0
+ 253               	 ;  135 "../../os/ports/GCC/AVR/chcore.c" 1
+ 254 0066 F101      		movw    r30, r2
+ 255               	 ;  0 "" 2
+ 136:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("icall");
+ 256               		.loc 1 136 0
+ 257               	 ;  136 "../../os/ports/GCC/AVR/chcore.c" 1
+ 258 0068 0995      		icall
+ 259               	 ;  0 "" 2
+ 137:../../os/ports/GCC/AVR/chcore.c ****   asm volatile ("call    chThdExit");
+ 260               		.loc 1 137 0
+ 261               	 ;  137 "../../os/ports/GCC/AVR/chcore.c" 1
+ 262 006a 0E94 0000 		call    chThdExit
+ 263               	 ;  0 "" 2
+ 264               	/* #NOAPP */
+ 265 006e 0895      		ret
+ 266               	.LFE9:
+ 310               	.Letext0:
+ 311               		.file 2 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 312               		.file 3 "../../os/ports/GCC/AVR/chtypes.h"
+ 313               		.file 4 "../../os/kernel/include/chlists.h"
+ 314               		.file 5 "../../os/kernel/include/chthreads.h"
+ 315               		.file 6 "../../os/ports/GCC/AVR/chcore.h"
+ 316               		.file 7 "../../os/kernel/include/chmtx.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 chcore.c
+     /tmp/ccFSQ8Ih.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccFSQ8Ih.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccFSQ8Ih.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccFSQ8Ih.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/ccFSQ8Ih.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccFSQ8Ih.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccFSQ8Ih.s:12     .text:0000000000000000 port_switch
+     /tmp/ccFSQ8Ih.s:217    .text:000000000000005e port_halt
+     /tmp/ccFSQ8Ih.s:236    .text:0000000000000062 _port_thread_start
+
+UNDEFINED SYMBOLS
+chThdExit

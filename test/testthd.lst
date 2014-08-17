@@ -1,0 +1,1084 @@
+   1               		.file	"testthd.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  11               	thd3_execute:
+  12               	.LFB10:
+  13               		.file 1 "../../test/testthd.c"
+   1:../../test/testthd.c **** /*
+   2:../../test/testthd.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testthd.c **** 
+   4:../../test/testthd.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testthd.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testthd.c ****     You may obtain a copy of the License at
+   7:../../test/testthd.c **** 
+   8:../../test/testthd.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testthd.c **** 
+  10:../../test/testthd.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testthd.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testthd.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testthd.c ****     See the License for the specific language governing permissions and
+  14:../../test/testthd.c ****     limitations under the License.
+  15:../../test/testthd.c **** */
+  16:../../test/testthd.c **** 
+  17:../../test/testthd.c **** #include "ch.h"
+  18:../../test/testthd.c **** #include "test.h"
+  19:../../test/testthd.c **** 
+  20:../../test/testthd.c **** /**
+  21:../../test/testthd.c ****  * @page test_threads Threads and Scheduler test
+  22:../../test/testthd.c ****  *
+  23:../../test/testthd.c ****  * File: @ref testthd.c
+  24:../../test/testthd.c ****  *
+  25:../../test/testthd.c ****  * <h2>Description</h2>
+  26:../../test/testthd.c ****  * This module implements the test sequence for the @ref scheduler,
+  27:../../test/testthd.c ****  * @ref threads and @ref time subsystems.<br>
+  28:../../test/testthd.c ****  * Note that the tests on those subsystems are formally required but most of
+  29:../../test/testthd.c ****  * their functionality is already demonstrated because the test suite itself
+  30:../../test/testthd.c ****  * depends on them, anyway double check is good.
+  31:../../test/testthd.c ****  *
+  32:../../test/testthd.c ****  * <h2>Objective</h2>
+  33:../../test/testthd.c ****  * Objective of the test module is to cover 100% of the subsystems code.
+  34:../../test/testthd.c ****  *
+  35:../../test/testthd.c ****  * <h2>Preconditions</h2>
+  36:../../test/testthd.c ****  * None.
+  37:../../test/testthd.c ****  *
+  38:../../test/testthd.c ****  * <h2>Test Cases</h2>
+  39:../../test/testthd.c ****  * - @subpage test_threads_001
+  40:../../test/testthd.c ****  * - @subpage test_threads_002
+  41:../../test/testthd.c ****  * - @subpage test_threads_003
+  42:../../test/testthd.c ****  * - @subpage test_threads_004
+  43:../../test/testthd.c ****  * .
+  44:../../test/testthd.c ****  * @file testthd.c
+  45:../../test/testthd.c ****  * @brief Threads and Scheduler test source file
+  46:../../test/testthd.c ****  * @file testthd.h
+  47:../../test/testthd.c ****  * @brief Threads and Scheduler test header file
+  48:../../test/testthd.c ****  */
+  49:../../test/testthd.c **** 
+  50:../../test/testthd.c **** /**
+  51:../../test/testthd.c ****  * @page test_threads_001 Ready List functionality #1
+  52:../../test/testthd.c ****  *
+  53:../../test/testthd.c ****  * <h2>Description</h2>
+  54:../../test/testthd.c ****  * Five threads, with increasing priority, are enqueued in the ready list
+  55:../../test/testthd.c ****  * and atomically executed.<br>
+  56:../../test/testthd.c ****  * The test expects the threads to perform their operations in increasing
+  57:../../test/testthd.c ****  * priority order regardless of the initial order.
+  58:../../test/testthd.c ****  */
+  59:../../test/testthd.c **** 
+  60:../../test/testthd.c **** static msg_t thread(void *p) {
+  61:../../test/testthd.c **** 
+  62:../../test/testthd.c ****   test_emit_token(*(char *)p);
+  63:../../test/testthd.c ****   return 0;
+  64:../../test/testthd.c **** }
+  65:../../test/testthd.c **** 
+  66:../../test/testthd.c **** static void thd1_execute(void) {
+  67:../../test/testthd.c **** 
+  68:../../test/testthd.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
+  69:../../test/testthd.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread, "D");
+  70:../../test/testthd.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread, "C");
+  71:../../test/testthd.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread, "B");
+  72:../../test/testthd.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread, "A");
+  73:../../test/testthd.c ****   test_wait_threads();
+  74:../../test/testthd.c ****   test_assert_sequence(1, "ABCDE");
+  75:../../test/testthd.c **** }
+  76:../../test/testthd.c **** 
+  77:../../test/testthd.c **** ROMCONST struct testcase testthd1 = {
+  78:../../test/testthd.c ****   "Threads, enqueuing test #1",
+  79:../../test/testthd.c ****   NULL,
+  80:../../test/testthd.c ****   NULL,
+  81:../../test/testthd.c ****   thd1_execute
+  82:../../test/testthd.c **** };
+  83:../../test/testthd.c **** 
+  84:../../test/testthd.c **** /**
+  85:../../test/testthd.c ****  * @page test_threads_002 Ready List functionality #2
+  86:../../test/testthd.c ****  *
+  87:../../test/testthd.c ****  * <h2>Description</h2>
+  88:../../test/testthd.c ****  * Five threads, with pseudo-random priority, are enqueued in the ready list
+  89:../../test/testthd.c ****  * and atomically executed.<br>
+  90:../../test/testthd.c ****  * The test expects the threads to perform their operations in increasing
+  91:../../test/testthd.c ****  * priority order regardless of the initial order.
+  92:../../test/testthd.c ****  */
+  93:../../test/testthd.c **** 
+  94:../../test/testthd.c **** static void thd2_execute(void) {
+  95:../../test/testthd.c **** 
+  96:../../test/testthd.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread, "D");
+  97:../../test/testthd.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
+  98:../../test/testthd.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread, "A");
+  99:../../test/testthd.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread, "B");
+ 100:../../test/testthd.c ****   /* Done this way for coverage of chThdCreateI() and chThdResume().*/
+ 101:../../test/testthd.c ****   chSysLock();
+ 102:../../test/testthd.c ****   threads[2] = chThdCreateI(wa[2], WA_SIZE, chThdGetPriority()-3, thread, "C");
+ 103:../../test/testthd.c ****   chSysUnlock();
+ 104:../../test/testthd.c ****   chThdResume(threads[2]);
+ 105:../../test/testthd.c ****   test_wait_threads();
+ 106:../../test/testthd.c ****   test_assert_sequence(1, "ABCDE");
+ 107:../../test/testthd.c **** }
+ 108:../../test/testthd.c **** 
+ 109:../../test/testthd.c **** ROMCONST struct testcase testthd2 = {
+ 110:../../test/testthd.c ****   "Threads, enqueuing test #2",
+ 111:../../test/testthd.c ****   NULL,
+ 112:../../test/testthd.c ****   NULL,
+ 113:../../test/testthd.c ****   thd2_execute
+ 114:../../test/testthd.c **** };
+ 115:../../test/testthd.c **** 
+ 116:../../test/testthd.c **** /**
+ 117:../../test/testthd.c ****  * @page test_threads_003 Threads priority change test
+ 118:../../test/testthd.c ****  *
+ 119:../../test/testthd.c ****  * <h2>Description</h2>
+ 120:../../test/testthd.c ****  * A series of priority changes are performed on the current thread in order
+ 121:../../test/testthd.c ****  * to verify that the priority change happens as expected.<br>
+ 122:../../test/testthd.c ****  * If the @p CH_USE_MUTEXES option is enabled then the priority changes are
+ 123:../../test/testthd.c ****  * also tested under priority inheritance boosted priority state.
+ 124:../../test/testthd.c ****  */
+ 125:../../test/testthd.c **** 
+ 126:../../test/testthd.c **** static void thd3_execute(void) {
+  14               		.loc 1 126 0
+  15 0000 CF92      		push r12
+  16               	.LCFI0:
+  17 0002 DF92      		push r13
+  18               	.LCFI1:
+  19 0004 EF92      		push r14
+  20               	.LCFI2:
+  21 0006 FF92      		push r15
+  22               	.LCFI3:
+  23 0008 0F93      		push r16
+  24               	.LCFI4:
+  25 000a 1F93      		push r17
+  26               	.LCFI5:
+  27 000c CF93      		push r28
+  28               	.LCFI6:
+  29 000e DF93      		push r29
+  30               	.LCFI7:
+  31               	/* prologue: function */
+  32               	/* frame size = 0 */
+  33               	/* stack size = 8 */
+  34               	.L__stack_usage = 8
+ 127:../../test/testthd.c ****   tprio_t prio, p1;
+ 128:../../test/testthd.c **** 
+ 129:../../test/testthd.c ****   prio = chThdGetPriority();
+  35               		.loc 1 129 0
+  36 0010 E091 0000 		lds r30,rlist+11
+  37 0014 F091 0000 		lds r31,rlist+11+1
+  38 0018 D480      		ldd r13,Z+4
+  39               	.LVL0:
+ 130:../../test/testthd.c ****   p1 = chThdSetPriority(prio + 1);
+  40               		.loc 1 130 0
+  41 001a CD2C      		mov r12,r13
+  42 001c C394      		inc r12
+  43 001e 8C2D      		mov r24,r12
+  44 0020 0E94 0000 		call chThdSetPriority
+  45               	.LVL1:
+  46 0024 F82E      		mov r15,r24
+  47               	.LVL2:
+ 131:../../test/testthd.c ****   test_assert(1, p1 == prio,
+  48               		.loc 1 131 0
+  49 0026 61E0      		ldi r22,lo8(1)
+  50 0028 8D11      		cpse r24,r13
+  51 002a 60E0      		ldi r22,0
+  52               	.L2:
+  53 002c 81E0      		ldi r24,lo8(1)
+  54 002e 90E0      		ldi r25,0
+  55 0030 0E94 0000 		call _test_assert
+  56               	.LVL3:
+  57 0034 8823      		tst r24
+  58 0036 01F0      		breq .L17
+  59               	.LVL4:
+  60               	.L1:
+  61               	/* epilogue start */
+ 132:../../test/testthd.c ****               "unexpected returned priority level");
+ 133:../../test/testthd.c ****   test_assert(2, chThdGetPriority() == prio + 1,
+ 134:../../test/testthd.c ****               "unexpected priority level");
+ 135:../../test/testthd.c ****   p1 = chThdSetPriority(p1);
+ 136:../../test/testthd.c ****   test_assert(3, p1 == prio + 1,
+ 137:../../test/testthd.c ****               "unexpected returned priority level");
+ 138:../../test/testthd.c ****   test_assert(4, chThdGetPriority() == prio,
+ 139:../../test/testthd.c ****               "unexpected priority level");
+ 140:../../test/testthd.c **** 
+ 141:../../test/testthd.c **** #if CH_USE_MUTEXES || defined(__DOXYGEN__)
+ 142:../../test/testthd.c ****   /* Simulates a priority boost situation (p_prio > p_realprio).*/
+ 143:../../test/testthd.c ****   chSysLock();
+ 144:../../test/testthd.c ****   chThdSelf()->p_prio += 2;
+ 145:../../test/testthd.c ****   chSysUnlock();
+ 146:../../test/testthd.c ****   test_assert(5, chThdGetPriority() == prio + 2,
+ 147:../../test/testthd.c ****               "unexpected priority level");
+ 148:../../test/testthd.c **** 
+ 149:../../test/testthd.c ****   /* Tries to raise but below the boost level. */
+ 150:../../test/testthd.c ****   p1 = chThdSetPriority(prio + 1);
+ 151:../../test/testthd.c ****   test_assert(6, p1 == prio,
+ 152:../../test/testthd.c ****               "unexpected returned priority level");
+ 153:../../test/testthd.c ****   test_assert(7, chThdSelf()->p_prio == prio + 2,
+ 154:../../test/testthd.c ****               "unexpected priority level");
+ 155:../../test/testthd.c ****   test_assert(8, chThdSelf()->p_realprio == prio + 1,
+ 156:../../test/testthd.c ****               "unexpected returned real priority level");
+ 157:../../test/testthd.c **** 
+ 158:../../test/testthd.c ****   /* Tries to raise above the boost level. */
+ 159:../../test/testthd.c ****   p1 = chThdSetPriority(prio + 3);
+ 160:../../test/testthd.c ****   test_assert(9, p1 == prio + 1,
+ 161:../../test/testthd.c ****               "unexpected returned priority level");
+ 162:../../test/testthd.c ****   test_assert(10, chThdSelf()->p_prio == prio + 3,
+ 163:../../test/testthd.c ****               "unexpected priority level");
+ 164:../../test/testthd.c ****   test_assert(11, chThdSelf()->p_realprio == prio + 3,
+ 165:../../test/testthd.c ****               "unexpected real priority level");
+ 166:../../test/testthd.c **** 
+ 167:../../test/testthd.c ****   chSysLock();
+ 168:../../test/testthd.c ****   chThdSelf()->p_prio = prio;
+ 169:../../test/testthd.c ****   chThdSelf()->p_realprio = prio;
+ 170:../../test/testthd.c ****   chSysUnlock();
+ 171:../../test/testthd.c **** #endif
+ 172:../../test/testthd.c **** }
+  62               		.loc 1 172 0
+  63 0038 DF91      		pop r29
+  64 003a CF91      		pop r28
+  65 003c 1F91      		pop r17
+  66 003e 0F91      		pop r16
+  67 0040 FF90      		pop r15
+  68 0042 EF90      		pop r14
+  69 0044 DF90      		pop r13
+  70               	.LVL5:
+  71 0046 CF90      		pop r12
+  72               	.LVL6:
+  73 0048 0895      		ret
+  74               	.LVL7:
+  75               	.L17:
+ 133:../../test/testthd.c ****   test_assert(2, chThdGetPriority() == prio + 1,
+  76               		.loc 1 133 0
+  77 004a 0D2D      		mov r16,r13
+  78 004c 10E0      		ldi r17,0
+  79 004e E801      		movw r28,r16
+  80 0050 2196      		adiw r28,1
+  81 0052 E091 0000 		lds r30,rlist+11
+  82 0056 F091 0000 		lds r31,rlist+11+1
+  83 005a 2481      		ldd r18,Z+4
+  84 005c 30E0      		ldi r19,0
+  85 005e 61E0      		ldi r22,lo8(1)
+  86 0060 2C17      		cp r18,r28
+  87 0062 3D07      		cpc r19,r29
+  88 0064 01F0      		breq .L5
+  89 0066 60E0      		ldi r22,0
+  90               	.L5:
+  91 0068 82E0      		ldi r24,lo8(2)
+  92 006a 90E0      		ldi r25,0
+  93 006c 0E94 0000 		call _test_assert
+  94               	.LVL8:
+  95 0070 8111      		cpse r24,__zero_reg__
+  96 0072 00C0      		rjmp .L1
+ 135:../../test/testthd.c ****   p1 = chThdSetPriority(p1);
+  97               		.loc 1 135 0
+  98 0074 8F2D      		mov r24,r15
+  99 0076 0E94 0000 		call chThdSetPriority
+ 100               	.LVL9:
+ 136:../../test/testthd.c ****   test_assert(3, p1 == prio + 1,
+ 101               		.loc 1 136 0
+ 102 007a 282F      		mov r18,r24
+ 103 007c 30E0      		ldi r19,0
+ 104 007e 61E0      		ldi r22,lo8(1)
+ 105 0080 C217      		cp r28,r18
+ 106 0082 D307      		cpc r29,r19
+ 107 0084 01F0      		breq .L7
+ 108 0086 60E0      		ldi r22,0
+ 109               	.L7:
+ 110 0088 83E0      		ldi r24,lo8(3)
+ 111 008a 90E0      		ldi r25,0
+ 112               	.LVL10:
+ 113 008c 0E94 0000 		call _test_assert
+ 114               	.LVL11:
+ 115 0090 8111      		cpse r24,__zero_reg__
+ 116 0092 00C0      		rjmp .L1
+ 138:../../test/testthd.c ****   test_assert(4, chThdGetPriority() == prio,
+ 117               		.loc 1 138 0
+ 118 0094 E091 0000 		lds r30,rlist+11
+ 119 0098 F091 0000 		lds r31,rlist+11+1
+ 120 009c 61E0      		ldi r22,lo8(1)
+ 121 009e 8481      		ldd r24,Z+4
+ 122 00a0 8D11      		cpse r24,r13
+ 123 00a2 60E0      		ldi r22,0
+ 124               	.L8:
+ 125 00a4 84E0      		ldi r24,lo8(4)
+ 126 00a6 90E0      		ldi r25,0
+ 127 00a8 0E94 0000 		call _test_assert
+ 128               	.LVL12:
+ 129 00ac 8111      		cpse r24,__zero_reg__
+ 130 00ae 00C0      		rjmp .L1
+ 143:../../test/testthd.c ****   chSysLock();
+ 131               		.loc 1 143 0
+ 132               	/* #APP */
+ 133               	 ;  143 "../../test/testthd.c" 1
+ 134 00b0 F894      		cli
+ 135               	 ;  0 "" 2
+ 144:../../test/testthd.c ****   chThdSelf()->p_prio += 2;
+ 136               		.loc 1 144 0
+ 137               	/* #NOAPP */
+ 138 00b2 E091 0000 		lds r30,rlist+11
+ 139 00b6 F091 0000 		lds r31,rlist+11+1
+ 140 00ba 8481      		ldd r24,Z+4
+ 141 00bc 8E5F      		subi r24,lo8(-(2))
+ 142 00be 8483      		std Z+4,r24
+ 145:../../test/testthd.c ****   chSysUnlock();
+ 143               		.loc 1 145 0
+ 144               	/* #APP */
+ 145               	 ;  145 "../../test/testthd.c" 1
+ 146 00c0 7894      		sei
+ 147               	 ;  0 "" 2
+ 146:../../test/testthd.c ****   test_assert(5, chThdGetPriority() == prio + 2,
+ 148               		.loc 1 146 0
+ 149               	/* #NOAPP */
+ 150 00c2 7801      		movw r14,r16
+ 151 00c4 82E0      		ldi r24,2
+ 152 00c6 E80E      		add r14,r24
+ 153 00c8 F11C      		adc r15,__zero_reg__
+ 154 00ca E091 0000 		lds r30,rlist+11
+ 155 00ce F091 0000 		lds r31,rlist+11+1
+ 156 00d2 8481      		ldd r24,Z+4
+ 157 00d4 90E0      		ldi r25,0
+ 158 00d6 61E0      		ldi r22,lo8(1)
+ 159 00d8 8E15      		cp r24,r14
+ 160 00da 9F05      		cpc r25,r15
+ 161 00dc 01F0      		breq .L9
+ 162 00de 60E0      		ldi r22,0
+ 163               	.L9:
+ 164 00e0 85E0      		ldi r24,lo8(5)
+ 165 00e2 90E0      		ldi r25,0
+ 166 00e4 0E94 0000 		call _test_assert
+ 167               	.LVL13:
+ 168 00e8 8111      		cpse r24,__zero_reg__
+ 169 00ea 00C0      		rjmp .L1
+ 150:../../test/testthd.c ****   p1 = chThdSetPriority(prio + 1);
+ 170               		.loc 1 150 0
+ 171 00ec 8C2D      		mov r24,r12
+ 172 00ee 0E94 0000 		call chThdSetPriority
+ 173               	.LVL14:
+ 151:../../test/testthd.c ****   test_assert(6, p1 == prio,
+ 174               		.loc 1 151 0
+ 175 00f2 61E0      		ldi r22,lo8(1)
+ 176 00f4 8D11      		cpse r24,r13
+ 177 00f6 60E0      		ldi r22,0
+ 178               	.L10:
+ 179 00f8 86E0      		ldi r24,lo8(6)
+ 180 00fa 90E0      		ldi r25,0
+ 181               	.LVL15:
+ 182 00fc 0E94 0000 		call _test_assert
+ 183               	.LVL16:
+ 184 0100 8111      		cpse r24,__zero_reg__
+ 185 0102 00C0      		rjmp .L1
+ 153:../../test/testthd.c ****   test_assert(7, chThdSelf()->p_prio == prio + 2,
+ 186               		.loc 1 153 0
+ 187 0104 E091 0000 		lds r30,rlist+11
+ 188 0108 F091 0000 		lds r31,rlist+11+1
+ 189 010c 8481      		ldd r24,Z+4
+ 190 010e 90E0      		ldi r25,0
+ 191 0110 61E0      		ldi r22,lo8(1)
+ 192 0112 E816      		cp r14,r24
+ 193 0114 F906      		cpc r15,r25
+ 194 0116 01F0      		breq .L11
+ 195 0118 60E0      		ldi r22,0
+ 196               	.L11:
+ 197 011a 87E0      		ldi r24,lo8(7)
+ 198 011c 90E0      		ldi r25,0
+ 199 011e 0E94 0000 		call _test_assert
+ 200               	.LVL17:
+ 201 0122 8111      		cpse r24,__zero_reg__
+ 202 0124 00C0      		rjmp .L1
+ 155:../../test/testthd.c ****   test_assert(8, chThdSelf()->p_realprio == prio + 1,
+ 203               		.loc 1 155 0
+ 204 0126 E091 0000 		lds r30,rlist+11
+ 205 012a F091 0000 		lds r31,rlist+11+1
+ 206 012e 878D      		ldd r24,Z+31
+ 207 0130 90E0      		ldi r25,0
+ 208 0132 61E0      		ldi r22,lo8(1)
+ 209 0134 C817      		cp r28,r24
+ 210 0136 D907      		cpc r29,r25
+ 211 0138 01F0      		breq .L12
+ 212 013a 60E0      		ldi r22,0
+ 213               	.L12:
+ 214 013c 88E0      		ldi r24,lo8(8)
+ 215 013e 90E0      		ldi r25,0
+ 216 0140 0E94 0000 		call _test_assert
+ 217               	.LVL18:
+ 218 0144 8111      		cpse r24,__zero_reg__
+ 219 0146 00C0      		rjmp .L1
+ 159:../../test/testthd.c ****   p1 = chThdSetPriority(prio + 3);
+ 220               		.loc 1 159 0
+ 221 0148 8D2D      		mov r24,r13
+ 222 014a 8D5F      		subi r24,lo8(-(3))
+ 223 014c 0E94 0000 		call chThdSetPriority
+ 224               	.LVL19:
+ 160:../../test/testthd.c ****   test_assert(9, p1 == prio + 1,
+ 225               		.loc 1 160 0
+ 226 0150 90E0      		ldi r25,0
+ 227 0152 61E0      		ldi r22,lo8(1)
+ 228 0154 C817      		cp r28,r24
+ 229 0156 D907      		cpc r29,r25
+ 230 0158 01F0      		breq .L13
+ 231 015a 60E0      		ldi r22,0
+ 232               	.L13:
+ 233 015c 89E0      		ldi r24,lo8(9)
+ 234 015e 90E0      		ldi r25,0
+ 235               	.LVL20:
+ 236 0160 0E94 0000 		call _test_assert
+ 237               	.LVL21:
+ 238 0164 8111      		cpse r24,__zero_reg__
+ 239 0166 00C0      		rjmp .L1
+ 162:../../test/testthd.c ****   test_assert(10, chThdSelf()->p_prio == prio + 3,
+ 240               		.loc 1 162 0
+ 241 0168 0D5F      		subi r16,-3
+ 242 016a 1F4F      		sbci r17,-1
+ 243 016c E091 0000 		lds r30,rlist+11
+ 244 0170 F091 0000 		lds r31,rlist+11+1
+ 245 0174 8481      		ldd r24,Z+4
+ 246 0176 90E0      		ldi r25,0
+ 247 0178 61E0      		ldi r22,lo8(1)
+ 248 017a 8017      		cp r24,r16
+ 249 017c 9107      		cpc r25,r17
+ 250 017e 01F0      		breq .L14
+ 251 0180 60E0      		ldi r22,0
+ 252               	.L14:
+ 253 0182 8AE0      		ldi r24,lo8(10)
+ 254 0184 90E0      		ldi r25,0
+ 255 0186 0E94 0000 		call _test_assert
+ 256               	.LVL22:
+ 257 018a 8111      		cpse r24,__zero_reg__
+ 258 018c 00C0      		rjmp .L1
+ 164:../../test/testthd.c ****   test_assert(11, chThdSelf()->p_realprio == prio + 3,
+ 259               		.loc 1 164 0
+ 260 018e E091 0000 		lds r30,rlist+11
+ 261 0192 F091 0000 		lds r31,rlist+11+1
+ 262 0196 878D      		ldd r24,Z+31
+ 263 0198 90E0      		ldi r25,0
+ 264 019a 61E0      		ldi r22,lo8(1)
+ 265 019c 0817      		cp r16,r24
+ 266 019e 1907      		cpc r17,r25
+ 267 01a0 01F0      		breq .L15
+ 268 01a2 60E0      		ldi r22,0
+ 269               	.L15:
+ 270 01a4 8BE0      		ldi r24,lo8(11)
+ 271 01a6 90E0      		ldi r25,0
+ 272 01a8 0E94 0000 		call _test_assert
+ 273               	.LVL23:
+ 274 01ac 8111      		cpse r24,__zero_reg__
+ 275 01ae 00C0      		rjmp .L1
+ 167:../../test/testthd.c ****   chSysLock();
+ 276               		.loc 1 167 0
+ 277               	/* #APP */
+ 278               	 ;  167 "../../test/testthd.c" 1
+ 279 01b0 F894      		cli
+ 280               	 ;  0 "" 2
+ 168:../../test/testthd.c ****   chThdSelf()->p_prio = prio;
+ 281               		.loc 1 168 0
+ 282               	/* #NOAPP */
+ 283 01b2 E091 0000 		lds r30,rlist+11
+ 284 01b6 F091 0000 		lds r31,rlist+11+1
+ 285 01ba D482      		std Z+4,r13
+ 169:../../test/testthd.c ****   chThdSelf()->p_realprio = prio;
+ 286               		.loc 1 169 0
+ 287 01bc D78E      		std Z+31,r13
+ 170:../../test/testthd.c ****   chSysUnlock();
+ 288               		.loc 1 170 0
+ 289               	/* #APP */
+ 290               	 ;  170 "../../test/testthd.c" 1
+ 291 01be 7894      		sei
+ 292               	 ;  0 "" 2
+ 293               	/* #NOAPP */
+ 294 01c0 00C0      		rjmp .L1
+ 295               	.LFE10:
+ 297               		.section	.rodata.str1.1,"aMS",@progbits,1
+ 298               	.LC0:
+ 299 0000 4400      		.string	"D"
+ 300               	.LC1:
+ 301 0002 4500      		.string	"E"
+ 302               	.LC2:
+ 303 0004 4100      		.string	"A"
+ 304               	.LC3:
+ 305 0006 4200      		.string	"B"
+ 306               	.LC4:
+ 307 0008 4300      		.string	"C"
+ 308               	.LC5:
+ 309 000a 4142 4344 		.string	"ABCDE"
+ 309      4500 
+ 310               		.text
+ 312               	thd2_execute:
+ 313               	.LFB9:
+  94:../../test/testthd.c **** static void thd2_execute(void) {
+ 314               		.loc 1 94 0
+ 315 01c2 0F93      		push r16
+ 316               	.LCFI8:
+ 317 01c4 1F93      		push r17
+ 318               	.LCFI9:
+ 319               	/* prologue: function */
+ 320               	/* frame size = 0 */
+ 321               	/* stack size = 2 */
+ 322               	.L__stack_usage = 2
+  96:../../test/testthd.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread, "D");
+ 323               		.loc 1 96 0
+ 324 01c6 E091 0000 		lds r30,rlist+11
+ 325 01ca F091 0000 		lds r31,rlist+11+1
+ 326 01ce 4481      		ldd r20,Z+4
+ 327 01d0 4450      		subi r20,lo8(-(-4))
+ 328 01d2 00E0      		ldi r16,lo8(.LC0)
+ 329 01d4 10E0      		ldi r17,hi8(.LC0)
+ 330 01d6 20E0      		ldi r18,lo8(gs(thread))
+ 331 01d8 30E0      		ldi r19,hi8(gs(thread))
+ 332 01da 67E9      		ldi r22,lo8(-105)
+ 333 01dc 70E0      		ldi r23,0
+ 334 01de 8091 0000 		lds r24,wa+2
+ 335 01e2 9091 0000 		lds r25,wa+2+1
+ 336 01e6 0E94 0000 		call chThdCreateStatic
+ 337               	.LVL24:
+ 338 01ea 9093 0000 		sts threads+2+1,r25
+ 339 01ee 8093 0000 		sts threads+2,r24
+  97:../../test/testthd.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
+ 340               		.loc 1 97 0
+ 341 01f2 E091 0000 		lds r30,rlist+11
+ 342 01f6 F091 0000 		lds r31,rlist+11+1
+ 343 01fa 4481      		ldd r20,Z+4
+ 344 01fc 4550      		subi r20,lo8(-(-5))
+ 345 01fe 00E0      		ldi r16,lo8(.LC1)
+ 346 0200 10E0      		ldi r17,hi8(.LC1)
+ 347 0202 20E0      		ldi r18,lo8(gs(thread))
+ 348 0204 30E0      		ldi r19,hi8(gs(thread))
+ 349 0206 67E9      		ldi r22,lo8(-105)
+ 350 0208 70E0      		ldi r23,0
+ 351 020a 8091 0000 		lds r24,wa
+ 352 020e 9091 0000 		lds r25,wa+1
+ 353 0212 0E94 0000 		call chThdCreateStatic
+ 354               	.LVL25:
+ 355 0216 9093 0000 		sts threads+1,r25
+ 356 021a 8093 0000 		sts threads,r24
+  98:../../test/testthd.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread, "A");
+ 357               		.loc 1 98 0
+ 358 021e E091 0000 		lds r30,rlist+11
+ 359 0222 F091 0000 		lds r31,rlist+11+1
+ 360 0226 4481      		ldd r20,Z+4
+ 361 0228 4150      		subi r20,lo8(-(-1))
+ 362 022a 00E0      		ldi r16,lo8(.LC2)
+ 363 022c 10E0      		ldi r17,hi8(.LC2)
+ 364 022e 20E0      		ldi r18,lo8(gs(thread))
+ 365 0230 30E0      		ldi r19,hi8(gs(thread))
+ 366 0232 67E9      		ldi r22,lo8(-105)
+ 367 0234 70E0      		ldi r23,0
+ 368 0236 8091 0000 		lds r24,wa+8
+ 369 023a 9091 0000 		lds r25,wa+8+1
+ 370 023e 0E94 0000 		call chThdCreateStatic
+ 371               	.LVL26:
+ 372 0242 9093 0000 		sts threads+8+1,r25
+ 373 0246 8093 0000 		sts threads+8,r24
+  99:../../test/testthd.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread, "B");
+ 374               		.loc 1 99 0
+ 375 024a E091 0000 		lds r30,rlist+11
+ 376 024e F091 0000 		lds r31,rlist+11+1
+ 377 0252 4481      		ldd r20,Z+4
+ 378 0254 4250      		subi r20,lo8(-(-2))
+ 379 0256 00E0      		ldi r16,lo8(.LC3)
+ 380 0258 10E0      		ldi r17,hi8(.LC3)
+ 381 025a 20E0      		ldi r18,lo8(gs(thread))
+ 382 025c 30E0      		ldi r19,hi8(gs(thread))
+ 383 025e 67E9      		ldi r22,lo8(-105)
+ 384 0260 70E0      		ldi r23,0
+ 385 0262 8091 0000 		lds r24,wa+6
+ 386 0266 9091 0000 		lds r25,wa+6+1
+ 387 026a 0E94 0000 		call chThdCreateStatic
+ 388               	.LVL27:
+ 389 026e 9093 0000 		sts threads+6+1,r25
+ 390 0272 8093 0000 		sts threads+6,r24
+ 101:../../test/testthd.c ****   chSysLock();
+ 391               		.loc 1 101 0
+ 392               	/* #APP */
+ 393               	 ;  101 "../../test/testthd.c" 1
+ 394 0276 F894      		cli
+ 395               	 ;  0 "" 2
+ 102:../../test/testthd.c ****   threads[2] = chThdCreateI(wa[2], WA_SIZE, chThdGetPriority()-3, thread, "C");
+ 396               		.loc 1 102 0
+ 397               	/* #NOAPP */
+ 398 0278 E091 0000 		lds r30,rlist+11
+ 399 027c F091 0000 		lds r31,rlist+11+1
+ 400 0280 4481      		ldd r20,Z+4
+ 401 0282 4350      		subi r20,lo8(-(-3))
+ 402 0284 00E0      		ldi r16,lo8(.LC4)
+ 403 0286 10E0      		ldi r17,hi8(.LC4)
+ 404 0288 20E0      		ldi r18,lo8(gs(thread))
+ 405 028a 30E0      		ldi r19,hi8(gs(thread))
+ 406 028c 67E9      		ldi r22,lo8(-105)
+ 407 028e 70E0      		ldi r23,0
+ 408 0290 8091 0000 		lds r24,wa+4
+ 409 0294 9091 0000 		lds r25,wa+4+1
+ 410 0298 0E94 0000 		call chThdCreateI
+ 411               	.LVL28:
+ 412 029c E0E0      		ldi r30,lo8(threads+4)
+ 413 029e F0E0      		ldi r31,hi8(threads+4)
+ 414 02a0 9183      		std Z+1,r25
+ 415 02a2 8083      		st Z,r24
+ 103:../../test/testthd.c ****   chSysUnlock();
+ 416               		.loc 1 103 0
+ 417               	/* #APP */
+ 418               	 ;  103 "../../test/testthd.c" 1
+ 419 02a4 7894      		sei
+ 420               	 ;  0 "" 2
+ 104:../../test/testthd.c ****   chThdResume(threads[2]);
+ 421               		.loc 1 104 0
+ 422               	/* #NOAPP */
+ 423 02a6 8081      		ld r24,Z
+ 424 02a8 9181      		ldd r25,Z+1
+ 425 02aa 0E94 0000 		call chThdResume
+ 426               	.LVL29:
+ 105:../../test/testthd.c ****   test_wait_threads();
+ 427               		.loc 1 105 0
+ 428 02ae 0E94 0000 		call test_wait_threads
+ 429               	.LVL30:
+ 106:../../test/testthd.c ****   test_assert_sequence(1, "ABCDE");
+ 430               		.loc 1 106 0
+ 431 02b2 60E0      		ldi r22,lo8(.LC5)
+ 432 02b4 70E0      		ldi r23,hi8(.LC5)
+ 433 02b6 81E0      		ldi r24,lo8(1)
+ 434 02b8 90E0      		ldi r25,0
+ 435               	/* epilogue start */
+ 107:../../test/testthd.c **** }
+ 436               		.loc 1 107 0
+ 437 02ba 1F91      		pop r17
+ 438 02bc 0F91      		pop r16
+ 106:../../test/testthd.c ****   test_assert_sequence(1, "ABCDE");
+ 439               		.loc 1 106 0
+ 440 02be 0C94 0000 		jmp _test_assert_sequence
+ 441               	.LVL31:
+ 442               	.LFE9:
+ 445               	thd1_execute:
+ 446               	.LFB8:
+  66:../../test/testthd.c **** static void thd1_execute(void) {
+ 447               		.loc 1 66 0
+ 448 02c2 0F93      		push r16
+ 449               	.LCFI10:
+ 450 02c4 1F93      		push r17
+ 451               	.LCFI11:
+ 452               	/* prologue: function */
+ 453               	/* frame size = 0 */
+ 454               	/* stack size = 2 */
+ 455               	.L__stack_usage = 2
+  68:../../test/testthd.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-5, thread, "E");
+ 456               		.loc 1 68 0
+ 457 02c6 E091 0000 		lds r30,rlist+11
+ 458 02ca F091 0000 		lds r31,rlist+11+1
+ 459 02ce 4481      		ldd r20,Z+4
+ 460 02d0 4550      		subi r20,lo8(-(-5))
+ 461 02d2 00E0      		ldi r16,lo8(.LC1)
+ 462 02d4 10E0      		ldi r17,hi8(.LC1)
+ 463 02d6 20E0      		ldi r18,lo8(gs(thread))
+ 464 02d8 30E0      		ldi r19,hi8(gs(thread))
+ 465 02da 67E9      		ldi r22,lo8(-105)
+ 466 02dc 70E0      		ldi r23,0
+ 467 02de 8091 0000 		lds r24,wa
+ 468 02e2 9091 0000 		lds r25,wa+1
+ 469 02e6 0E94 0000 		call chThdCreateStatic
+ 470               	.LVL32:
+ 471 02ea 9093 0000 		sts threads+1,r25
+ 472 02ee 8093 0000 		sts threads,r24
+  69:../../test/testthd.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-4, thread, "D");
+ 473               		.loc 1 69 0
+ 474 02f2 E091 0000 		lds r30,rlist+11
+ 475 02f6 F091 0000 		lds r31,rlist+11+1
+ 476 02fa 4481      		ldd r20,Z+4
+ 477 02fc 4450      		subi r20,lo8(-(-4))
+ 478 02fe 00E0      		ldi r16,lo8(.LC0)
+ 479 0300 10E0      		ldi r17,hi8(.LC0)
+ 480 0302 20E0      		ldi r18,lo8(gs(thread))
+ 481 0304 30E0      		ldi r19,hi8(gs(thread))
+ 482 0306 67E9      		ldi r22,lo8(-105)
+ 483 0308 70E0      		ldi r23,0
+ 484 030a 8091 0000 		lds r24,wa+2
+ 485 030e 9091 0000 		lds r25,wa+2+1
+ 486 0312 0E94 0000 		call chThdCreateStatic
+ 487               	.LVL33:
+ 488 0316 9093 0000 		sts threads+2+1,r25
+ 489 031a 8093 0000 		sts threads+2,r24
+  70:../../test/testthd.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread, "C");
+ 490               		.loc 1 70 0
+ 491 031e E091 0000 		lds r30,rlist+11
+ 492 0322 F091 0000 		lds r31,rlist+11+1
+ 493 0326 4481      		ldd r20,Z+4
+ 494 0328 4350      		subi r20,lo8(-(-3))
+ 495 032a 00E0      		ldi r16,lo8(.LC4)
+ 496 032c 10E0      		ldi r17,hi8(.LC4)
+ 497 032e 20E0      		ldi r18,lo8(gs(thread))
+ 498 0330 30E0      		ldi r19,hi8(gs(thread))
+ 499 0332 67E9      		ldi r22,lo8(-105)
+ 500 0334 70E0      		ldi r23,0
+ 501 0336 8091 0000 		lds r24,wa+4
+ 502 033a 9091 0000 		lds r25,wa+4+1
+ 503 033e 0E94 0000 		call chThdCreateStatic
+ 504               	.LVL34:
+ 505 0342 9093 0000 		sts threads+4+1,r25
+ 506 0346 8093 0000 		sts threads+4,r24
+  71:../../test/testthd.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-2, thread, "B");
+ 507               		.loc 1 71 0
+ 508 034a E091 0000 		lds r30,rlist+11
+ 509 034e F091 0000 		lds r31,rlist+11+1
+ 510 0352 4481      		ldd r20,Z+4
+ 511 0354 4250      		subi r20,lo8(-(-2))
+ 512 0356 00E0      		ldi r16,lo8(.LC3)
+ 513 0358 10E0      		ldi r17,hi8(.LC3)
+ 514 035a 20E0      		ldi r18,lo8(gs(thread))
+ 515 035c 30E0      		ldi r19,hi8(gs(thread))
+ 516 035e 67E9      		ldi r22,lo8(-105)
+ 517 0360 70E0      		ldi r23,0
+ 518 0362 8091 0000 		lds r24,wa+6
+ 519 0366 9091 0000 		lds r25,wa+6+1
+ 520 036a 0E94 0000 		call chThdCreateStatic
+ 521               	.LVL35:
+ 522 036e 9093 0000 		sts threads+6+1,r25
+ 523 0372 8093 0000 		sts threads+6,r24
+  72:../../test/testthd.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread, "A");
+ 524               		.loc 1 72 0
+ 525 0376 E091 0000 		lds r30,rlist+11
+ 526 037a F091 0000 		lds r31,rlist+11+1
+ 527 037e 4481      		ldd r20,Z+4
+ 528 0380 4150      		subi r20,lo8(-(-1))
+ 529 0382 00E0      		ldi r16,lo8(.LC2)
+ 530 0384 10E0      		ldi r17,hi8(.LC2)
+ 531 0386 20E0      		ldi r18,lo8(gs(thread))
+ 532 0388 30E0      		ldi r19,hi8(gs(thread))
+ 533 038a 67E9      		ldi r22,lo8(-105)
+ 534 038c 70E0      		ldi r23,0
+ 535 038e 8091 0000 		lds r24,wa+8
+ 536 0392 9091 0000 		lds r25,wa+8+1
+ 537 0396 0E94 0000 		call chThdCreateStatic
+ 538               	.LVL36:
+ 539 039a 9093 0000 		sts threads+8+1,r25
+ 540 039e 8093 0000 		sts threads+8,r24
+  73:../../test/testthd.c ****   test_wait_threads();
+ 541               		.loc 1 73 0
+ 542 03a2 0E94 0000 		call test_wait_threads
+ 543               	.LVL37:
+  74:../../test/testthd.c ****   test_assert_sequence(1, "ABCDE");
+ 544               		.loc 1 74 0
+ 545 03a6 60E0      		ldi r22,lo8(.LC5)
+ 546 03a8 70E0      		ldi r23,hi8(.LC5)
+ 547 03aa 81E0      		ldi r24,lo8(1)
+ 548 03ac 90E0      		ldi r25,0
+ 549               	/* epilogue start */
+  75:../../test/testthd.c **** }
+ 550               		.loc 1 75 0
+ 551 03ae 1F91      		pop r17
+ 552 03b0 0F91      		pop r16
+  74:../../test/testthd.c ****   test_assert_sequence(1, "ABCDE");
+ 553               		.loc 1 74 0
+ 554 03b2 0C94 0000 		jmp _test_assert_sequence
+ 555               	.LVL38:
+ 556               	.LFE8:
+ 559               	thread:
+ 560               	.LFB7:
+  60:../../test/testthd.c **** static msg_t thread(void *p) {
+ 561               		.loc 1 60 0
+ 562               	.LVL39:
+ 563               	/* prologue: function */
+ 564               	/* frame size = 0 */
+ 565               	/* stack size = 0 */
+ 566               	.L__stack_usage = 0
+  62:../../test/testthd.c ****   test_emit_token(*(char *)p);
+ 567               		.loc 1 62 0
+ 568 03b6 FC01      		movw r30,r24
+ 569 03b8 8081      		ld r24,Z
+ 570               	.LVL40:
+ 571 03ba 0E94 0000 		call test_emit_token
+ 572               	.LVL41:
+  64:../../test/testthd.c **** }
+ 573               		.loc 1 64 0
+ 574 03be 80E0      		ldi r24,0
+ 575 03c0 90E0      		ldi r25,0
+ 576 03c2 0895      		ret
+ 577               	.LFE7:
+ 580               	thd4_execute:
+ 581               	.LFB11:
+ 173:../../test/testthd.c **** 
+ 174:../../test/testthd.c **** ROMCONST struct testcase testthd3 = {
+ 175:../../test/testthd.c ****   "Threads, priority change",
+ 176:../../test/testthd.c ****   NULL,
+ 177:../../test/testthd.c ****   NULL,
+ 178:../../test/testthd.c ****   thd3_execute
+ 179:../../test/testthd.c **** };
+ 180:../../test/testthd.c **** 
+ 181:../../test/testthd.c **** /**
+ 182:../../test/testthd.c ****  * @page test_threads_004 Threads delays test
+ 183:../../test/testthd.c ****  *
+ 184:../../test/testthd.c ****  * <h2>Description</h2>
+ 185:../../test/testthd.c ****  * Delay APIs and associated macros are tested, the invoking thread is verified
+ 186:../../test/testthd.c ****  * to wake up at the exact expected time.
+ 187:../../test/testthd.c ****  */
+ 188:../../test/testthd.c **** 
+ 189:../../test/testthd.c **** static void thd4_execute(void) {
+ 582               		.loc 1 189 0
+ 583 03c4 0F93      		push r16
+ 584               	.LCFI12:
+ 585 03c6 1F93      		push r17
+ 586               	.LCFI13:
+ 587 03c8 CF93      		push r28
+ 588               	.LCFI14:
+ 589 03ca DF93      		push r29
+ 590               	.LCFI15:
+ 591               	/* prologue: function */
+ 592               	/* frame size = 0 */
+ 593               	/* stack size = 4 */
+ 594               	.L__stack_usage = 4
+ 190:../../test/testthd.c ****   systime_t time;
+ 191:../../test/testthd.c **** 
+ 192:../../test/testthd.c ****   test_wait_tick();
+ 595               		.loc 1 192 0
+ 596 03cc 0E94 0000 		call test_wait_tick
+ 597               	.LVL42:
+ 193:../../test/testthd.c **** 
+ 194:../../test/testthd.c ****   /* Timeouts in microseconds.*/
+ 195:../../test/testthd.c ****   time = chTimeNow();
+ 598               		.loc 1 195 0
+ 599 03d0 C091 0000 		lds r28,vtlist+6
+ 600 03d4 D091 0000 		lds r29,vtlist+6+1
+ 601               	.LVL43:
+ 196:../../test/testthd.c ****   chThdSleepMicroseconds(100000);
+ 602               		.loc 1 196 0
+ 603 03d8 84E6      		ldi r24,lo8(100)
+ 604 03da 90E0      		ldi r25,0
+ 605 03dc 0E94 0000 		call chThdSleep
+ 606               	.LVL44:
+ 197:../../test/testthd.c ****   test_assert_time_window(1, time + US2ST(100000), time + US2ST(100000) + 1);
+ 607               		.loc 1 197 0
+ 608 03e0 AE01      		movw r20,r28
+ 609 03e2 4B59      		subi r20,-101
+ 610 03e4 5F4F      		sbci r21,-1
+ 611 03e6 BE01      		movw r22,r28
+ 612 03e8 6C59      		subi r22,-100
+ 613 03ea 7F4F      		sbci r23,-1
+ 614 03ec 81E0      		ldi r24,lo8(1)
+ 615 03ee 90E0      		ldi r25,0
+ 616 03f0 0E94 0000 		call _test_assert_time_window
+ 617               	.LVL45:
+ 618 03f4 8823      		tst r24
+ 619 03f6 01F0      		breq .L25
+ 620               	.LVL46:
+ 621               	.L21:
+ 622               	/* epilogue start */
+ 198:../../test/testthd.c **** 
+ 199:../../test/testthd.c ****   /* Timeouts in milliseconds.*/
+ 200:../../test/testthd.c ****   time = chTimeNow();
+ 201:../../test/testthd.c ****   chThdSleepMilliseconds(100);
+ 202:../../test/testthd.c ****   test_assert_time_window(2, time + MS2ST(100), time + MS2ST(100) + 1);
+ 203:../../test/testthd.c **** 
+ 204:../../test/testthd.c ****   /* Timeouts in seconds.*/
+ 205:../../test/testthd.c ****   time = chTimeNow();
+ 206:../../test/testthd.c ****   chThdSleepSeconds(1);
+ 207:../../test/testthd.c ****   test_assert_time_window(3, time + S2ST(1), time + S2ST(1) + 1);
+ 208:../../test/testthd.c **** 
+ 209:../../test/testthd.c ****   /* Absolute timelines.*/
+ 210:../../test/testthd.c ****   time = chTimeNow() + MS2ST(100);
+ 211:../../test/testthd.c ****   chThdSleepUntil(time);
+ 212:../../test/testthd.c ****   test_assert_time_window(4, time, time + 1);
+ 213:../../test/testthd.c **** }
+ 623               		.loc 1 213 0
+ 624 03f8 DF91      		pop r29
+ 625 03fa CF91      		pop r28
+ 626 03fc 1F91      		pop r17
+ 627 03fe 0F91      		pop r16
+ 628 0400 0895      		ret
+ 629               	.LVL47:
+ 630               	.L25:
+ 200:../../test/testthd.c ****   time = chTimeNow();
+ 631               		.loc 1 200 0
+ 632 0402 C091 0000 		lds r28,vtlist+6
+ 633 0406 D091 0000 		lds r29,vtlist+6+1
+ 634               	.LVL48:
+ 201:../../test/testthd.c ****   chThdSleepMilliseconds(100);
+ 635               		.loc 1 201 0
+ 636 040a 84E6      		ldi r24,lo8(100)
+ 637 040c 90E0      		ldi r25,0
+ 638 040e 0E94 0000 		call chThdSleep
+ 639               	.LVL49:
+ 202:../../test/testthd.c ****   test_assert_time_window(2, time + MS2ST(100), time + MS2ST(100) + 1);
+ 640               		.loc 1 202 0
+ 641 0412 AE01      		movw r20,r28
+ 642 0414 4B59      		subi r20,-101
+ 643 0416 5F4F      		sbci r21,-1
+ 644 0418 BE01      		movw r22,r28
+ 645 041a 6C59      		subi r22,-100
+ 646 041c 7F4F      		sbci r23,-1
+ 647 041e 82E0      		ldi r24,lo8(2)
+ 648 0420 90E0      		ldi r25,0
+ 649 0422 0E94 0000 		call _test_assert_time_window
+ 650               	.LVL50:
+ 651 0426 8111      		cpse r24,__zero_reg__
+ 652 0428 00C0      		rjmp .L21
+ 653               	.LBB4:
+ 654               	.LBB5:
+ 205:../../test/testthd.c ****   time = chTimeNow();
+ 655               		.loc 1 205 0
+ 656 042a C091 0000 		lds r28,vtlist+6
+ 657 042e D091 0000 		lds r29,vtlist+6+1
+ 658               	.LVL51:
+ 206:../../test/testthd.c ****   chThdSleepSeconds(1);
+ 659               		.loc 1 206 0
+ 660 0432 88EE      		ldi r24,lo8(-24)
+ 661 0434 93E0      		ldi r25,lo8(3)
+ 662 0436 0E94 0000 		call chThdSleep
+ 663               	.LVL52:
+ 207:../../test/testthd.c ****   test_assert_time_window(3, time + S2ST(1), time + S2ST(1) + 1);
+ 664               		.loc 1 207 0
+ 665 043a AE01      		movw r20,r28
+ 666 043c 4751      		subi r20,23
+ 667 043e 5C4F      		sbci r21,-4
+ 668 0440 BE01      		movw r22,r28
+ 669 0442 6851      		subi r22,24
+ 670 0444 7C4F      		sbci r23,-4
+ 671 0446 83E0      		ldi r24,lo8(3)
+ 672 0448 90E0      		ldi r25,0
+ 673 044a 0E94 0000 		call _test_assert_time_window
+ 674               	.LVL53:
+ 675 044e 8111      		cpse r24,__zero_reg__
+ 676 0450 00C0      		rjmp .L21
+ 210:../../test/testthd.c ****   time = chTimeNow() + MS2ST(100);
+ 677               		.loc 1 210 0
+ 678 0452 0091 0000 		lds r16,vtlist+6
+ 679 0456 1091 0000 		lds r17,vtlist+6+1
+ 680 045a E801      		movw r28,r16
+ 681               	.LVL54:
+ 682 045c CC59      		subi r28,-100
+ 683 045e DF4F      		sbci r29,-1
+ 684               	.LVL55:
+ 211:../../test/testthd.c ****   chThdSleepUntil(time);
+ 685               		.loc 1 211 0
+ 686 0460 CE01      		movw r24,r28
+ 687 0462 0E94 0000 		call chThdSleepUntil
+ 688               	.LVL56:
+ 212:../../test/testthd.c ****   test_assert_time_window(4, time, time + 1);
+ 689               		.loc 1 212 0
+ 690 0466 A801      		movw r20,r16
+ 691 0468 4B59      		subi r20,-101
+ 692 046a 5F4F      		sbci r21,-1
+ 693 046c BE01      		movw r22,r28
+ 694 046e 84E0      		ldi r24,lo8(4)
+ 695 0470 90E0      		ldi r25,0
+ 696               	/* epilogue start */
+ 697               	.LBE5:
+ 698               	.LBE4:
+ 699               		.loc 1 213 0
+ 700 0472 DF91      		pop r29
+ 701 0474 CF91      		pop r28
+ 702               	.LVL57:
+ 703 0476 1F91      		pop r17
+ 704 0478 0F91      		pop r16
+ 705               	.LBB7:
+ 706               	.LBB6:
+ 212:../../test/testthd.c ****   test_assert_time_window(4, time, time + 1);
+ 707               		.loc 1 212 0
+ 708 047a 0C94 0000 		jmp _test_assert_time_window
+ 709               	.LVL58:
+ 710               	.LBE6:
+ 711               	.LBE7:
+ 712               	.LFE11:
+ 714               	.global	patternthd
+ 715               		.section	.rodata
+ 718               	patternthd:
+ 719 0000 0000      		.word	testthd1
+ 720 0002 0000      		.word	testthd2
+ 721 0004 0000      		.word	testthd3
+ 722 0006 0000      		.word	testthd4
+ 723 0008 0000      		.word	0
+ 724               	.global	testthd4
+ 725               		.section	.rodata.str1.1
+ 726               	.LC6:
+ 727 0010 5468 7265 		.string	"Threads, delays"
+ 727      6164 732C 
+ 727      2064 656C 
+ 727      6179 7300 
+ 728               		.section	.rodata
+ 731               	testthd4:
+ 732 000a 0000      		.word	.LC6
+ 733 000c 0000      		.word	0
+ 734 000e 0000      		.word	0
+ 735 0010 0000      		.word	gs(thd4_execute)
+ 736               	.global	testthd3
+ 737               		.section	.rodata.str1.1
+ 738               	.LC7:
+ 739 0020 5468 7265 		.string	"Threads, priority change"
+ 739      6164 732C 
+ 739      2070 7269 
+ 739      6F72 6974 
+ 739      7920 6368 
+ 740               		.section	.rodata
+ 743               	testthd3:
+ 744 0012 0000      		.word	.LC7
+ 745 0014 0000      		.word	0
+ 746 0016 0000      		.word	0
+ 747 0018 0000      		.word	gs(thd3_execute)
+ 748               	.global	testthd2
+ 749               		.section	.rodata.str1.1
+ 750               	.LC8:
+ 751 0039 5468 7265 		.string	"Threads, enqueuing test #2"
+ 751      6164 732C 
+ 751      2065 6E71 
+ 751      7565 7569 
+ 751      6E67 2074 
+ 752               		.section	.rodata
+ 755               	testthd2:
+ 756 001a 0000      		.word	.LC8
+ 757 001c 0000      		.word	0
+ 758 001e 0000      		.word	0
+ 759 0020 0000      		.word	gs(thd2_execute)
+ 760               	.global	testthd1
+ 761               		.section	.rodata.str1.1
+ 762               	.LC9:
+ 763 0054 5468 7265 		.string	"Threads, enqueuing test #1"
+ 763      6164 732C 
+ 763      2065 6E71 
+ 763      7565 7569 
+ 763      6E67 2074 
+ 764               		.section	.rodata
+ 767               	testthd1:
+ 768 0022 0000      		.word	.LC9
+ 769 0024 0000      		.word	0
+ 770 0026 0000      		.word	0
+ 771 0028 0000      		.word	gs(thd1_execute)
+ 926               	.Letext0:
+ 927               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 928               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 929               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 930               		.file 5 "../../os/kernel/include/chlists.h"
+ 931               		.file 6 "../../os/kernel/include/chthreads.h"
+ 932               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 933               		.file 8 "../../os/kernel/include/chvt.h"
+ 934               		.file 9 "../../os/kernel/include/chschd.h"
+ 935               		.file 10 "../../os/kernel/include/chmtx.h"
+ 936               		.file 11 "../../test/test.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testthd.c
+     /tmp/cck5o6Cv.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cck5o6Cv.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cck5o6Cv.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cck5o6Cv.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/cck5o6Cv.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cck5o6Cv.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cck5o6Cv.s:11     .text:0000000000000000 thd3_execute
+     /tmp/cck5o6Cv.s:312    .text:00000000000001c2 thd2_execute
+     /tmp/cck5o6Cv.s:559    .text:00000000000003b6 thread
+     /tmp/cck5o6Cv.s:445    .text:00000000000002c2 thd1_execute
+     /tmp/cck5o6Cv.s:580    .text:00000000000003c4 thd4_execute
+     /tmp/cck5o6Cv.s:718    .rodata:0000000000000000 patternthd
+     /tmp/cck5o6Cv.s:767    .rodata:0000000000000022 testthd1
+     /tmp/cck5o6Cv.s:755    .rodata:000000000000001a testthd2
+     /tmp/cck5o6Cv.s:743    .rodata:0000000000000012 testthd3
+     /tmp/cck5o6Cv.s:731    .rodata:000000000000000a testthd4
+
+UNDEFINED SYMBOLS
+rlist
+chThdSetPriority
+_test_assert
+wa
+chThdCreateStatic
+threads
+chThdCreateI
+chThdResume
+test_wait_threads
+_test_assert_sequence
+test_emit_token
+test_wait_tick
+vtlist
+chThdSleep
+_test_assert_time_window
+chThdSleepUntil
+__do_copy_data

@@ -1,0 +1,3367 @@
+   1               		.file	"testbmk.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  11               	thread2:
+  12               	.LFB11:
+  13               		.file 1 "../../test/testbmk.c"
+   1:../../test/testbmk.c **** /*
+   2:../../test/testbmk.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testbmk.c **** 
+   4:../../test/testbmk.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testbmk.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testbmk.c ****     You may obtain a copy of the License at
+   7:../../test/testbmk.c **** 
+   8:../../test/testbmk.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testbmk.c **** 
+  10:../../test/testbmk.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testbmk.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testbmk.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testbmk.c ****     See the License for the specific language governing permissions and
+  14:../../test/testbmk.c ****     limitations under the License.
+  15:../../test/testbmk.c **** */
+  16:../../test/testbmk.c **** 
+  17:../../test/testbmk.c **** #include "ch.h"
+  18:../../test/testbmk.c **** #include "test.h"
+  19:../../test/testbmk.c **** 
+  20:../../test/testbmk.c **** /**
+  21:../../test/testbmk.c ****  * @page test_benchmarks Kernel Benchmarks
+  22:../../test/testbmk.c ****  *
+  23:../../test/testbmk.c ****  * File: @ref testbmk.c
+  24:../../test/testbmk.c ****  *
+  25:../../test/testbmk.c ****  * <h2>Description</h2>
+  26:../../test/testbmk.c ****  * This module implements a series of system benchmarks. The benchmarks are
+  27:../../test/testbmk.c ****  * useful as a stress test and as a reference when comparing ChibiOS/RT
+  28:../../test/testbmk.c ****  * with similar systems.
+  29:../../test/testbmk.c ****  *
+  30:../../test/testbmk.c ****  * <h2>Objective</h2>
+  31:../../test/testbmk.c ****  * Objective of the test module is to provide a performance index for the
+  32:../../test/testbmk.c ****  * most critical system subsystems. The performance numbers allow to
+  33:../../test/testbmk.c ****  * discover performance regressions between successive ChibiOS/RT releases.
+  34:../../test/testbmk.c ****  *
+  35:../../test/testbmk.c ****  * <h2>Preconditions</h2>
+  36:../../test/testbmk.c ****  * None.
+  37:../../test/testbmk.c ****  *
+  38:../../test/testbmk.c ****  * <h2>Test Cases</h2>
+  39:../../test/testbmk.c ****  * - @subpage test_benchmarks_001
+  40:../../test/testbmk.c ****  * - @subpage test_benchmarks_002
+  41:../../test/testbmk.c ****  * - @subpage test_benchmarks_003
+  42:../../test/testbmk.c ****  * - @subpage test_benchmarks_004
+  43:../../test/testbmk.c ****  * - @subpage test_benchmarks_005
+  44:../../test/testbmk.c ****  * - @subpage test_benchmarks_006
+  45:../../test/testbmk.c ****  * - @subpage test_benchmarks_007
+  46:../../test/testbmk.c ****  * - @subpage test_benchmarks_008
+  47:../../test/testbmk.c ****  * - @subpage test_benchmarks_009
+  48:../../test/testbmk.c ****  * - @subpage test_benchmarks_010
+  49:../../test/testbmk.c ****  * - @subpage test_benchmarks_011
+  50:../../test/testbmk.c ****  * - @subpage test_benchmarks_012
+  51:../../test/testbmk.c ****  * - @subpage test_benchmarks_013
+  52:../../test/testbmk.c ****  * .
+  53:../../test/testbmk.c ****  * @file testbmk.c Kernel Benchmarks
+  54:../../test/testbmk.c ****  * @brief Kernel Benchmarks source file
+  55:../../test/testbmk.c ****  * @file testbmk.h
+  56:../../test/testbmk.c ****  * @brief Kernel Benchmarks header file
+  57:../../test/testbmk.c ****  */
+  58:../../test/testbmk.c **** 
+  59:../../test/testbmk.c **** static Semaphore sem1;
+  60:../../test/testbmk.c **** #if CH_USE_MUTEXES || defined(__DOXYGEN__)
+  61:../../test/testbmk.c **** static Mutex mtx1;
+  62:../../test/testbmk.c **** #endif
+  63:../../test/testbmk.c **** 
+  64:../../test/testbmk.c **** static msg_t thread1(void *p) {
+  65:../../test/testbmk.c ****   Thread *tp;
+  66:../../test/testbmk.c ****   msg_t msg;
+  67:../../test/testbmk.c **** 
+  68:../../test/testbmk.c ****   (void)p;
+  69:../../test/testbmk.c ****   do {
+  70:../../test/testbmk.c ****     tp = chMsgWait();
+  71:../../test/testbmk.c ****     msg = chMsgGet(tp);
+  72:../../test/testbmk.c ****     chMsgRelease(tp, msg);
+  73:../../test/testbmk.c ****   } while (msg);
+  74:../../test/testbmk.c ****   return 0;
+  75:../../test/testbmk.c **** }
+  76:../../test/testbmk.c **** 
+  77:../../test/testbmk.c **** #ifdef __GNUC__
+  78:../../test/testbmk.c **** __attribute__((noinline))
+  79:../../test/testbmk.c **** #endif
+  80:../../test/testbmk.c **** static unsigned int msg_loop_test(Thread *tp) {
+  81:../../test/testbmk.c **** 
+  82:../../test/testbmk.c ****   uint32_t n = 0;
+  83:../../test/testbmk.c ****   test_wait_tick();
+  84:../../test/testbmk.c ****   test_start_timer(1000);
+  85:../../test/testbmk.c ****   do {
+  86:../../test/testbmk.c ****     (void)chMsgSend(tp, 1);
+  87:../../test/testbmk.c ****     n++;
+  88:../../test/testbmk.c **** #if defined(SIMULATOR)
+  89:../../test/testbmk.c ****     ChkIntSources();
+  90:../../test/testbmk.c **** #endif
+  91:../../test/testbmk.c ****   } while (!test_timer_done);
+  92:../../test/testbmk.c ****   (void)chMsgSend(tp, 0);
+  93:../../test/testbmk.c ****   return n;
+  94:../../test/testbmk.c **** }
+  95:../../test/testbmk.c **** 
+  96:../../test/testbmk.c **** /**
+  97:../../test/testbmk.c ****  * @page test_benchmarks_001 Messages performance #1
+  98:../../test/testbmk.c ****  *
+  99:../../test/testbmk.c ****  * <h2>Description</h2>
+ 100:../../test/testbmk.c ****  * A message server thread is created with a lower priority than the client
+ 101:../../test/testbmk.c ****  * thread, the messages throughput per second is measured and the result
+ 102:../../test/testbmk.c ****  * printed in the output log.
+ 103:../../test/testbmk.c ****  */
+ 104:../../test/testbmk.c **** 
+ 105:../../test/testbmk.c **** static void bmk1_execute(void) {
+ 106:../../test/testbmk.c ****   uint32_t n;
+ 107:../../test/testbmk.c **** 
+ 108:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread1, NULL);
+ 109:../../test/testbmk.c ****   n = msg_loop_test(threads[0]);
+ 110:../../test/testbmk.c ****   test_wait_threads();
+ 111:../../test/testbmk.c ****   test_print("--- Score : ");
+ 112:../../test/testbmk.c ****   test_printn(n);
+ 113:../../test/testbmk.c ****   test_print(" msgs/S, ");
+ 114:../../test/testbmk.c ****   test_printn(n << 1);
+ 115:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 116:../../test/testbmk.c **** }
+ 117:../../test/testbmk.c **** 
+ 118:../../test/testbmk.c **** ROMCONST struct testcase testbmk1 = {
+ 119:../../test/testbmk.c ****   "Benchmark, messages #1",
+ 120:../../test/testbmk.c ****   NULL,
+ 121:../../test/testbmk.c ****   NULL,
+ 122:../../test/testbmk.c ****   bmk1_execute
+ 123:../../test/testbmk.c **** };
+ 124:../../test/testbmk.c **** 
+ 125:../../test/testbmk.c **** /**
+ 126:../../test/testbmk.c ****  * @page test_benchmarks_002 Messages performance #2
+ 127:../../test/testbmk.c ****  *
+ 128:../../test/testbmk.c ****  * <h2>Description</h2>
+ 129:../../test/testbmk.c ****  * A message server thread is created with an higher priority than the client
+ 130:../../test/testbmk.c ****  * thread, the messages throughput per second is measured and the result
+ 131:../../test/testbmk.c ****  * printed in the output log.
+ 132:../../test/testbmk.c ****  */
+ 133:../../test/testbmk.c **** 
+ 134:../../test/testbmk.c **** static void bmk2_execute(void) {
+ 135:../../test/testbmk.c ****   uint32_t n;
+ 136:../../test/testbmk.c **** 
+ 137:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
+ 138:../../test/testbmk.c ****   n = msg_loop_test(threads[0]);
+ 139:../../test/testbmk.c ****   test_wait_threads();
+ 140:../../test/testbmk.c ****   test_print("--- Score : ");
+ 141:../../test/testbmk.c ****   test_printn(n);
+ 142:../../test/testbmk.c ****   test_print(" msgs/S, ");
+ 143:../../test/testbmk.c ****   test_printn(n << 1);
+ 144:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 145:../../test/testbmk.c **** }
+ 146:../../test/testbmk.c **** 
+ 147:../../test/testbmk.c **** ROMCONST struct testcase testbmk2 = {
+ 148:../../test/testbmk.c ****   "Benchmark, messages #2",
+ 149:../../test/testbmk.c ****   NULL,
+ 150:../../test/testbmk.c ****   NULL,
+ 151:../../test/testbmk.c ****   bmk2_execute
+ 152:../../test/testbmk.c **** };
+ 153:../../test/testbmk.c **** 
+ 154:../../test/testbmk.c **** static msg_t thread2(void *p) {
+  14               		.loc 1 154 0
+  15               	.LVL0:
+  16               	/* prologue: function */
+  17               	/* frame size = 0 */
+  18               	/* stack size = 0 */
+  19               	.L__stack_usage = 0
+ 155:../../test/testbmk.c **** 
+ 156:../../test/testbmk.c ****   return (msg_t)p;
+ 157:../../test/testbmk.c **** }
+  20               		.loc 1 157 0
+  21 0000 0895      		ret
+  22               	.LFE11:
+  25               	tmo:
+  26               	.LFB23:
+ 158:../../test/testbmk.c **** 
+ 159:../../test/testbmk.c **** /**
+ 160:../../test/testbmk.c ****  * @page test_benchmarks_003 Messages performance #3
+ 161:../../test/testbmk.c ****  *
+ 162:../../test/testbmk.c ****  * <h2>Description</h2>
+ 163:../../test/testbmk.c ****  * A message server thread is created with an higher priority than the client
+ 164:../../test/testbmk.c ****  * thread, four lower priority threads crowd the ready list, the messages
+ 165:../../test/testbmk.c ****  * throughput per second is measured while the ready list and the result
+ 166:../../test/testbmk.c ****  * printed in the output log.
+ 167:../../test/testbmk.c ****  */
+ 168:../../test/testbmk.c **** 
+ 169:../../test/testbmk.c **** static void bmk3_execute(void) {
+ 170:../../test/testbmk.c ****   uint32_t n;
+ 171:../../test/testbmk.c **** 
+ 172:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
+ 173:../../test/testbmk.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-2, thread2, NULL);
+ 174:../../test/testbmk.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread2, NULL);
+ 175:../../test/testbmk.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-4, thread2, NULL);
+ 176:../../test/testbmk.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-5, thread2, NULL);
+ 177:../../test/testbmk.c ****   n = msg_loop_test(threads[0]);
+ 178:../../test/testbmk.c ****   test_wait_threads();
+ 179:../../test/testbmk.c ****   test_print("--- Score : ");
+ 180:../../test/testbmk.c ****   test_printn(n);
+ 181:../../test/testbmk.c ****   test_print(" msgs/S, ");
+ 182:../../test/testbmk.c ****   test_printn(n << 1);
+ 183:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 184:../../test/testbmk.c **** }
+ 185:../../test/testbmk.c **** 
+ 186:../../test/testbmk.c **** ROMCONST struct testcase testbmk3 = {
+ 187:../../test/testbmk.c ****   "Benchmark, messages #3",
+ 188:../../test/testbmk.c ****   NULL,
+ 189:../../test/testbmk.c ****   NULL,
+ 190:../../test/testbmk.c ****   bmk3_execute
+ 191:../../test/testbmk.c **** };
+ 192:../../test/testbmk.c **** 
+ 193:../../test/testbmk.c **** /**
+ 194:../../test/testbmk.c ****  * @page test_benchmarks_004 Context Switch performance
+ 195:../../test/testbmk.c ****  *
+ 196:../../test/testbmk.c ****  * <h2>Description</h2>
+ 197:../../test/testbmk.c ****  * A thread is created that just performs a @p chSchGoSleepS() into a loop,
+ 198:../../test/testbmk.c ****  * the thread is awakened as fast is possible by the tester thread.<br>
+ 199:../../test/testbmk.c ****  * The Context Switch performance is calculated by measuring the number of
+ 200:../../test/testbmk.c ****  * iterations after a second of continuous operations.
+ 201:../../test/testbmk.c ****  */
+ 202:../../test/testbmk.c **** 
+ 203:../../test/testbmk.c **** msg_t thread4(void *p) {
+ 204:../../test/testbmk.c ****   msg_t msg;
+ 205:../../test/testbmk.c ****   Thread *self = chThdSelf();
+ 206:../../test/testbmk.c **** 
+ 207:../../test/testbmk.c ****   (void)p;
+ 208:../../test/testbmk.c ****   chSysLock();
+ 209:../../test/testbmk.c ****   do {
+ 210:../../test/testbmk.c ****     chSchGoSleepS(THD_STATE_SUSPENDED);
+ 211:../../test/testbmk.c ****     msg = self->p_u.rdymsg;
+ 212:../../test/testbmk.c ****   } while (msg == RDY_OK);
+ 213:../../test/testbmk.c ****   chSysUnlock();
+ 214:../../test/testbmk.c ****   return 0;
+ 215:../../test/testbmk.c **** }
+ 216:../../test/testbmk.c **** 
+ 217:../../test/testbmk.c **** static void bmk4_execute(void) {
+ 218:../../test/testbmk.c ****   Thread *tp;
+ 219:../../test/testbmk.c ****   uint32_t n;
+ 220:../../test/testbmk.c **** 
+ 221:../../test/testbmk.c ****   tp = threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread4, NULL);
+ 222:../../test/testbmk.c ****   n = 0;
+ 223:../../test/testbmk.c ****   test_wait_tick();
+ 224:../../test/testbmk.c ****   test_start_timer(1000);
+ 225:../../test/testbmk.c ****   do {
+ 226:../../test/testbmk.c ****     chSysLock();
+ 227:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 228:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 229:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 230:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 231:../../test/testbmk.c ****     chSysUnlock();
+ 232:../../test/testbmk.c ****     n += 4;
+ 233:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 234:../../test/testbmk.c ****     ChkIntSources();
+ 235:../../test/testbmk.c **** #endif
+ 236:../../test/testbmk.c ****   } while (!test_timer_done);
+ 237:../../test/testbmk.c ****   chSysLock();
+ 238:../../test/testbmk.c ****   chSchWakeupS(tp, RDY_TIMEOUT);
+ 239:../../test/testbmk.c ****   chSysUnlock();
+ 240:../../test/testbmk.c **** 
+ 241:../../test/testbmk.c ****   test_wait_threads();
+ 242:../../test/testbmk.c ****   test_print("--- Score : ");
+ 243:../../test/testbmk.c ****   test_printn(n * 2);
+ 244:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 245:../../test/testbmk.c **** }
+ 246:../../test/testbmk.c **** 
+ 247:../../test/testbmk.c **** ROMCONST struct testcase testbmk4 = {
+ 248:../../test/testbmk.c ****   "Benchmark, context switch",
+ 249:../../test/testbmk.c ****   NULL,
+ 250:../../test/testbmk.c ****   NULL,
+ 251:../../test/testbmk.c ****   bmk4_execute
+ 252:../../test/testbmk.c **** };
+ 253:../../test/testbmk.c **** 
+ 254:../../test/testbmk.c **** /**
+ 255:../../test/testbmk.c ****  * @page test_benchmarks_005 Threads performance, full cycle
+ 256:../../test/testbmk.c ****  *
+ 257:../../test/testbmk.c ****  * <h2>Description</h2>
+ 258:../../test/testbmk.c ****  * Threads are continuously created and terminated into a loop. A full
+ 259:../../test/testbmk.c ****  * @p chThdCreateStatic() / @p chThdExit() / @p chThdWait() cycle is performed
+ 260:../../test/testbmk.c ****  * in each iteration.<br>
+ 261:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 262:../../test/testbmk.c ****  * a second of continuous operations.
+ 263:../../test/testbmk.c ****  */
+ 264:../../test/testbmk.c **** 
+ 265:../../test/testbmk.c **** static void bmk5_execute(void) {
+ 266:../../test/testbmk.c **** 
+ 267:../../test/testbmk.c ****   uint32_t n = 0;
+ 268:../../test/testbmk.c ****   void *wap = wa[0];
+ 269:../../test/testbmk.c ****   tprio_t prio = chThdGetPriority() - 1;
+ 270:../../test/testbmk.c ****   test_wait_tick();
+ 271:../../test/testbmk.c ****   test_start_timer(1000);
+ 272:../../test/testbmk.c ****   do {
+ 273:../../test/testbmk.c ****     chThdWait(chThdCreateStatic(wap, WA_SIZE, prio, thread2, NULL));
+ 274:../../test/testbmk.c ****     n++;
+ 275:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 276:../../test/testbmk.c ****     ChkIntSources();
+ 277:../../test/testbmk.c **** #endif
+ 278:../../test/testbmk.c ****   } while (!test_timer_done);
+ 279:../../test/testbmk.c ****   test_print("--- Score : ");
+ 280:../../test/testbmk.c ****   test_printn(n);
+ 281:../../test/testbmk.c ****   test_println(" threads/S");
+ 282:../../test/testbmk.c **** }
+ 283:../../test/testbmk.c **** 
+ 284:../../test/testbmk.c **** ROMCONST struct testcase testbmk5 = {
+ 285:../../test/testbmk.c ****   "Benchmark, threads, full cycle",
+ 286:../../test/testbmk.c ****   NULL,
+ 287:../../test/testbmk.c ****   NULL,
+ 288:../../test/testbmk.c ****   bmk5_execute
+ 289:../../test/testbmk.c **** };
+ 290:../../test/testbmk.c **** 
+ 291:../../test/testbmk.c **** /**
+ 292:../../test/testbmk.c ****  * @page test_benchmarks_006 Threads performance, create/exit only
+ 293:../../test/testbmk.c ****  *
+ 294:../../test/testbmk.c ****  * <h2>Description</h2>
+ 295:../../test/testbmk.c ****  * Threads are continuously created and terminated into a loop. A partial
+ 296:../../test/testbmk.c ****  * @p chThdCreateStatic() / @p chThdExit() cycle is performed in each
+ 297:../../test/testbmk.c ****  * iteration, the @p chThdWait() is not necessary because the thread is
+ 298:../../test/testbmk.c ****  * created at an higher priority so there is no need to wait for it to
+ 299:../../test/testbmk.c ****  * terminate.<br>
+ 300:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 301:../../test/testbmk.c ****  * a second of continuous operations.
+ 302:../../test/testbmk.c ****  */
+ 303:../../test/testbmk.c **** 
+ 304:../../test/testbmk.c **** static void bmk6_execute(void) {
+ 305:../../test/testbmk.c **** 
+ 306:../../test/testbmk.c ****   uint32_t n = 0;
+ 307:../../test/testbmk.c ****   void *wap = wa[0];
+ 308:../../test/testbmk.c ****   tprio_t prio = chThdGetPriority() + 1;
+ 309:../../test/testbmk.c ****   test_wait_tick();
+ 310:../../test/testbmk.c ****   test_start_timer(1000);
+ 311:../../test/testbmk.c ****   do {
+ 312:../../test/testbmk.c ****     chThdCreateStatic(wap, WA_SIZE, prio, thread2, NULL);
+ 313:../../test/testbmk.c ****     n++;
+ 314:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 315:../../test/testbmk.c ****     ChkIntSources();
+ 316:../../test/testbmk.c **** #endif
+ 317:../../test/testbmk.c ****   } while (!test_timer_done);
+ 318:../../test/testbmk.c ****   test_print("--- Score : ");
+ 319:../../test/testbmk.c ****   test_printn(n);
+ 320:../../test/testbmk.c ****   test_println(" threads/S");
+ 321:../../test/testbmk.c **** }
+ 322:../../test/testbmk.c **** 
+ 323:../../test/testbmk.c **** ROMCONST struct testcase testbmk6 = {
+ 324:../../test/testbmk.c ****   "Benchmark, threads, create only",
+ 325:../../test/testbmk.c ****   NULL,
+ 326:../../test/testbmk.c ****   NULL,
+ 327:../../test/testbmk.c ****   bmk6_execute
+ 328:../../test/testbmk.c **** };
+ 329:../../test/testbmk.c **** 
+ 330:../../test/testbmk.c **** /**
+ 331:../../test/testbmk.c ****  * @page test_benchmarks_007 Mass reschedule performance
+ 332:../../test/testbmk.c ****  *
+ 333:../../test/testbmk.c ****  * <h2>Description</h2>
+ 334:../../test/testbmk.c ****  * Five threads are created and atomically rescheduled by resetting the
+ 335:../../test/testbmk.c ****  * semaphore where they are waiting on. The operation is performed into a
+ 336:../../test/testbmk.c ****  * continuous loop.<br>
+ 337:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 338:../../test/testbmk.c ****  * a second of continuous operations.
+ 339:../../test/testbmk.c ****  */
+ 340:../../test/testbmk.c **** 
+ 341:../../test/testbmk.c **** static msg_t thread3(void *p) {
+ 342:../../test/testbmk.c **** 
+ 343:../../test/testbmk.c ****   (void)p;
+ 344:../../test/testbmk.c ****   while (!chThdShouldTerminate())
+ 345:../../test/testbmk.c ****     chSemWait(&sem1);
+ 346:../../test/testbmk.c ****   return 0;
+ 347:../../test/testbmk.c **** }
+ 348:../../test/testbmk.c **** 
+ 349:../../test/testbmk.c **** static void bmk7_setup(void) {
+ 350:../../test/testbmk.c **** 
+ 351:../../test/testbmk.c ****   chSemInit(&sem1, 0);
+ 352:../../test/testbmk.c **** }
+ 353:../../test/testbmk.c **** 
+ 354:../../test/testbmk.c **** static void bmk7_execute(void) {
+ 355:../../test/testbmk.c ****   uint32_t n;
+ 356:../../test/testbmk.c **** 
+ 357:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+5, thread3, NULL);
+ 358:../../test/testbmk.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()+4, thread3, NULL);
+ 359:../../test/testbmk.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()+3, thread3, NULL);
+ 360:../../test/testbmk.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()+2, thread3, NULL);
+ 361:../../test/testbmk.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()+1, thread3, NULL);
+ 362:../../test/testbmk.c **** 
+ 363:../../test/testbmk.c ****   n = 0;
+ 364:../../test/testbmk.c ****   test_wait_tick();
+ 365:../../test/testbmk.c ****   test_start_timer(1000);
+ 366:../../test/testbmk.c ****   do {
+ 367:../../test/testbmk.c ****     chSemReset(&sem1, 0);
+ 368:../../test/testbmk.c ****     n++;
+ 369:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 370:../../test/testbmk.c ****     ChkIntSources();
+ 371:../../test/testbmk.c **** #endif
+ 372:../../test/testbmk.c ****   } while (!test_timer_done);
+ 373:../../test/testbmk.c ****   test_terminate_threads();
+ 374:../../test/testbmk.c ****   chSemReset(&sem1, 0);
+ 375:../../test/testbmk.c ****   test_wait_threads();
+ 376:../../test/testbmk.c **** 
+ 377:../../test/testbmk.c ****   test_print("--- Score : ");
+ 378:../../test/testbmk.c ****   test_printn(n);
+ 379:../../test/testbmk.c ****   test_print(" reschedules/S, ");
+ 380:../../test/testbmk.c ****   test_printn(n * 6);
+ 381:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 382:../../test/testbmk.c **** }
+ 383:../../test/testbmk.c **** 
+ 384:../../test/testbmk.c **** ROMCONST struct testcase testbmk7 = {
+ 385:../../test/testbmk.c ****   "Benchmark, mass reschedule, 5 threads",
+ 386:../../test/testbmk.c ****   bmk7_setup,
+ 387:../../test/testbmk.c ****   NULL,
+ 388:../../test/testbmk.c ****   bmk7_execute
+ 389:../../test/testbmk.c **** };
+ 390:../../test/testbmk.c **** 
+ 391:../../test/testbmk.c **** /**
+ 392:../../test/testbmk.c ****  * @page test_benchmarks_008 I/O Round-Robin voluntary reschedule.
+ 393:../../test/testbmk.c ****  *
+ 394:../../test/testbmk.c ****  * <h2>Description</h2>
+ 395:../../test/testbmk.c ****  * Five threads are created at equal priority, each thread just increases a
+ 396:../../test/testbmk.c ****  * variable and yields.<br>
+ 397:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 398:../../test/testbmk.c ****  * a second of continuous operations.
+ 399:../../test/testbmk.c ****  */
+ 400:../../test/testbmk.c **** 
+ 401:../../test/testbmk.c **** static msg_t thread8(void *p) {
+ 402:../../test/testbmk.c **** 
+ 403:../../test/testbmk.c ****   do {
+ 404:../../test/testbmk.c ****     chThdYield();
+ 405:../../test/testbmk.c ****     chThdYield();
+ 406:../../test/testbmk.c ****     chThdYield();
+ 407:../../test/testbmk.c ****     chThdYield();
+ 408:../../test/testbmk.c ****     (*(uint32_t *)p) += 4;
+ 409:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 410:../../test/testbmk.c ****     ChkIntSources();
+ 411:../../test/testbmk.c **** #endif
+ 412:../../test/testbmk.c ****   } while(!chThdShouldTerminate());
+ 413:../../test/testbmk.c ****   return 0;
+ 414:../../test/testbmk.c **** }
+ 415:../../test/testbmk.c **** 
+ 416:../../test/testbmk.c **** static void bmk8_execute(void) {
+ 417:../../test/testbmk.c ****   uint32_t n;
+ 418:../../test/testbmk.c **** 
+ 419:../../test/testbmk.c ****   n = 0;
+ 420:../../test/testbmk.c ****   test_wait_tick();
+ 421:../../test/testbmk.c **** 
+ 422:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 423:../../test/testbmk.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 424:../../test/testbmk.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 425:../../test/testbmk.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 426:../../test/testbmk.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 427:../../test/testbmk.c **** 
+ 428:../../test/testbmk.c ****   chThdSleepSeconds(1);
+ 429:../../test/testbmk.c ****   test_terminate_threads();
+ 430:../../test/testbmk.c ****   test_wait_threads();
+ 431:../../test/testbmk.c **** 
+ 432:../../test/testbmk.c ****   test_print("--- Score : ");
+ 433:../../test/testbmk.c ****   test_printn(n);
+ 434:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 435:../../test/testbmk.c **** }
+ 436:../../test/testbmk.c **** 
+ 437:../../test/testbmk.c **** ROMCONST struct testcase testbmk8 = {
+ 438:../../test/testbmk.c ****   "Benchmark, round robin context switching",
+ 439:../../test/testbmk.c ****   NULL,
+ 440:../../test/testbmk.c ****   NULL,
+ 441:../../test/testbmk.c ****   bmk8_execute
+ 442:../../test/testbmk.c **** };
+ 443:../../test/testbmk.c **** 
+ 444:../../test/testbmk.c **** #if CH_USE_QUEUES || defined(__DOXYGEN__)
+ 445:../../test/testbmk.c **** /**
+ 446:../../test/testbmk.c ****  * @page test_benchmarks_009 I/O Queues throughput
+ 447:../../test/testbmk.c ****  *
+ 448:../../test/testbmk.c ****  * <h2>Description</h2>
+ 449:../../test/testbmk.c ****  * Four bytes are written and then read from an @p InputQueue into a continuous
+ 450:../../test/testbmk.c ****  * loop.<br>
+ 451:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 452:../../test/testbmk.c ****  * a second of continuous operations.
+ 453:../../test/testbmk.c ****  */
+ 454:../../test/testbmk.c **** 
+ 455:../../test/testbmk.c **** static void bmk9_execute(void) {
+ 456:../../test/testbmk.c ****   uint32_t n;
+ 457:../../test/testbmk.c ****   static uint8_t ib[16];
+ 458:../../test/testbmk.c ****   static InputQueue iq;
+ 459:../../test/testbmk.c **** 
+ 460:../../test/testbmk.c ****   chIQInit(&iq, ib, sizeof(ib), NULL, NULL);
+ 461:../../test/testbmk.c ****   n = 0;
+ 462:../../test/testbmk.c ****   test_wait_tick();
+ 463:../../test/testbmk.c ****   test_start_timer(1000);
+ 464:../../test/testbmk.c ****   do {
+ 465:../../test/testbmk.c ****     chSysLock();
+ 466:../../test/testbmk.c ****     chIQPutI(&iq, 0);
+ 467:../../test/testbmk.c ****     chIQPutI(&iq, 1);
+ 468:../../test/testbmk.c ****     chIQPutI(&iq, 2);
+ 469:../../test/testbmk.c ****     chIQPutI(&iq, 3);
+ 470:../../test/testbmk.c ****     chSysUnlock();
+ 471:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 472:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 473:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 474:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 475:../../test/testbmk.c ****     n++;
+ 476:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 477:../../test/testbmk.c ****     ChkIntSources();
+ 478:../../test/testbmk.c **** #endif
+ 479:../../test/testbmk.c ****   } while (!test_timer_done);
+ 480:../../test/testbmk.c ****   test_print("--- Score : ");
+ 481:../../test/testbmk.c ****   test_printn(n * 4);
+ 482:../../test/testbmk.c ****   test_println(" bytes/S");
+ 483:../../test/testbmk.c **** }
+ 484:../../test/testbmk.c **** 
+ 485:../../test/testbmk.c **** ROMCONST struct testcase testbmk9 = {
+ 486:../../test/testbmk.c ****   "Benchmark, I/O Queues throughput",
+ 487:../../test/testbmk.c ****   NULL,
+ 488:../../test/testbmk.c ****   NULL,
+ 489:../../test/testbmk.c ****   bmk9_execute
+ 490:../../test/testbmk.c **** };
+ 491:../../test/testbmk.c **** #endif /* CH_USE_QUEUES */
+ 492:../../test/testbmk.c **** 
+ 493:../../test/testbmk.c **** /**
+ 494:../../test/testbmk.c ****  * @page test_benchmarks_010 Virtual Timers set/reset performance
+ 495:../../test/testbmk.c ****  *
+ 496:../../test/testbmk.c ****  * <h2>Description</h2>
+ 497:../../test/testbmk.c ****  * A virtual timer is set and immediately reset into a continuous loop.<br>
+ 498:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 499:../../test/testbmk.c ****  * a second of continuous operations.
+ 500:../../test/testbmk.c ****  */
+ 501:../../test/testbmk.c **** 
+ 502:../../test/testbmk.c **** static void tmo(void *param) {(void)param;}
+  27               		.loc 1 502 0
+  28               	.LVL1:
+  29               	/* prologue: function */
+  30               	/* frame size = 0 */
+  31               	/* stack size = 0 */
+  32               	.L__stack_usage = 0
+  33 0002 0895      		ret
+  34               	.LFE23:
+  36               		.section	.rodata.str1.1,"aMS",@progbits,1
+  37               	.LC0:
+  38 0000 2D2D 2D20 		.string	"--- System: "
+  38      5379 7374 
+  38      656D 3A20 
+  38      00
+  39               	.LC1:
+  40 000d 2062 7974 		.string	" bytes"
+  40      6573 00
+  41               	.LC2:
+  42 0014 2D2D 2D20 		.string	"--- Thread: "
+  42      5468 7265 
+  42      6164 3A20 
+  42      00
+  43               	.LC3:
+  44 0021 2D2D 2D20 		.string	"--- Timer : "
+  44      5469 6D65 
+  44      7220 3A20 
+  44      00
+  45               	.LC4:
+  46 002e 2D2D 2D20 		.string	"--- Semaph: "
+  46      5365 6D61 
+  46      7068 3A20 
+  46      00
+  47               	.LC5:
+  48 003b 2D2D 2D20 		.string	"--- EventS: "
+  48      4576 656E 
+  48      7453 3A20 
+  48      00
+  49               	.LC6:
+  50 0048 2D2D 2D20 		.string	"--- EventL: "
+  50      4576 656E 
+  50      744C 3A20 
+  50      00
+  51               	.LC7:
+  52 0055 2D2D 2D20 		.string	"--- Mutex : "
+  52      4D75 7465 
+  52      7820 3A20 
+  52      00
+  53               	.LC8:
+  54 0062 2D2D 2D20 		.string	"--- CondV.: "
+  54      436F 6E64 
+  54      562E 3A20 
+  54      00
+  55               	.LC9:
+  56 006f 2D2D 2D20 		.string	"--- Queue : "
+  56      5175 6575 
+  56      6520 3A20 
+  56      00
+  57               	.LC10:
+  58 007c 2D2D 2D20 		.string	"--- MailB.: "
+  58      4D61 696C 
+  58      422E 3A20 
+  58      00
+  59               		.text
+  61               	bmk13_execute:
+  62               	.LFB29:
+ 503:../../test/testbmk.c **** 
+ 504:../../test/testbmk.c **** static void bmk10_execute(void) {
+ 505:../../test/testbmk.c ****   static VirtualTimer vt1, vt2;
+ 506:../../test/testbmk.c ****   uint32_t n = 0;
+ 507:../../test/testbmk.c **** 
+ 508:../../test/testbmk.c ****   test_wait_tick();
+ 509:../../test/testbmk.c ****   test_start_timer(1000);
+ 510:../../test/testbmk.c ****   do {
+ 511:../../test/testbmk.c ****     chSysLock();
+ 512:../../test/testbmk.c ****     chVTSetI(&vt1, 1, tmo, NULL);
+ 513:../../test/testbmk.c ****     chVTSetI(&vt2, 10000, tmo, NULL);
+ 514:../../test/testbmk.c ****     chVTResetI(&vt1);
+ 515:../../test/testbmk.c ****     chVTResetI(&vt2);
+ 516:../../test/testbmk.c ****     chSysUnlock();
+ 517:../../test/testbmk.c ****     n++;
+ 518:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 519:../../test/testbmk.c ****     ChkIntSources();
+ 520:../../test/testbmk.c **** #endif
+ 521:../../test/testbmk.c ****   } while (!test_timer_done);
+ 522:../../test/testbmk.c ****   test_print("--- Score : ");
+ 523:../../test/testbmk.c ****   test_printn(n * 2);
+ 524:../../test/testbmk.c ****   test_println(" timers/S");
+ 525:../../test/testbmk.c **** }
+ 526:../../test/testbmk.c **** 
+ 527:../../test/testbmk.c **** ROMCONST struct testcase testbmk10 = {
+ 528:../../test/testbmk.c ****   "Benchmark, virtual timers set/reset",
+ 529:../../test/testbmk.c ****   NULL,
+ 530:../../test/testbmk.c ****   NULL,
+ 531:../../test/testbmk.c ****   bmk10_execute
+ 532:../../test/testbmk.c **** };
+ 533:../../test/testbmk.c **** 
+ 534:../../test/testbmk.c **** #if CH_USE_SEMAPHORES || defined(__DOXYGEN__)
+ 535:../../test/testbmk.c **** /**
+ 536:../../test/testbmk.c ****  * @page test_benchmarks_011 Semaphores wait/signal performance
+ 537:../../test/testbmk.c ****  *
+ 538:../../test/testbmk.c ****  * <h2>Description</h2>
+ 539:../../test/testbmk.c ****  * A counting semaphore is taken/released into a continuous loop, no Context
+ 540:../../test/testbmk.c ****  * Switch happens because the counter is always non negative.<br>
+ 541:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 542:../../test/testbmk.c ****  * a second of continuous operations.
+ 543:../../test/testbmk.c ****  */
+ 544:../../test/testbmk.c **** 
+ 545:../../test/testbmk.c **** static void bmk11_setup(void) {
+ 546:../../test/testbmk.c **** 
+ 547:../../test/testbmk.c ****   chSemInit(&sem1, 1);
+ 548:../../test/testbmk.c **** }
+ 549:../../test/testbmk.c **** 
+ 550:../../test/testbmk.c **** static void bmk11_execute(void) {
+ 551:../../test/testbmk.c ****   uint32_t n = 0;
+ 552:../../test/testbmk.c **** 
+ 553:../../test/testbmk.c ****   test_wait_tick();
+ 554:../../test/testbmk.c ****   test_start_timer(1000);
+ 555:../../test/testbmk.c ****   do {
+ 556:../../test/testbmk.c ****     chSemWait(&sem1);
+ 557:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 558:../../test/testbmk.c ****     chSemWait(&sem1);
+ 559:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 560:../../test/testbmk.c ****     chSemWait(&sem1);
+ 561:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 562:../../test/testbmk.c ****     chSemWait(&sem1);
+ 563:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 564:../../test/testbmk.c ****     n++;
+ 565:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 566:../../test/testbmk.c ****     ChkIntSources();
+ 567:../../test/testbmk.c **** #endif
+ 568:../../test/testbmk.c ****   } while (!test_timer_done);
+ 569:../../test/testbmk.c ****   test_print("--- Score : ");
+ 570:../../test/testbmk.c ****   test_printn(n * 4);
+ 571:../../test/testbmk.c ****   test_println(" wait+signal/S");
+ 572:../../test/testbmk.c **** }
+ 573:../../test/testbmk.c **** 
+ 574:../../test/testbmk.c **** ROMCONST struct testcase testbmk11 = {
+ 575:../../test/testbmk.c ****   "Benchmark, semaphores wait/signal",
+ 576:../../test/testbmk.c ****   bmk11_setup,
+ 577:../../test/testbmk.c ****   NULL,
+ 578:../../test/testbmk.c ****   bmk11_execute
+ 579:../../test/testbmk.c **** };
+ 580:../../test/testbmk.c **** #endif /* CH_USE_SEMAPHORES */
+ 581:../../test/testbmk.c **** 
+ 582:../../test/testbmk.c **** #if CH_USE_MUTEXES || defined(__DOXYGEN__)
+ 583:../../test/testbmk.c **** /**
+ 584:../../test/testbmk.c ****  * @page test_benchmarks_012 Mutexes lock/unlock performance
+ 585:../../test/testbmk.c ****  *
+ 586:../../test/testbmk.c ****  * <h2>Description</h2>
+ 587:../../test/testbmk.c ****  * A mutex is locked/unlocked into a continuous loop, no Context Switch happens
+ 588:../../test/testbmk.c ****  * because there are no other threads asking for the mutex.<br>
+ 589:../../test/testbmk.c ****  * The performance is calculated by measuring the number of iterations after
+ 590:../../test/testbmk.c ****  * a second of continuous operations.
+ 591:../../test/testbmk.c ****  */
+ 592:../../test/testbmk.c **** 
+ 593:../../test/testbmk.c **** static void bmk12_setup(void) {
+ 594:../../test/testbmk.c **** 
+ 595:../../test/testbmk.c ****   chMtxInit(&mtx1);
+ 596:../../test/testbmk.c **** }
+ 597:../../test/testbmk.c **** 
+ 598:../../test/testbmk.c **** static void bmk12_execute(void) {
+ 599:../../test/testbmk.c ****   uint32_t n = 0;
+ 600:../../test/testbmk.c **** 
+ 601:../../test/testbmk.c ****   test_wait_tick();
+ 602:../../test/testbmk.c ****   test_start_timer(1000);
+ 603:../../test/testbmk.c ****   do {
+ 604:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 605:../../test/testbmk.c ****     chMtxUnlock();
+ 606:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 607:../../test/testbmk.c ****     chMtxUnlock();
+ 608:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 609:../../test/testbmk.c ****     chMtxUnlock();
+ 610:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 611:../../test/testbmk.c ****     chMtxUnlock();
+ 612:../../test/testbmk.c ****     n++;
+ 613:../../test/testbmk.c **** #if defined(SIMULATOR)
+ 614:../../test/testbmk.c ****     ChkIntSources();
+ 615:../../test/testbmk.c **** #endif
+ 616:../../test/testbmk.c ****   } while (!test_timer_done);
+ 617:../../test/testbmk.c ****   test_print("--- Score : ");
+ 618:../../test/testbmk.c ****   test_printn(n * 4);
+ 619:../../test/testbmk.c ****   test_println(" lock+unlock/S");
+ 620:../../test/testbmk.c **** }
+ 621:../../test/testbmk.c **** 
+ 622:../../test/testbmk.c **** ROMCONST struct testcase testbmk12 = {
+ 623:../../test/testbmk.c ****   "Benchmark, mutexes lock/unlock",
+ 624:../../test/testbmk.c ****   bmk12_setup,
+ 625:../../test/testbmk.c ****   NULL,
+ 626:../../test/testbmk.c ****   bmk12_execute
+ 627:../../test/testbmk.c **** };
+ 628:../../test/testbmk.c **** #endif
+ 629:../../test/testbmk.c **** 
+ 630:../../test/testbmk.c **** /**
+ 631:../../test/testbmk.c ****  * @page test_benchmarks_013 RAM Footprint
+ 632:../../test/testbmk.c ****  *
+ 633:../../test/testbmk.c ****  * <h2>Description</h2>
+ 634:../../test/testbmk.c ****  * The memory size of the various kernel objects is printed.
+ 635:../../test/testbmk.c ****  */
+ 636:../../test/testbmk.c **** 
+ 637:../../test/testbmk.c **** static void bmk13_execute(void) {
+  63               		.loc 1 637 0
+  64               	/* prologue: function */
+  65               	/* frame size = 0 */
+  66               	/* stack size = 0 */
+  67               	.L__stack_usage = 0
+ 638:../../test/testbmk.c **** 
+ 639:../../test/testbmk.c ****   test_print("--- System: ");
+  68               		.loc 1 639 0
+  69 0004 80E0      		ldi r24,lo8(.LC0)
+  70 0006 90E0      		ldi r25,hi8(.LC0)
+  71 0008 0E94 0000 		call test_print
+  72               	.LVL2:
+ 640:../../test/testbmk.c ****   test_printn(sizeof(ReadyList) + sizeof(VTList) +
+  73               		.loc 1 640 0
+  74 000c 6FEE      		ldi r22,lo8(-17)
+  75 000e 70E0      		ldi r23,0
+  76 0010 80E0      		ldi r24,0
+  77 0012 90E0      		ldi r25,0
+  78 0014 0E94 0000 		call test_printn
+  79               	.LVL3:
+ 641:../../test/testbmk.c ****               PORT_IDLE_THREAD_STACK_SIZE +
+ 642:../../test/testbmk.c ****               (sizeof(Thread) + sizeof(struct intctx) +
+ 643:../../test/testbmk.c ****                sizeof(struct extctx) +
+ 644:../../test/testbmk.c ****                PORT_INT_REQUIRED_STACK) * 2);
+ 645:../../test/testbmk.c ****   test_println(" bytes");
+  80               		.loc 1 645 0
+  81 0018 80E0      		ldi r24,lo8(.LC1)
+  82 001a 90E0      		ldi r25,hi8(.LC1)
+  83 001c 0E94 0000 		call test_println
+  84               	.LVL4:
+ 646:../../test/testbmk.c ****   test_print("--- Thread: ");
+  85               		.loc 1 646 0
+  86 0020 80E0      		ldi r24,lo8(.LC2)
+  87 0022 90E0      		ldi r25,hi8(.LC2)
+  88 0024 0E94 0000 		call test_print
+  89               	.LVL5:
+ 647:../../test/testbmk.c ****   test_printn(sizeof(Thread));
+  90               		.loc 1 647 0
+  91 0028 60E2      		ldi r22,lo8(32)
+  92 002a 70E0      		ldi r23,0
+  93 002c 80E0      		ldi r24,0
+  94 002e 90E0      		ldi r25,0
+  95 0030 0E94 0000 		call test_printn
+  96               	.LVL6:
+ 648:../../test/testbmk.c ****   test_println(" bytes");
+  97               		.loc 1 648 0
+  98 0034 80E0      		ldi r24,lo8(.LC1)
+  99 0036 90E0      		ldi r25,hi8(.LC1)
+ 100 0038 0E94 0000 		call test_println
+ 101               	.LVL7:
+ 649:../../test/testbmk.c ****   test_print("--- Timer : ");
+ 102               		.loc 1 649 0
+ 103 003c 80E0      		ldi r24,lo8(.LC3)
+ 104 003e 90E0      		ldi r25,hi8(.LC3)
+ 105 0040 0E94 0000 		call test_print
+ 106               	.LVL8:
+ 650:../../test/testbmk.c ****   test_printn(sizeof(VirtualTimer));
+ 107               		.loc 1 650 0
+ 108 0044 6AE0      		ldi r22,lo8(10)
+ 109 0046 70E0      		ldi r23,0
+ 110 0048 80E0      		ldi r24,0
+ 111 004a 90E0      		ldi r25,0
+ 112 004c 0E94 0000 		call test_printn
+ 113               	.LVL9:
+ 651:../../test/testbmk.c ****   test_println(" bytes");
+ 114               		.loc 1 651 0
+ 115 0050 80E0      		ldi r24,lo8(.LC1)
+ 116 0052 90E0      		ldi r25,hi8(.LC1)
+ 117 0054 0E94 0000 		call test_println
+ 118               	.LVL10:
+ 652:../../test/testbmk.c **** #if CH_USE_SEMAPHORES || defined(__DOXYGEN__)
+ 653:../../test/testbmk.c ****   test_print("--- Semaph: ");
+ 119               		.loc 1 653 0
+ 120 0058 80E0      		ldi r24,lo8(.LC4)
+ 121 005a 90E0      		ldi r25,hi8(.LC4)
+ 122 005c 0E94 0000 		call test_print
+ 123               	.LVL11:
+ 654:../../test/testbmk.c ****   test_printn(sizeof(Semaphore));
+ 124               		.loc 1 654 0
+ 125 0060 65E0      		ldi r22,lo8(5)
+ 126 0062 70E0      		ldi r23,0
+ 127 0064 80E0      		ldi r24,0
+ 128 0066 90E0      		ldi r25,0
+ 129 0068 0E94 0000 		call test_printn
+ 130               	.LVL12:
+ 655:../../test/testbmk.c ****   test_println(" bytes");
+ 131               		.loc 1 655 0
+ 132 006c 80E0      		ldi r24,lo8(.LC1)
+ 133 006e 90E0      		ldi r25,hi8(.LC1)
+ 134 0070 0E94 0000 		call test_println
+ 135               	.LVL13:
+ 656:../../test/testbmk.c **** #endif
+ 657:../../test/testbmk.c **** #if CH_USE_EVENTS || defined(__DOXYGEN__)
+ 658:../../test/testbmk.c ****   test_print("--- EventS: ");
+ 136               		.loc 1 658 0
+ 137 0074 80E0      		ldi r24,lo8(.LC5)
+ 138 0076 90E0      		ldi r25,hi8(.LC5)
+ 139 0078 0E94 0000 		call test_print
+ 140               	.LVL14:
+ 659:../../test/testbmk.c ****   test_printn(sizeof(EventSource));
+ 141               		.loc 1 659 0
+ 142 007c 62E0      		ldi r22,lo8(2)
+ 143 007e 70E0      		ldi r23,0
+ 144 0080 80E0      		ldi r24,0
+ 145 0082 90E0      		ldi r25,0
+ 146 0084 0E94 0000 		call test_printn
+ 147               	.LVL15:
+ 660:../../test/testbmk.c ****   test_println(" bytes");
+ 148               		.loc 1 660 0
+ 149 0088 80E0      		ldi r24,lo8(.LC1)
+ 150 008a 90E0      		ldi r25,hi8(.LC1)
+ 151 008c 0E94 0000 		call test_println
+ 152               	.LVL16:
+ 661:../../test/testbmk.c ****   test_print("--- EventL: ");
+ 153               		.loc 1 661 0
+ 154 0090 80E0      		ldi r24,lo8(.LC6)
+ 155 0092 90E0      		ldi r25,hi8(.LC6)
+ 156 0094 0E94 0000 		call test_print
+ 157               	.LVL17:
+ 662:../../test/testbmk.c ****   test_printn(sizeof(EventListener));
+ 158               		.loc 1 662 0
+ 159 0098 66E0      		ldi r22,lo8(6)
+ 160 009a 70E0      		ldi r23,0
+ 161 009c 80E0      		ldi r24,0
+ 162 009e 90E0      		ldi r25,0
+ 163 00a0 0E94 0000 		call test_printn
+ 164               	.LVL18:
+ 663:../../test/testbmk.c ****   test_println(" bytes");
+ 165               		.loc 1 663 0
+ 166 00a4 80E0      		ldi r24,lo8(.LC1)
+ 167 00a6 90E0      		ldi r25,hi8(.LC1)
+ 168 00a8 0E94 0000 		call test_println
+ 169               	.LVL19:
+ 664:../../test/testbmk.c **** #endif
+ 665:../../test/testbmk.c **** #if CH_USE_MUTEXES || defined(__DOXYGEN__)
+ 666:../../test/testbmk.c ****   test_print("--- Mutex : ");
+ 170               		.loc 1 666 0
+ 171 00ac 80E0      		ldi r24,lo8(.LC7)
+ 172 00ae 90E0      		ldi r25,hi8(.LC7)
+ 173 00b0 0E94 0000 		call test_print
+ 174               	.LVL20:
+ 667:../../test/testbmk.c ****   test_printn(sizeof(Mutex));
+ 175               		.loc 1 667 0
+ 176 00b4 68E0      		ldi r22,lo8(8)
+ 177 00b6 70E0      		ldi r23,0
+ 178 00b8 80E0      		ldi r24,0
+ 179 00ba 90E0      		ldi r25,0
+ 180 00bc 0E94 0000 		call test_printn
+ 181               	.LVL21:
+ 668:../../test/testbmk.c ****   test_println(" bytes");
+ 182               		.loc 1 668 0
+ 183 00c0 80E0      		ldi r24,lo8(.LC1)
+ 184 00c2 90E0      		ldi r25,hi8(.LC1)
+ 185 00c4 0E94 0000 		call test_println
+ 186               	.LVL22:
+ 669:../../test/testbmk.c **** #endif
+ 670:../../test/testbmk.c **** #if CH_USE_CONDVARS || defined(__DOXYGEN__)
+ 671:../../test/testbmk.c ****   test_print("--- CondV.: ");
+ 187               		.loc 1 671 0
+ 188 00c8 80E0      		ldi r24,lo8(.LC8)
+ 189 00ca 90E0      		ldi r25,hi8(.LC8)
+ 190 00cc 0E94 0000 		call test_print
+ 191               	.LVL23:
+ 672:../../test/testbmk.c ****   test_printn(sizeof(CondVar));
+ 192               		.loc 1 672 0
+ 193 00d0 64E0      		ldi r22,lo8(4)
+ 194 00d2 70E0      		ldi r23,0
+ 195 00d4 80E0      		ldi r24,0
+ 196 00d6 90E0      		ldi r25,0
+ 197 00d8 0E94 0000 		call test_printn
+ 198               	.LVL24:
+ 673:../../test/testbmk.c ****   test_println(" bytes");
+ 199               		.loc 1 673 0
+ 200 00dc 80E0      		ldi r24,lo8(.LC1)
+ 201 00de 90E0      		ldi r25,hi8(.LC1)
+ 202 00e0 0E94 0000 		call test_println
+ 203               	.LVL25:
+ 674:../../test/testbmk.c **** #endif
+ 675:../../test/testbmk.c **** #if CH_USE_QUEUES || defined(__DOXYGEN__)
+ 676:../../test/testbmk.c ****   test_print("--- Queue : ");
+ 204               		.loc 1 676 0
+ 205 00e4 80E0      		ldi r24,lo8(.LC9)
+ 206 00e6 90E0      		ldi r25,hi8(.LC9)
+ 207 00e8 0E94 0000 		call test_print
+ 208               	.LVL26:
+ 677:../../test/testbmk.c ****   test_printn(sizeof(GenericQueue));
+ 209               		.loc 1 677 0
+ 210 00ec 62E1      		ldi r22,lo8(18)
+ 211 00ee 70E0      		ldi r23,0
+ 212 00f0 80E0      		ldi r24,0
+ 213 00f2 90E0      		ldi r25,0
+ 214 00f4 0E94 0000 		call test_printn
+ 215               	.LVL27:
+ 678:../../test/testbmk.c ****   test_println(" bytes");
+ 216               		.loc 1 678 0
+ 217 00f8 80E0      		ldi r24,lo8(.LC1)
+ 218 00fa 90E0      		ldi r25,hi8(.LC1)
+ 219 00fc 0E94 0000 		call test_println
+ 220               	.LVL28:
+ 679:../../test/testbmk.c **** #endif
+ 680:../../test/testbmk.c **** #if CH_USE_MAILBOXES || defined(__DOXYGEN__)
+ 681:../../test/testbmk.c ****   test_print("--- MailB.: ");
+ 221               		.loc 1 681 0
+ 222 0100 80E0      		ldi r24,lo8(.LC10)
+ 223 0102 90E0      		ldi r25,hi8(.LC10)
+ 224 0104 0E94 0000 		call test_print
+ 225               	.LVL29:
+ 682:../../test/testbmk.c ****   test_printn(sizeof(Mailbox));
+ 226               		.loc 1 682 0
+ 227 0108 62E1      		ldi r22,lo8(18)
+ 228 010a 70E0      		ldi r23,0
+ 229 010c 80E0      		ldi r24,0
+ 230 010e 90E0      		ldi r25,0
+ 231 0110 0E94 0000 		call test_printn
+ 232               	.LVL30:
+ 683:../../test/testbmk.c ****   test_println(" bytes");
+ 233               		.loc 1 683 0
+ 234 0114 80E0      		ldi r24,lo8(.LC1)
+ 235 0116 90E0      		ldi r25,hi8(.LC1)
+ 236 0118 0C94 0000 		jmp test_println
+ 237               	.LVL31:
+ 238               	.LFE29:
+ 240               		.section	.rodata.str1.1
+ 241               	.LC11:
+ 242 0089 2D2D 2D20 		.string	"--- Score : "
+ 242      5363 6F72 
+ 242      6520 3A20 
+ 242      00
+ 243               	.LC12:
+ 244 0096 206C 6F63 		.string	" lock+unlock/S"
+ 244      6B2B 756E 
+ 244      6C6F 636B 
+ 244      2F53 00
+ 245               		.text
+ 247               	bmk12_execute:
+ 248               	.LFB28:
+ 598:../../test/testbmk.c **** static void bmk12_execute(void) {
+ 249               		.loc 1 598 0
+ 250 011c CF92      		push r12
+ 251               	.LCFI0:
+ 252 011e DF92      		push r13
+ 253               	.LCFI1:
+ 254 0120 EF92      		push r14
+ 255               	.LCFI2:
+ 256 0122 FF92      		push r15
+ 257               	.LCFI3:
+ 258               	/* prologue: function */
+ 259               	/* frame size = 0 */
+ 260               	/* stack size = 4 */
+ 261               	.L__stack_usage = 4
+ 262               	.LVL32:
+ 601:../../test/testbmk.c ****   test_wait_tick();
+ 263               		.loc 1 601 0
+ 264 0124 0E94 0000 		call test_wait_tick
+ 265               	.LVL33:
+ 602:../../test/testbmk.c ****   test_start_timer(1000);
+ 266               		.loc 1 602 0
+ 267 0128 88EE      		ldi r24,lo8(-24)
+ 268 012a 93E0      		ldi r25,lo8(3)
+ 269 012c 0E94 0000 		call test_start_timer
+ 270               	.LVL34:
+ 599:../../test/testbmk.c ****   uint32_t n = 0;
+ 271               		.loc 1 599 0
+ 272 0130 C12C      		mov r12,__zero_reg__
+ 273 0132 D12C      		mov r13,__zero_reg__
+ 274 0134 7601      		movw r14,r12
+ 275               	.LVL35:
+ 276               	.L5:
+ 604:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 277               		.loc 1 604 0 discriminator 1
+ 278 0136 80E0      		ldi r24,lo8(mtx1)
+ 279 0138 90E0      		ldi r25,hi8(mtx1)
+ 280 013a 0E94 0000 		call chMtxLock
+ 281               	.LVL36:
+ 605:../../test/testbmk.c ****     chMtxUnlock();
+ 282               		.loc 1 605 0 discriminator 1
+ 283 013e 0E94 0000 		call chMtxUnlock
+ 284               	.LVL37:
+ 606:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 285               		.loc 1 606 0 discriminator 1
+ 286 0142 80E0      		ldi r24,lo8(mtx1)
+ 287 0144 90E0      		ldi r25,hi8(mtx1)
+ 288 0146 0E94 0000 		call chMtxLock
+ 289               	.LVL38:
+ 607:../../test/testbmk.c ****     chMtxUnlock();
+ 290               		.loc 1 607 0 discriminator 1
+ 291 014a 0E94 0000 		call chMtxUnlock
+ 292               	.LVL39:
+ 608:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 293               		.loc 1 608 0 discriminator 1
+ 294 014e 80E0      		ldi r24,lo8(mtx1)
+ 295 0150 90E0      		ldi r25,hi8(mtx1)
+ 296 0152 0E94 0000 		call chMtxLock
+ 297               	.LVL40:
+ 609:../../test/testbmk.c ****     chMtxUnlock();
+ 298               		.loc 1 609 0 discriminator 1
+ 299 0156 0E94 0000 		call chMtxUnlock
+ 300               	.LVL41:
+ 610:../../test/testbmk.c ****     chMtxLock(&mtx1);
+ 301               		.loc 1 610 0 discriminator 1
+ 302 015a 80E0      		ldi r24,lo8(mtx1)
+ 303 015c 90E0      		ldi r25,hi8(mtx1)
+ 304 015e 0E94 0000 		call chMtxLock
+ 305               	.LVL42:
+ 611:../../test/testbmk.c ****     chMtxUnlock();
+ 306               		.loc 1 611 0 discriminator 1
+ 307 0162 0E94 0000 		call chMtxUnlock
+ 308               	.LVL43:
+ 612:../../test/testbmk.c ****     n++;
+ 309               		.loc 1 612 0 discriminator 1
+ 310 0166 8FEF      		ldi r24,-1
+ 311 0168 C81A      		sub r12,r24
+ 312 016a D80A      		sbc r13,r24
+ 313 016c E80A      		sbc r14,r24
+ 314 016e F80A      		sbc r15,r24
+ 315               	.LVL44:
+ 616:../../test/testbmk.c ****   } while (!test_timer_done);
+ 316               		.loc 1 616 0 discriminator 1
+ 317 0170 8091 0000 		lds r24,test_timer_done
+ 318 0174 8823      		tst r24
+ 319 0176 01F0      		breq .L5
+ 617:../../test/testbmk.c ****   test_print("--- Score : ");
+ 320               		.loc 1 617 0
+ 321 0178 80E0      		ldi r24,lo8(.LC11)
+ 322 017a 90E0      		ldi r25,hi8(.LC11)
+ 323 017c 0E94 0000 		call test_print
+ 324               	.LVL45:
+ 618:../../test/testbmk.c ****   test_printn(n * 4);
+ 325               		.loc 1 618 0
+ 326 0180 C701      		movw r24,r14
+ 327 0182 B601      		movw r22,r12
+ 328 0184 660F      		lsl r22
+ 329 0186 771F      		rol r23
+ 330 0188 881F      		rol r24
+ 331 018a 991F      		rol r25
+ 332 018c 660F      		lsl r22
+ 333 018e 771F      		rol r23
+ 334 0190 881F      		rol r24
+ 335 0192 991F      		rol r25
+ 336 0194 0E94 0000 		call test_printn
+ 337               	.LVL46:
+ 619:../../test/testbmk.c ****   test_println(" lock+unlock/S");
+ 338               		.loc 1 619 0
+ 339 0198 80E0      		ldi r24,lo8(.LC12)
+ 340 019a 90E0      		ldi r25,hi8(.LC12)
+ 341               	/* epilogue start */
+ 620:../../test/testbmk.c **** }
+ 342               		.loc 1 620 0
+ 343 019c FF90      		pop r15
+ 344 019e EF90      		pop r14
+ 345 01a0 DF90      		pop r13
+ 346 01a2 CF90      		pop r12
+ 347               	.LVL47:
+ 619:../../test/testbmk.c ****   test_println(" lock+unlock/S");
+ 348               		.loc 1 619 0
+ 349 01a4 0C94 0000 		jmp test_println
+ 350               	.LVL48:
+ 351               	.LFE28:
+ 354               	bmk12_setup:
+ 355               	.LFB27:
+ 593:../../test/testbmk.c **** static void bmk12_setup(void) {
+ 356               		.loc 1 593 0
+ 357               	/* prologue: function */
+ 358               	/* frame size = 0 */
+ 359               	/* stack size = 0 */
+ 360               	.L__stack_usage = 0
+ 595:../../test/testbmk.c ****   chMtxInit(&mtx1);
+ 361               		.loc 1 595 0
+ 362 01a8 80E0      		ldi r24,lo8(mtx1)
+ 363 01aa 90E0      		ldi r25,hi8(mtx1)
+ 364 01ac 0C94 0000 		jmp chMtxInit
+ 365               	.LVL49:
+ 366               	.LFE27:
+ 369               	thread3:
+ 370               	.LFB17:
+ 341:../../test/testbmk.c **** static msg_t thread3(void *p) {
+ 371               		.loc 1 341 0
+ 372               	.LVL50:
+ 373 01b0 00C0      		rjmp .L24
+ 374               	/* prologue: function */
+ 375               	/* frame size = 0 */
+ 376               	/* stack size = 0 */
+ 377               	.L__stack_usage = 0
+ 378               	.LVL51:
+ 379               	.L19:
+ 345:../../test/testbmk.c ****     chSemWait(&sem1);
+ 380               		.loc 1 345 0
+ 381 01b2 80E0      		ldi r24,lo8(sem1)
+ 382 01b4 90E0      		ldi r25,hi8(sem1)
+ 383 01b6 0E94 0000 		call chSemWait
+ 384               	.LVL52:
+ 385               	.L24:
+ 344:../../test/testbmk.c ****   while (!chThdShouldTerminate())
+ 386               		.loc 1 344 0
+ 387 01ba E091 0000 		lds r30,rlist+11
+ 388 01be F091 0000 		lds r31,rlist+11+1
+ 389 01c2 8685      		ldd r24,Z+14
+ 390 01c4 82FF      		sbrs r24,2
+ 391 01c6 00C0      		rjmp .L19
+ 347:../../test/testbmk.c **** }
+ 392               		.loc 1 347 0
+ 393 01c8 80E0      		ldi r24,0
+ 394 01ca 90E0      		ldi r25,0
+ 395 01cc 0895      		ret
+ 396               	.LFE17:
+ 398               		.section	.rodata.str1.1
+ 399               	.LC13:
+ 400 00a5 2077 6169 		.string	" wait+signal/S"
+ 400      742B 7369 
+ 400      676E 616C 
+ 400      2F53 00
+ 401               		.text
+ 403               	bmk11_execute:
+ 404               	.LFB26:
+ 550:../../test/testbmk.c **** static void bmk11_execute(void) {
+ 405               		.loc 1 550 0
+ 406 01ce CF92      		push r12
+ 407               	.LCFI4:
+ 408 01d0 DF92      		push r13
+ 409               	.LCFI5:
+ 410 01d2 EF92      		push r14
+ 411               	.LCFI6:
+ 412 01d4 FF92      		push r15
+ 413               	.LCFI7:
+ 414               	/* prologue: function */
+ 415               	/* frame size = 0 */
+ 416               	/* stack size = 4 */
+ 417               	.L__stack_usage = 4
+ 418               	.LVL53:
+ 553:../../test/testbmk.c ****   test_wait_tick();
+ 419               		.loc 1 553 0
+ 420 01d6 0E94 0000 		call test_wait_tick
+ 421               	.LVL54:
+ 554:../../test/testbmk.c ****   test_start_timer(1000);
+ 422               		.loc 1 554 0
+ 423 01da 88EE      		ldi r24,lo8(-24)
+ 424 01dc 93E0      		ldi r25,lo8(3)
+ 425 01de 0E94 0000 		call test_start_timer
+ 426               	.LVL55:
+ 551:../../test/testbmk.c ****   uint32_t n = 0;
+ 427               		.loc 1 551 0
+ 428 01e2 C12C      		mov r12,__zero_reg__
+ 429 01e4 D12C      		mov r13,__zero_reg__
+ 430 01e6 7601      		movw r14,r12
+ 431               	.LVL56:
+ 432               	.L26:
+ 556:../../test/testbmk.c ****     chSemWait(&sem1);
+ 433               		.loc 1 556 0 discriminator 1
+ 434 01e8 80E0      		ldi r24,lo8(sem1)
+ 435 01ea 90E0      		ldi r25,hi8(sem1)
+ 436 01ec 0E94 0000 		call chSemWait
+ 437               	.LVL57:
+ 557:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 438               		.loc 1 557 0 discriminator 1
+ 439 01f0 80E0      		ldi r24,lo8(sem1)
+ 440 01f2 90E0      		ldi r25,hi8(sem1)
+ 441 01f4 0E94 0000 		call chSemSignal
+ 442               	.LVL58:
+ 558:../../test/testbmk.c ****     chSemWait(&sem1);
+ 443               		.loc 1 558 0 discriminator 1
+ 444 01f8 80E0      		ldi r24,lo8(sem1)
+ 445 01fa 90E0      		ldi r25,hi8(sem1)
+ 446 01fc 0E94 0000 		call chSemWait
+ 447               	.LVL59:
+ 559:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 448               		.loc 1 559 0 discriminator 1
+ 449 0200 80E0      		ldi r24,lo8(sem1)
+ 450 0202 90E0      		ldi r25,hi8(sem1)
+ 451 0204 0E94 0000 		call chSemSignal
+ 452               	.LVL60:
+ 560:../../test/testbmk.c ****     chSemWait(&sem1);
+ 453               		.loc 1 560 0 discriminator 1
+ 454 0208 80E0      		ldi r24,lo8(sem1)
+ 455 020a 90E0      		ldi r25,hi8(sem1)
+ 456 020c 0E94 0000 		call chSemWait
+ 457               	.LVL61:
+ 561:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 458               		.loc 1 561 0 discriminator 1
+ 459 0210 80E0      		ldi r24,lo8(sem1)
+ 460 0212 90E0      		ldi r25,hi8(sem1)
+ 461 0214 0E94 0000 		call chSemSignal
+ 462               	.LVL62:
+ 562:../../test/testbmk.c ****     chSemWait(&sem1);
+ 463               		.loc 1 562 0 discriminator 1
+ 464 0218 80E0      		ldi r24,lo8(sem1)
+ 465 021a 90E0      		ldi r25,hi8(sem1)
+ 466 021c 0E94 0000 		call chSemWait
+ 467               	.LVL63:
+ 563:../../test/testbmk.c ****     chSemSignal(&sem1);
+ 468               		.loc 1 563 0 discriminator 1
+ 469 0220 80E0      		ldi r24,lo8(sem1)
+ 470 0222 90E0      		ldi r25,hi8(sem1)
+ 471 0224 0E94 0000 		call chSemSignal
+ 472               	.LVL64:
+ 564:../../test/testbmk.c ****     n++;
+ 473               		.loc 1 564 0 discriminator 1
+ 474 0228 8FEF      		ldi r24,-1
+ 475 022a C81A      		sub r12,r24
+ 476 022c D80A      		sbc r13,r24
+ 477 022e E80A      		sbc r14,r24
+ 478 0230 F80A      		sbc r15,r24
+ 479               	.LVL65:
+ 568:../../test/testbmk.c ****   } while (!test_timer_done);
+ 480               		.loc 1 568 0 discriminator 1
+ 481 0232 8091 0000 		lds r24,test_timer_done
+ 482 0236 8823      		tst r24
+ 483 0238 01F0      		breq .L26
+ 569:../../test/testbmk.c ****   test_print("--- Score : ");
+ 484               		.loc 1 569 0
+ 485 023a 80E0      		ldi r24,lo8(.LC11)
+ 486 023c 90E0      		ldi r25,hi8(.LC11)
+ 487 023e 0E94 0000 		call test_print
+ 488               	.LVL66:
+ 570:../../test/testbmk.c ****   test_printn(n * 4);
+ 489               		.loc 1 570 0
+ 490 0242 C701      		movw r24,r14
+ 491 0244 B601      		movw r22,r12
+ 492 0246 660F      		lsl r22
+ 493 0248 771F      		rol r23
+ 494 024a 881F      		rol r24
+ 495 024c 991F      		rol r25
+ 496 024e 660F      		lsl r22
+ 497 0250 771F      		rol r23
+ 498 0252 881F      		rol r24
+ 499 0254 991F      		rol r25
+ 500 0256 0E94 0000 		call test_printn
+ 501               	.LVL67:
+ 571:../../test/testbmk.c ****   test_println(" wait+signal/S");
+ 502               		.loc 1 571 0
+ 503 025a 80E0      		ldi r24,lo8(.LC13)
+ 504 025c 90E0      		ldi r25,hi8(.LC13)
+ 505               	/* epilogue start */
+ 572:../../test/testbmk.c **** }
+ 506               		.loc 1 572 0
+ 507 025e FF90      		pop r15
+ 508 0260 EF90      		pop r14
+ 509 0262 DF90      		pop r13
+ 510 0264 CF90      		pop r12
+ 511               	.LVL68:
+ 571:../../test/testbmk.c ****   test_println(" wait+signal/S");
+ 512               		.loc 1 571 0
+ 513 0266 0C94 0000 		jmp test_println
+ 514               	.LVL69:
+ 515               	.LFE26:
+ 518               	bmk11_setup:
+ 519               	.LFB25:
+ 545:../../test/testbmk.c **** static void bmk11_setup(void) {
+ 520               		.loc 1 545 0
+ 521               	/* prologue: function */
+ 522               	/* frame size = 0 */
+ 523               	/* stack size = 0 */
+ 524               	.L__stack_usage = 0
+ 547:../../test/testbmk.c ****   chSemInit(&sem1, 1);
+ 525               		.loc 1 547 0
+ 526 026a 61E0      		ldi r22,lo8(1)
+ 527 026c 80E0      		ldi r24,lo8(sem1)
+ 528 026e 90E0      		ldi r25,hi8(sem1)
+ 529 0270 0C94 0000 		jmp chSemInit
+ 530               	.LVL70:
+ 531               	.LFE25:
+ 534               	bmk7_setup:
+ 535               	.LFB18:
+ 349:../../test/testbmk.c **** static void bmk7_setup(void) {
+ 536               		.loc 1 349 0
+ 537               	/* prologue: function */
+ 538               	/* frame size = 0 */
+ 539               	/* stack size = 0 */
+ 540               	.L__stack_usage = 0
+ 351:../../test/testbmk.c ****   chSemInit(&sem1, 0);
+ 541               		.loc 1 351 0
+ 542 0274 60E0      		ldi r22,0
+ 543 0276 80E0      		ldi r24,lo8(sem1)
+ 544 0278 90E0      		ldi r25,hi8(sem1)
+ 545 027a 0C94 0000 		jmp chSemInit
+ 546               	.LVL71:
+ 547               	.LFE18:
+ 549               		.section	.rodata.str1.1
+ 550               	.LC14:
+ 551 00b4 2074 696D 		.string	" timers/S"
+ 551      6572 732F 
+ 551      5300 
+ 552               		.text
+ 554               	bmk10_execute:
+ 555               	.LFB24:
+ 504:../../test/testbmk.c **** static void bmk10_execute(void) {
+ 556               		.loc 1 504 0
+ 557 027e CF92      		push r12
+ 558               	.LCFI8:
+ 559 0280 DF92      		push r13
+ 560               	.LCFI9:
+ 561 0282 EF92      		push r14
+ 562               	.LCFI10:
+ 563 0284 FF92      		push r15
+ 564               	.LCFI11:
+ 565               	/* prologue: function */
+ 566               	/* frame size = 0 */
+ 567               	/* stack size = 4 */
+ 568               	.L__stack_usage = 4
+ 569               	.LVL72:
+ 508:../../test/testbmk.c ****   test_wait_tick();
+ 570               		.loc 1 508 0
+ 571 0286 0E94 0000 		call test_wait_tick
+ 572               	.LVL73:
+ 509:../../test/testbmk.c ****   test_start_timer(1000);
+ 573               		.loc 1 509 0
+ 574 028a 88EE      		ldi r24,lo8(-24)
+ 575 028c 93E0      		ldi r25,lo8(3)
+ 576 028e 0E94 0000 		call test_start_timer
+ 577               	.LVL74:
+ 506:../../test/testbmk.c ****   uint32_t n = 0;
+ 578               		.loc 1 506 0
+ 579 0292 C12C      		mov r12,__zero_reg__
+ 580 0294 D12C      		mov r13,__zero_reg__
+ 581 0296 7601      		movw r14,r12
+ 582               	.LVL75:
+ 583               	.L34:
+ 511:../../test/testbmk.c ****     chSysLock();
+ 584               		.loc 1 511 0 discriminator 1
+ 585               	/* #APP */
+ 586               	 ;  511 "../../test/testbmk.c" 1
+ 587 0298 F894      		cli
+ 588               	 ;  0 "" 2
+ 512:../../test/testbmk.c ****     chVTSetI(&vt1, 1, tmo, NULL);
+ 589               		.loc 1 512 0 discriminator 1
+ 590               	/* #NOAPP */
+ 591 029a 20E0      		ldi r18,0
+ 592 029c 30E0      		ldi r19,0
+ 593 029e 40E0      		ldi r20,lo8(gs(tmo))
+ 594 02a0 50E0      		ldi r21,hi8(gs(tmo))
+ 595 02a2 61E0      		ldi r22,lo8(1)
+ 596 02a4 70E0      		ldi r23,0
+ 597 02a6 80E0      		ldi r24,lo8(vt1.2087)
+ 598 02a8 90E0      		ldi r25,hi8(vt1.2087)
+ 599 02aa 0E94 0000 		call chVTSetI
+ 600               	.LVL76:
+ 513:../../test/testbmk.c ****     chVTSetI(&vt2, 10000, tmo, NULL);
+ 601               		.loc 1 513 0 discriminator 1
+ 602 02ae 20E0      		ldi r18,0
+ 603 02b0 30E0      		ldi r19,0
+ 604 02b2 40E0      		ldi r20,lo8(gs(tmo))
+ 605 02b4 50E0      		ldi r21,hi8(gs(tmo))
+ 606 02b6 60E1      		ldi r22,lo8(16)
+ 607 02b8 77E2      		ldi r23,lo8(39)
+ 608 02ba 80E0      		ldi r24,lo8(vt2.2088)
+ 609 02bc 90E0      		ldi r25,hi8(vt2.2088)
+ 610 02be 0E94 0000 		call chVTSetI
+ 611               	.LVL77:
+ 514:../../test/testbmk.c ****     chVTResetI(&vt1);
+ 612               		.loc 1 514 0 discriminator 1
+ 613 02c2 80E0      		ldi r24,lo8(vt1.2087)
+ 614 02c4 90E0      		ldi r25,hi8(vt1.2087)
+ 615 02c6 0E94 0000 		call chVTResetI
+ 616               	.LVL78:
+ 515:../../test/testbmk.c ****     chVTResetI(&vt2);
+ 617               		.loc 1 515 0 discriminator 1
+ 618 02ca 80E0      		ldi r24,lo8(vt2.2088)
+ 619 02cc 90E0      		ldi r25,hi8(vt2.2088)
+ 620 02ce 0E94 0000 		call chVTResetI
+ 621               	.LVL79:
+ 516:../../test/testbmk.c ****     chSysUnlock();
+ 622               		.loc 1 516 0 discriminator 1
+ 623               	/* #APP */
+ 624               	 ;  516 "../../test/testbmk.c" 1
+ 625 02d2 7894      		sei
+ 626               	 ;  0 "" 2
+ 517:../../test/testbmk.c ****     n++;
+ 627               		.loc 1 517 0 discriminator 1
+ 628               	/* #NOAPP */
+ 629 02d4 8FEF      		ldi r24,-1
+ 630 02d6 C81A      		sub r12,r24
+ 631 02d8 D80A      		sbc r13,r24
+ 632 02da E80A      		sbc r14,r24
+ 633 02dc F80A      		sbc r15,r24
+ 634               	.LVL80:
+ 521:../../test/testbmk.c ****   } while (!test_timer_done);
+ 635               		.loc 1 521 0 discriminator 1
+ 636 02de 8091 0000 		lds r24,test_timer_done
+ 637 02e2 8823      		tst r24
+ 638 02e4 01F0      		breq .L34
+ 522:../../test/testbmk.c ****   test_print("--- Score : ");
+ 639               		.loc 1 522 0
+ 640 02e6 80E0      		ldi r24,lo8(.LC11)
+ 641 02e8 90E0      		ldi r25,hi8(.LC11)
+ 642 02ea 0E94 0000 		call test_print
+ 643               	.LVL81:
+ 523:../../test/testbmk.c ****   test_printn(n * 2);
+ 644               		.loc 1 523 0
+ 645 02ee C701      		movw r24,r14
+ 646 02f0 B601      		movw r22,r12
+ 647 02f2 660F      		lsl r22
+ 648 02f4 771F      		rol r23
+ 649 02f6 881F      		rol r24
+ 650 02f8 991F      		rol r25
+ 651 02fa 0E94 0000 		call test_printn
+ 652               	.LVL82:
+ 524:../../test/testbmk.c ****   test_println(" timers/S");
+ 653               		.loc 1 524 0
+ 654 02fe 80E0      		ldi r24,lo8(.LC14)
+ 655 0300 90E0      		ldi r25,hi8(.LC14)
+ 656               	/* epilogue start */
+ 525:../../test/testbmk.c **** }
+ 657               		.loc 1 525 0
+ 658 0302 FF90      		pop r15
+ 659 0304 EF90      		pop r14
+ 660 0306 DF90      		pop r13
+ 661 0308 CF90      		pop r12
+ 662               	.LVL83:
+ 524:../../test/testbmk.c ****   test_println(" timers/S");
+ 663               		.loc 1 524 0
+ 664 030a 0C94 0000 		jmp test_println
+ 665               	.LVL84:
+ 666               	.LFE24:
+ 668               		.section	.rodata.str1.1
+ 669               	.LC15:
+ 670 00be 2062 7974 		.string	" bytes/S"
+ 670      6573 2F53 
+ 670      00
+ 671               		.text
+ 673               	bmk9_execute:
+ 674               	.LFB22:
+ 455:../../test/testbmk.c **** static void bmk9_execute(void) {
+ 675               		.loc 1 455 0
+ 676 030e CF92      		push r12
+ 677               	.LCFI12:
+ 678 0310 DF92      		push r13
+ 679               	.LCFI13:
+ 680 0312 EF92      		push r14
+ 681               	.LCFI14:
+ 682 0314 FF92      		push r15
+ 683               	.LCFI15:
+ 684 0316 0F93      		push r16
+ 685               	.LCFI16:
+ 686 0318 1F93      		push r17
+ 687               	.LCFI17:
+ 688               	/* prologue: function */
+ 689               	/* frame size = 0 */
+ 690               	/* stack size = 6 */
+ 691               	.L__stack_usage = 6
+ 460:../../test/testbmk.c ****   chIQInit(&iq, ib, sizeof(ib), NULL, NULL);
+ 692               		.loc 1 460 0
+ 693 031a 00E0      		ldi r16,0
+ 694 031c 10E0      		ldi r17,0
+ 695 031e 20E0      		ldi r18,0
+ 696 0320 30E0      		ldi r19,0
+ 697 0322 40E1      		ldi r20,lo8(16)
+ 698 0324 50E0      		ldi r21,0
+ 699 0326 60E0      		ldi r22,lo8(ib.2076)
+ 700 0328 70E0      		ldi r23,hi8(ib.2076)
+ 701 032a 80E0      		ldi r24,lo8(iq.2077)
+ 702 032c 90E0      		ldi r25,hi8(iq.2077)
+ 703 032e 0E94 0000 		call chIQInit
+ 704               	.LVL85:
+ 462:../../test/testbmk.c ****   test_wait_tick();
+ 705               		.loc 1 462 0
+ 706 0332 0E94 0000 		call test_wait_tick
+ 707               	.LVL86:
+ 463:../../test/testbmk.c ****   test_start_timer(1000);
+ 708               		.loc 1 463 0
+ 709 0336 88EE      		ldi r24,lo8(-24)
+ 710 0338 93E0      		ldi r25,lo8(3)
+ 711 033a 0E94 0000 		call test_start_timer
+ 712               	.LVL87:
+ 461:../../test/testbmk.c ****   n = 0;
+ 713               		.loc 1 461 0
+ 714 033e C12C      		mov r12,__zero_reg__
+ 715 0340 D12C      		mov r13,__zero_reg__
+ 716 0342 7601      		movw r14,r12
+ 717               	.LVL88:
+ 718               	.L40:
+ 465:../../test/testbmk.c ****     chSysLock();
+ 719               		.loc 1 465 0 discriminator 1
+ 720               	/* #APP */
+ 721               	 ;  465 "../../test/testbmk.c" 1
+ 722 0344 F894      		cli
+ 723               	 ;  0 "" 2
+ 466:../../test/testbmk.c ****     chIQPutI(&iq, 0);
+ 724               		.loc 1 466 0 discriminator 1
+ 725               	/* #NOAPP */
+ 726 0346 60E0      		ldi r22,0
+ 727 0348 80E0      		ldi r24,lo8(iq.2077)
+ 728 034a 90E0      		ldi r25,hi8(iq.2077)
+ 729 034c 0E94 0000 		call chIQPutI
+ 730               	.LVL89:
+ 467:../../test/testbmk.c ****     chIQPutI(&iq, 1);
+ 731               		.loc 1 467 0 discriminator 1
+ 732 0350 61E0      		ldi r22,lo8(1)
+ 733 0352 80E0      		ldi r24,lo8(iq.2077)
+ 734 0354 90E0      		ldi r25,hi8(iq.2077)
+ 735 0356 0E94 0000 		call chIQPutI
+ 736               	.LVL90:
+ 468:../../test/testbmk.c ****     chIQPutI(&iq, 2);
+ 737               		.loc 1 468 0 discriminator 1
+ 738 035a 62E0      		ldi r22,lo8(2)
+ 739 035c 80E0      		ldi r24,lo8(iq.2077)
+ 740 035e 90E0      		ldi r25,hi8(iq.2077)
+ 741 0360 0E94 0000 		call chIQPutI
+ 742               	.LVL91:
+ 469:../../test/testbmk.c ****     chIQPutI(&iq, 3);
+ 743               		.loc 1 469 0 discriminator 1
+ 744 0364 63E0      		ldi r22,lo8(3)
+ 745 0366 80E0      		ldi r24,lo8(iq.2077)
+ 746 0368 90E0      		ldi r25,hi8(iq.2077)
+ 747 036a 0E94 0000 		call chIQPutI
+ 748               	.LVL92:
+ 470:../../test/testbmk.c ****     chSysUnlock();
+ 749               		.loc 1 470 0 discriminator 1
+ 750               	/* #APP */
+ 751               	 ;  470 "../../test/testbmk.c" 1
+ 752 036e 7894      		sei
+ 753               	 ;  0 "" 2
+ 471:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 754               		.loc 1 471 0 discriminator 1
+ 755               	/* #NOAPP */
+ 756 0370 6FEF      		ldi r22,lo8(-1)
+ 757 0372 7FEF      		ldi r23,lo8(-1)
+ 758 0374 80E0      		ldi r24,lo8(iq.2077)
+ 759 0376 90E0      		ldi r25,hi8(iq.2077)
+ 760 0378 0E94 0000 		call chIQGetTimeout
+ 761               	.LVL93:
+ 472:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 762               		.loc 1 472 0 discriminator 1
+ 763 037c 6FEF      		ldi r22,lo8(-1)
+ 764 037e 7FEF      		ldi r23,lo8(-1)
+ 765 0380 80E0      		ldi r24,lo8(iq.2077)
+ 766 0382 90E0      		ldi r25,hi8(iq.2077)
+ 767 0384 0E94 0000 		call chIQGetTimeout
+ 768               	.LVL94:
+ 473:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 769               		.loc 1 473 0 discriminator 1
+ 770 0388 6FEF      		ldi r22,lo8(-1)
+ 771 038a 7FEF      		ldi r23,lo8(-1)
+ 772 038c 80E0      		ldi r24,lo8(iq.2077)
+ 773 038e 90E0      		ldi r25,hi8(iq.2077)
+ 774 0390 0E94 0000 		call chIQGetTimeout
+ 775               	.LVL95:
+ 474:../../test/testbmk.c ****     (void)chIQGet(&iq);
+ 776               		.loc 1 474 0 discriminator 1
+ 777 0394 6FEF      		ldi r22,lo8(-1)
+ 778 0396 7FEF      		ldi r23,lo8(-1)
+ 779 0398 80E0      		ldi r24,lo8(iq.2077)
+ 780 039a 90E0      		ldi r25,hi8(iq.2077)
+ 781 039c 0E94 0000 		call chIQGetTimeout
+ 782               	.LVL96:
+ 475:../../test/testbmk.c ****     n++;
+ 783               		.loc 1 475 0 discriminator 1
+ 784 03a0 8FEF      		ldi r24,-1
+ 785 03a2 C81A      		sub r12,r24
+ 786 03a4 D80A      		sbc r13,r24
+ 787 03a6 E80A      		sbc r14,r24
+ 788 03a8 F80A      		sbc r15,r24
+ 789               	.LVL97:
+ 479:../../test/testbmk.c ****   } while (!test_timer_done);
+ 790               		.loc 1 479 0 discriminator 1
+ 791 03aa 8091 0000 		lds r24,test_timer_done
+ 792 03ae 8823      		tst r24
+ 793 03b0 01F0      		breq .L40
+ 480:../../test/testbmk.c ****   test_print("--- Score : ");
+ 794               		.loc 1 480 0
+ 795 03b2 80E0      		ldi r24,lo8(.LC11)
+ 796 03b4 90E0      		ldi r25,hi8(.LC11)
+ 797 03b6 0E94 0000 		call test_print
+ 798               	.LVL98:
+ 481:../../test/testbmk.c ****   test_printn(n * 4);
+ 799               		.loc 1 481 0
+ 800 03ba C701      		movw r24,r14
+ 801 03bc B601      		movw r22,r12
+ 802 03be 660F      		lsl r22
+ 803 03c0 771F      		rol r23
+ 804 03c2 881F      		rol r24
+ 805 03c4 991F      		rol r25
+ 806 03c6 660F      		lsl r22
+ 807 03c8 771F      		rol r23
+ 808 03ca 881F      		rol r24
+ 809 03cc 991F      		rol r25
+ 810 03ce 0E94 0000 		call test_printn
+ 811               	.LVL99:
+ 482:../../test/testbmk.c ****   test_println(" bytes/S");
+ 812               		.loc 1 482 0
+ 813 03d2 80E0      		ldi r24,lo8(.LC15)
+ 814 03d4 90E0      		ldi r25,hi8(.LC15)
+ 815               	/* epilogue start */
+ 483:../../test/testbmk.c **** }
+ 816               		.loc 1 483 0
+ 817 03d6 1F91      		pop r17
+ 818 03d8 0F91      		pop r16
+ 819 03da FF90      		pop r15
+ 820 03dc EF90      		pop r14
+ 821 03de DF90      		pop r13
+ 822 03e0 CF90      		pop r12
+ 823               	.LVL100:
+ 482:../../test/testbmk.c ****   test_println(" bytes/S");
+ 824               		.loc 1 482 0
+ 825 03e2 0C94 0000 		jmp test_println
+ 826               	.LVL101:
+ 827               	.LFE22:
+ 829               		.section	.rodata.str1.1
+ 830               	.LC16:
+ 831 00c7 2074 6872 		.string	" threads/S"
+ 831      6561 6473 
+ 831      2F53 00
+ 832               		.text
+ 834               	bmk6_execute:
+ 835               	.LFB16:
+ 304:../../test/testbmk.c **** static void bmk6_execute(void) {
+ 836               		.loc 1 304 0
+ 837 03e6 BF92      		push r11
+ 838               	.LCFI18:
+ 839 03e8 CF92      		push r12
+ 840               	.LCFI19:
+ 841 03ea DF92      		push r13
+ 842               	.LCFI20:
+ 843 03ec EF92      		push r14
+ 844               	.LCFI21:
+ 845 03ee FF92      		push r15
+ 846               	.LCFI22:
+ 847 03f0 0F93      		push r16
+ 848               	.LCFI23:
+ 849 03f2 1F93      		push r17
+ 850               	.LCFI24:
+ 851 03f4 CF93      		push r28
+ 852               	.LCFI25:
+ 853 03f6 DF93      		push r29
+ 854               	.LCFI26:
+ 855               	/* prologue: function */
+ 856               	/* frame size = 0 */
+ 857               	/* stack size = 9 */
+ 858               	.L__stack_usage = 9
+ 859               	.LVL102:
+ 307:../../test/testbmk.c ****   void *wap = wa[0];
+ 860               		.loc 1 307 0
+ 861 03f8 C091 0000 		lds r28,wa
+ 862 03fc D091 0000 		lds r29,wa+1
+ 863               	.LVL103:
+ 308:../../test/testbmk.c ****   tprio_t prio = chThdGetPriority() + 1;
+ 864               		.loc 1 308 0
+ 865 0400 E091 0000 		lds r30,rlist+11
+ 866 0404 F091 0000 		lds r31,rlist+11+1
+ 867 0408 B480      		ldd r11,Z+4
+ 868 040a B394      		inc r11
+ 869               	.LVL104:
+ 309:../../test/testbmk.c ****   test_wait_tick();
+ 870               		.loc 1 309 0
+ 871 040c 0E94 0000 		call test_wait_tick
+ 872               	.LVL105:
+ 310:../../test/testbmk.c ****   test_start_timer(1000);
+ 873               		.loc 1 310 0
+ 874 0410 88EE      		ldi r24,lo8(-24)
+ 875 0412 93E0      		ldi r25,lo8(3)
+ 876 0414 0E94 0000 		call test_start_timer
+ 877               	.LVL106:
+ 306:../../test/testbmk.c ****   uint32_t n = 0;
+ 878               		.loc 1 306 0
+ 879 0418 C12C      		mov r12,__zero_reg__
+ 880 041a D12C      		mov r13,__zero_reg__
+ 881 041c 7601      		movw r14,r12
+ 882               	.LVL107:
+ 883               	.L46:
+ 312:../../test/testbmk.c ****     chThdCreateStatic(wap, WA_SIZE, prio, thread2, NULL);
+ 884               		.loc 1 312 0 discriminator 1
+ 885 041e 00E0      		ldi r16,0
+ 886 0420 10E0      		ldi r17,0
+ 887 0422 20E0      		ldi r18,lo8(gs(thread2))
+ 888 0424 30E0      		ldi r19,hi8(gs(thread2))
+ 889 0426 4B2D      		mov r20,r11
+ 890 0428 67E9      		ldi r22,lo8(-105)
+ 891 042a 70E0      		ldi r23,0
+ 892 042c CE01      		movw r24,r28
+ 893 042e 0E94 0000 		call chThdCreateStatic
+ 894               	.LVL108:
+ 313:../../test/testbmk.c ****     n++;
+ 895               		.loc 1 313 0 discriminator 1
+ 896 0432 8FEF      		ldi r24,-1
+ 897 0434 C81A      		sub r12,r24
+ 898 0436 D80A      		sbc r13,r24
+ 899 0438 E80A      		sbc r14,r24
+ 900 043a F80A      		sbc r15,r24
+ 901               	.LVL109:
+ 317:../../test/testbmk.c ****   } while (!test_timer_done);
+ 902               		.loc 1 317 0 discriminator 1
+ 903 043c 8091 0000 		lds r24,test_timer_done
+ 904 0440 8823      		tst r24
+ 905 0442 01F0      		breq .L46
+ 318:../../test/testbmk.c ****   test_print("--- Score : ");
+ 906               		.loc 1 318 0
+ 907 0444 80E0      		ldi r24,lo8(.LC11)
+ 908 0446 90E0      		ldi r25,hi8(.LC11)
+ 909 0448 0E94 0000 		call test_print
+ 910               	.LVL110:
+ 319:../../test/testbmk.c ****   test_printn(n);
+ 911               		.loc 1 319 0
+ 912 044c C701      		movw r24,r14
+ 913 044e B601      		movw r22,r12
+ 914 0450 0E94 0000 		call test_printn
+ 915               	.LVL111:
+ 320:../../test/testbmk.c ****   test_println(" threads/S");
+ 916               		.loc 1 320 0
+ 917 0454 80E0      		ldi r24,lo8(.LC16)
+ 918 0456 90E0      		ldi r25,hi8(.LC16)
+ 919               	/* epilogue start */
+ 321:../../test/testbmk.c **** }
+ 920               		.loc 1 321 0
+ 921 0458 DF91      		pop r29
+ 922 045a CF91      		pop r28
+ 923               	.LVL112:
+ 924 045c 1F91      		pop r17
+ 925 045e 0F91      		pop r16
+ 926 0460 FF90      		pop r15
+ 927 0462 EF90      		pop r14
+ 928 0464 DF90      		pop r13
+ 929 0466 CF90      		pop r12
+ 930               	.LVL113:
+ 931 0468 BF90      		pop r11
+ 932               	.LVL114:
+ 320:../../test/testbmk.c ****   test_println(" threads/S");
+ 933               		.loc 1 320 0
+ 934 046a 0C94 0000 		jmp test_println
+ 935               	.LVL115:
+ 936               	.LFE16:
+ 938               		.section	.rodata.str1.1
+ 939               	.LC17:
+ 940 00d2 2063 7478 		.string	" ctxswc/S"
+ 940      7377 632F 
+ 940      5300 
+ 941               		.text
+ 943               	bmk8_execute:
+ 944               	.LFB21:
+ 416:../../test/testbmk.c **** static void bmk8_execute(void) {
+ 945               		.loc 1 416 0
+ 946 046e 0F93      		push r16
+ 947               	.LCFI27:
+ 948 0470 1F93      		push r17
+ 949               	.LCFI28:
+ 950 0472 CF93      		push r28
+ 951               	.LCFI29:
+ 952 0474 DF93      		push r29
+ 953               	.LCFI30:
+ 954 0476 00D0      		rcall .
+ 955 0478 1F92      		push __zero_reg__
+ 956               	.LCFI31:
+ 957 047a CDB7      		in r28,__SP_L__
+ 958 047c DEB7      		in r29,__SP_H__
+ 959               	.LCFI32:
+ 960               	/* prologue: function */
+ 961               	/* frame size = 4 */
+ 962               	/* stack size = 8 */
+ 963               	.L__stack_usage = 8
+ 419:../../test/testbmk.c ****   n = 0;
+ 964               		.loc 1 419 0
+ 965 047e 1982      		std Y+1,__zero_reg__
+ 966 0480 1A82      		std Y+2,__zero_reg__
+ 967 0482 1B82      		std Y+3,__zero_reg__
+ 968 0484 1C82      		std Y+4,__zero_reg__
+ 969               	.LVL116:
+ 420:../../test/testbmk.c ****   test_wait_tick();
+ 970               		.loc 1 420 0
+ 971 0486 0E94 0000 		call test_wait_tick
+ 972               	.LVL117:
+ 422:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 973               		.loc 1 422 0
+ 974 048a E091 0000 		lds r30,rlist+11
+ 975 048e F091 0000 		lds r31,rlist+11+1
+ 976 0492 4481      		ldd r20,Z+4
+ 977 0494 4150      		subi r20,lo8(-(-1))
+ 978 0496 8E01      		movw r16,r28
+ 979 0498 0F5F      		subi r16,-1
+ 980 049a 1F4F      		sbci r17,-1
+ 981 049c 20E0      		ldi r18,lo8(gs(thread8))
+ 982 049e 30E0      		ldi r19,hi8(gs(thread8))
+ 983 04a0 67E9      		ldi r22,lo8(-105)
+ 984 04a2 70E0      		ldi r23,0
+ 985 04a4 8091 0000 		lds r24,wa
+ 986 04a8 9091 0000 		lds r25,wa+1
+ 987 04ac 0E94 0000 		call chThdCreateStatic
+ 988               	.LVL118:
+ 989 04b0 9093 0000 		sts threads+1,r25
+ 990 04b4 8093 0000 		sts threads,r24
+ 423:../../test/testbmk.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 991               		.loc 1 423 0
+ 992 04b8 E091 0000 		lds r30,rlist+11
+ 993 04bc F091 0000 		lds r31,rlist+11+1
+ 994 04c0 4481      		ldd r20,Z+4
+ 995 04c2 4150      		subi r20,lo8(-(-1))
+ 996 04c4 8E01      		movw r16,r28
+ 997 04c6 0F5F      		subi r16,-1
+ 998 04c8 1F4F      		sbci r17,-1
+ 999 04ca 20E0      		ldi r18,lo8(gs(thread8))
+ 1000 04cc 30E0      		ldi r19,hi8(gs(thread8))
+ 1001 04ce 67E9      		ldi r22,lo8(-105)
+ 1002 04d0 70E0      		ldi r23,0
+ 1003 04d2 8091 0000 		lds r24,wa+2
+ 1004 04d6 9091 0000 		lds r25,wa+2+1
+ 1005 04da 0E94 0000 		call chThdCreateStatic
+ 1006               	.LVL119:
+ 1007 04de 9093 0000 		sts threads+2+1,r25
+ 1008 04e2 8093 0000 		sts threads+2,r24
+ 424:../../test/testbmk.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 1009               		.loc 1 424 0
+ 1010 04e6 E091 0000 		lds r30,rlist+11
+ 1011 04ea F091 0000 		lds r31,rlist+11+1
+ 1012 04ee 4481      		ldd r20,Z+4
+ 1013 04f0 4150      		subi r20,lo8(-(-1))
+ 1014 04f2 8E01      		movw r16,r28
+ 1015 04f4 0F5F      		subi r16,-1
+ 1016 04f6 1F4F      		sbci r17,-1
+ 1017 04f8 20E0      		ldi r18,lo8(gs(thread8))
+ 1018 04fa 30E0      		ldi r19,hi8(gs(thread8))
+ 1019 04fc 67E9      		ldi r22,lo8(-105)
+ 1020 04fe 70E0      		ldi r23,0
+ 1021 0500 8091 0000 		lds r24,wa+4
+ 1022 0504 9091 0000 		lds r25,wa+4+1
+ 1023 0508 0E94 0000 		call chThdCreateStatic
+ 1024               	.LVL120:
+ 1025 050c 9093 0000 		sts threads+4+1,r25
+ 1026 0510 8093 0000 		sts threads+4,r24
+ 425:../../test/testbmk.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 1027               		.loc 1 425 0
+ 1028 0514 E091 0000 		lds r30,rlist+11
+ 1029 0518 F091 0000 		lds r31,rlist+11+1
+ 1030 051c 4481      		ldd r20,Z+4
+ 1031 051e 4150      		subi r20,lo8(-(-1))
+ 1032 0520 8E01      		movw r16,r28
+ 1033 0522 0F5F      		subi r16,-1
+ 1034 0524 1F4F      		sbci r17,-1
+ 1035 0526 20E0      		ldi r18,lo8(gs(thread8))
+ 1036 0528 30E0      		ldi r19,hi8(gs(thread8))
+ 1037 052a 67E9      		ldi r22,lo8(-105)
+ 1038 052c 70E0      		ldi r23,0
+ 1039 052e 8091 0000 		lds r24,wa+6
+ 1040 0532 9091 0000 		lds r25,wa+6+1
+ 1041 0536 0E94 0000 		call chThdCreateStatic
+ 1042               	.LVL121:
+ 1043 053a 9093 0000 		sts threads+6+1,r25
+ 1044 053e 8093 0000 		sts threads+6,r24
+ 426:../../test/testbmk.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-1, thread8, (void *)&n);
+ 1045               		.loc 1 426 0
+ 1046 0542 E091 0000 		lds r30,rlist+11
+ 1047 0546 F091 0000 		lds r31,rlist+11+1
+ 1048 054a 4481      		ldd r20,Z+4
+ 1049 054c 4150      		subi r20,lo8(-(-1))
+ 1050 054e 8E01      		movw r16,r28
+ 1051 0550 0F5F      		subi r16,-1
+ 1052 0552 1F4F      		sbci r17,-1
+ 1053 0554 20E0      		ldi r18,lo8(gs(thread8))
+ 1054 0556 30E0      		ldi r19,hi8(gs(thread8))
+ 1055 0558 67E9      		ldi r22,lo8(-105)
+ 1056 055a 70E0      		ldi r23,0
+ 1057 055c 8091 0000 		lds r24,wa+8
+ 1058 0560 9091 0000 		lds r25,wa+8+1
+ 1059 0564 0E94 0000 		call chThdCreateStatic
+ 1060               	.LVL122:
+ 1061 0568 9093 0000 		sts threads+8+1,r25
+ 1062 056c 8093 0000 		sts threads+8,r24
+ 428:../../test/testbmk.c ****   chThdSleepSeconds(1);
+ 1063               		.loc 1 428 0
+ 1064 0570 88EE      		ldi r24,lo8(-24)
+ 1065 0572 93E0      		ldi r25,lo8(3)
+ 1066 0574 0E94 0000 		call chThdSleep
+ 1067               	.LVL123:
+ 429:../../test/testbmk.c ****   test_terminate_threads();
+ 1068               		.loc 1 429 0
+ 1069 0578 0E94 0000 		call test_terminate_threads
+ 1070               	.LVL124:
+ 430:../../test/testbmk.c ****   test_wait_threads();
+ 1071               		.loc 1 430 0
+ 1072 057c 0E94 0000 		call test_wait_threads
+ 1073               	.LVL125:
+ 432:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1074               		.loc 1 432 0
+ 1075 0580 80E0      		ldi r24,lo8(.LC11)
+ 1076 0582 90E0      		ldi r25,hi8(.LC11)
+ 1077 0584 0E94 0000 		call test_print
+ 1078               	.LVL126:
+ 433:../../test/testbmk.c ****   test_printn(n);
+ 1079               		.loc 1 433 0
+ 1080 0588 6981      		ldd r22,Y+1
+ 1081 058a 7A81      		ldd r23,Y+2
+ 1082 058c 8B81      		ldd r24,Y+3
+ 1083 058e 9C81      		ldd r25,Y+4
+ 1084 0590 0E94 0000 		call test_printn
+ 1085               	.LVL127:
+ 434:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1086               		.loc 1 434 0
+ 1087 0594 80E0      		ldi r24,lo8(.LC17)
+ 1088 0596 90E0      		ldi r25,hi8(.LC17)
+ 1089 0598 0E94 0000 		call test_println
+ 1090               	.LVL128:
+ 1091               	/* epilogue start */
+ 435:../../test/testbmk.c **** }
+ 1092               		.loc 1 435 0
+ 1093 059c 0F90      		pop __tmp_reg__
+ 1094 059e 0F90      		pop __tmp_reg__
+ 1095 05a0 0F90      		pop __tmp_reg__
+ 1096 05a2 0F90      		pop __tmp_reg__
+ 1097 05a4 DF91      		pop r29
+ 1098 05a6 CF91      		pop r28
+ 1099 05a8 1F91      		pop r17
+ 1100 05aa 0F91      		pop r16
+ 1101 05ac 0895      		ret
+ 1102               	.LFE21:
+ 1105               	thread8:
+ 1106               	.LFB20:
+ 401:../../test/testbmk.c **** static msg_t thread8(void *p) {
+ 1107               		.loc 1 401 0
+ 1108               	.LVL129:
+ 1109 05ae CF93      		push r28
+ 1110               	.LCFI33:
+ 1111 05b0 DF93      		push r29
+ 1112               	.LCFI34:
+ 1113               	/* prologue: function */
+ 1114               	/* frame size = 0 */
+ 1115               	/* stack size = 2 */
+ 1116               	.L__stack_usage = 2
+ 1117 05b2 EC01      		movw r28,r24
+ 1118               	.LVL130:
+ 1119               	.L53:
+ 404:../../test/testbmk.c ****     chThdYield();
+ 1120               		.loc 1 404 0 discriminator 1
+ 1121 05b4 0E94 0000 		call chThdYield
+ 1122               	.LVL131:
+ 405:../../test/testbmk.c ****     chThdYield();
+ 1123               		.loc 1 405 0 discriminator 1
+ 1124 05b8 0E94 0000 		call chThdYield
+ 1125               	.LVL132:
+ 406:../../test/testbmk.c ****     chThdYield();
+ 1126               		.loc 1 406 0 discriminator 1
+ 1127 05bc 0E94 0000 		call chThdYield
+ 1128               	.LVL133:
+ 407:../../test/testbmk.c ****     chThdYield();
+ 1129               		.loc 1 407 0 discriminator 1
+ 1130 05c0 0E94 0000 		call chThdYield
+ 1131               	.LVL134:
+ 408:../../test/testbmk.c ****     (*(uint32_t *)p) += 4;
+ 1132               		.loc 1 408 0 discriminator 1
+ 1133 05c4 4881      		ld r20,Y
+ 1134 05c6 5981      		ldd r21,Y+1
+ 1135 05c8 6A81      		ldd r22,Y+2
+ 1136 05ca 7B81      		ldd r23,Y+3
+ 1137 05cc 4C5F      		subi r20,-4
+ 1138 05ce 5F4F      		sbci r21,-1
+ 1139 05d0 6F4F      		sbci r22,-1
+ 1140 05d2 7F4F      		sbci r23,-1
+ 1141 05d4 4883      		st Y,r20
+ 1142 05d6 5983      		std Y+1,r21
+ 1143 05d8 6A83      		std Y+2,r22
+ 1144 05da 7B83      		std Y+3,r23
+ 412:../../test/testbmk.c ****   } while(!chThdShouldTerminate());
+ 1145               		.loc 1 412 0 discriminator 1
+ 1146 05dc E091 0000 		lds r30,rlist+11
+ 1147 05e0 F091 0000 		lds r31,rlist+11+1
+ 1148 05e4 8685      		ldd r24,Z+14
+ 1149 05e6 82FF      		sbrs r24,2
+ 1150 05e8 00C0      		rjmp .L53
+ 414:../../test/testbmk.c **** }
+ 1151               		.loc 1 414 0
+ 1152 05ea 80E0      		ldi r24,0
+ 1153 05ec 90E0      		ldi r25,0
+ 1154               	/* epilogue start */
+ 1155 05ee DF91      		pop r29
+ 1156 05f0 CF91      		pop r28
+ 1157               	.LVL135:
+ 1158 05f2 0895      		ret
+ 1159               	.LFE20:
+ 1161               		.section	.rodata.str1.1
+ 1162               	.LC18:
+ 1163 00dc 2072 6573 		.string	" reschedules/S, "
+ 1163      6368 6564 
+ 1163      756C 6573 
+ 1163      2F53 2C20 
+ 1163      00
+ 1164               		.text
+ 1166               	bmk7_execute:
+ 1167               	.LFB19:
+ 354:../../test/testbmk.c **** static void bmk7_execute(void) {
+ 1168               		.loc 1 354 0
+ 1169 05f4 CF92      		push r12
+ 1170               	.LCFI35:
+ 1171 05f6 DF92      		push r13
+ 1172               	.LCFI36:
+ 1173 05f8 EF92      		push r14
+ 1174               	.LCFI37:
+ 1175 05fa FF92      		push r15
+ 1176               	.LCFI38:
+ 1177 05fc 0F93      		push r16
+ 1178               	.LCFI39:
+ 1179 05fe 1F93      		push r17
+ 1180               	.LCFI40:
+ 1181               	/* prologue: function */
+ 1182               	/* frame size = 0 */
+ 1183               	/* stack size = 6 */
+ 1184               	.L__stack_usage = 6
+ 357:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+5, thread3, NULL);
+ 1185               		.loc 1 357 0
+ 1186 0600 E091 0000 		lds r30,rlist+11
+ 1187 0604 F091 0000 		lds r31,rlist+11+1
+ 1188 0608 4481      		ldd r20,Z+4
+ 1189 060a 4B5F      		subi r20,lo8(-(5))
+ 1190 060c 00E0      		ldi r16,0
+ 1191 060e 10E0      		ldi r17,0
+ 1192 0610 20E0      		ldi r18,lo8(gs(thread3))
+ 1193 0612 30E0      		ldi r19,hi8(gs(thread3))
+ 1194 0614 67E9      		ldi r22,lo8(-105)
+ 1195 0616 70E0      		ldi r23,0
+ 1196 0618 8091 0000 		lds r24,wa
+ 1197 061c 9091 0000 		lds r25,wa+1
+ 1198 0620 0E94 0000 		call chThdCreateStatic
+ 1199               	.LVL136:
+ 1200 0624 9093 0000 		sts threads+1,r25
+ 1201 0628 8093 0000 		sts threads,r24
+ 358:../../test/testbmk.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()+4, thread3, NULL);
+ 1202               		.loc 1 358 0
+ 1203 062c E091 0000 		lds r30,rlist+11
+ 1204 0630 F091 0000 		lds r31,rlist+11+1
+ 1205 0634 4481      		ldd r20,Z+4
+ 1206 0636 4C5F      		subi r20,lo8(-(4))
+ 1207 0638 20E0      		ldi r18,lo8(gs(thread3))
+ 1208 063a 30E0      		ldi r19,hi8(gs(thread3))
+ 1209 063c 67E9      		ldi r22,lo8(-105)
+ 1210 063e 70E0      		ldi r23,0
+ 1211 0640 8091 0000 		lds r24,wa+2
+ 1212 0644 9091 0000 		lds r25,wa+2+1
+ 1213 0648 0E94 0000 		call chThdCreateStatic
+ 1214               	.LVL137:
+ 1215 064c 9093 0000 		sts threads+2+1,r25
+ 1216 0650 8093 0000 		sts threads+2,r24
+ 359:../../test/testbmk.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()+3, thread3, NULL);
+ 1217               		.loc 1 359 0
+ 1218 0654 E091 0000 		lds r30,rlist+11
+ 1219 0658 F091 0000 		lds r31,rlist+11+1
+ 1220 065c 4481      		ldd r20,Z+4
+ 1221 065e 4D5F      		subi r20,lo8(-(3))
+ 1222 0660 20E0      		ldi r18,lo8(gs(thread3))
+ 1223 0662 30E0      		ldi r19,hi8(gs(thread3))
+ 1224 0664 67E9      		ldi r22,lo8(-105)
+ 1225 0666 70E0      		ldi r23,0
+ 1226 0668 8091 0000 		lds r24,wa+4
+ 1227 066c 9091 0000 		lds r25,wa+4+1
+ 1228 0670 0E94 0000 		call chThdCreateStatic
+ 1229               	.LVL138:
+ 1230 0674 9093 0000 		sts threads+4+1,r25
+ 1231 0678 8093 0000 		sts threads+4,r24
+ 360:../../test/testbmk.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()+2, thread3, NULL);
+ 1232               		.loc 1 360 0
+ 1233 067c E091 0000 		lds r30,rlist+11
+ 1234 0680 F091 0000 		lds r31,rlist+11+1
+ 1235 0684 4481      		ldd r20,Z+4
+ 1236 0686 4E5F      		subi r20,lo8(-(2))
+ 1237 0688 20E0      		ldi r18,lo8(gs(thread3))
+ 1238 068a 30E0      		ldi r19,hi8(gs(thread3))
+ 1239 068c 67E9      		ldi r22,lo8(-105)
+ 1240 068e 70E0      		ldi r23,0
+ 1241 0690 8091 0000 		lds r24,wa+6
+ 1242 0694 9091 0000 		lds r25,wa+6+1
+ 1243 0698 0E94 0000 		call chThdCreateStatic
+ 1244               	.LVL139:
+ 1245 069c 9093 0000 		sts threads+6+1,r25
+ 1246 06a0 8093 0000 		sts threads+6,r24
+ 361:../../test/testbmk.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()+1, thread3, NULL);
+ 1247               		.loc 1 361 0
+ 1248 06a4 E091 0000 		lds r30,rlist+11
+ 1249 06a8 F091 0000 		lds r31,rlist+11+1
+ 1250 06ac 4481      		ldd r20,Z+4
+ 1251 06ae 4F5F      		subi r20,lo8(-(1))
+ 1252 06b0 20E0      		ldi r18,lo8(gs(thread3))
+ 1253 06b2 30E0      		ldi r19,hi8(gs(thread3))
+ 1254 06b4 67E9      		ldi r22,lo8(-105)
+ 1255 06b6 70E0      		ldi r23,0
+ 1256 06b8 8091 0000 		lds r24,wa+8
+ 1257 06bc 9091 0000 		lds r25,wa+8+1
+ 1258 06c0 0E94 0000 		call chThdCreateStatic
+ 1259               	.LVL140:
+ 1260 06c4 9093 0000 		sts threads+8+1,r25
+ 1261 06c8 8093 0000 		sts threads+8,r24
+ 1262               	.LVL141:
+ 364:../../test/testbmk.c ****   test_wait_tick();
+ 1263               		.loc 1 364 0
+ 1264 06cc 0E94 0000 		call test_wait_tick
+ 1265               	.LVL142:
+ 365:../../test/testbmk.c ****   test_start_timer(1000);
+ 1266               		.loc 1 365 0
+ 1267 06d0 88EE      		ldi r24,lo8(-24)
+ 1268 06d2 93E0      		ldi r25,lo8(3)
+ 1269 06d4 0E94 0000 		call test_start_timer
+ 1270               	.LVL143:
+ 363:../../test/testbmk.c ****   n = 0;
+ 1271               		.loc 1 363 0
+ 1272 06d8 C12C      		mov r12,__zero_reg__
+ 1273 06da D12C      		mov r13,__zero_reg__
+ 1274 06dc 7601      		movw r14,r12
+ 1275               	.LVL144:
+ 1276               	.L59:
+ 367:../../test/testbmk.c ****     chSemReset(&sem1, 0);
+ 1277               		.loc 1 367 0 discriminator 1
+ 1278 06de 60E0      		ldi r22,0
+ 1279 06e0 80E0      		ldi r24,lo8(sem1)
+ 1280 06e2 90E0      		ldi r25,hi8(sem1)
+ 1281 06e4 0E94 0000 		call chSemReset
+ 1282               	.LVL145:
+ 368:../../test/testbmk.c ****     n++;
+ 1283               		.loc 1 368 0 discriminator 1
+ 1284 06e8 8FEF      		ldi r24,-1
+ 1285 06ea C81A      		sub r12,r24
+ 1286 06ec D80A      		sbc r13,r24
+ 1287 06ee E80A      		sbc r14,r24
+ 1288 06f0 F80A      		sbc r15,r24
+ 1289               	.LVL146:
+ 372:../../test/testbmk.c ****   } while (!test_timer_done);
+ 1290               		.loc 1 372 0 discriminator 1
+ 1291 06f2 8091 0000 		lds r24,test_timer_done
+ 1292 06f6 8823      		tst r24
+ 1293 06f8 01F0      		breq .L59
+ 373:../../test/testbmk.c ****   test_terminate_threads();
+ 1294               		.loc 1 373 0
+ 1295 06fa 0E94 0000 		call test_terminate_threads
+ 1296               	.LVL147:
+ 374:../../test/testbmk.c ****   chSemReset(&sem1, 0);
+ 1297               		.loc 1 374 0
+ 1298 06fe 60E0      		ldi r22,0
+ 1299 0700 80E0      		ldi r24,lo8(sem1)
+ 1300 0702 90E0      		ldi r25,hi8(sem1)
+ 1301 0704 0E94 0000 		call chSemReset
+ 1302               	.LVL148:
+ 375:../../test/testbmk.c ****   test_wait_threads();
+ 1303               		.loc 1 375 0
+ 1304 0708 0E94 0000 		call test_wait_threads
+ 1305               	.LVL149:
+ 377:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1306               		.loc 1 377 0
+ 1307 070c 80E0      		ldi r24,lo8(.LC11)
+ 1308 070e 90E0      		ldi r25,hi8(.LC11)
+ 1309 0710 0E94 0000 		call test_print
+ 1310               	.LVL150:
+ 378:../../test/testbmk.c ****   test_printn(n);
+ 1311               		.loc 1 378 0
+ 1312 0714 C701      		movw r24,r14
+ 1313 0716 B601      		movw r22,r12
+ 1314 0718 0E94 0000 		call test_printn
+ 1315               	.LVL151:
+ 379:../../test/testbmk.c ****   test_print(" reschedules/S, ");
+ 1316               		.loc 1 379 0
+ 1317 071c 80E0      		ldi r24,lo8(.LC18)
+ 1318 071e 90E0      		ldi r25,hi8(.LC18)
+ 1319 0720 0E94 0000 		call test_print
+ 1320               	.LVL152:
+ 380:../../test/testbmk.c ****   test_printn(n * 6);
+ 1321               		.loc 1 380 0
+ 1322 0724 C701      		movw r24,r14
+ 1323 0726 B601      		movw r22,r12
+ 1324 0728 660F      		lsl r22
+ 1325 072a 771F      		rol r23
+ 1326 072c 881F      		rol r24
+ 1327 072e 991F      		rol r25
+ 1328 0730 6C0D      		add r22,r12
+ 1329 0732 7D1D      		adc r23,r13
+ 1330 0734 8E1D      		adc r24,r14
+ 1331 0736 9F1D      		adc r25,r15
+ 1332 0738 660F      		lsl r22
+ 1333 073a 771F      		rol r23
+ 1334 073c 881F      		rol r24
+ 1335 073e 991F      		rol r25
+ 1336 0740 0E94 0000 		call test_printn
+ 1337               	.LVL153:
+ 381:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1338               		.loc 1 381 0
+ 1339 0744 80E0      		ldi r24,lo8(.LC17)
+ 1340 0746 90E0      		ldi r25,hi8(.LC17)
+ 1341               	/* epilogue start */
+ 382:../../test/testbmk.c **** }
+ 1342               		.loc 1 382 0
+ 1343 0748 1F91      		pop r17
+ 1344 074a 0F91      		pop r16
+ 1345 074c FF90      		pop r15
+ 1346 074e EF90      		pop r14
+ 1347 0750 DF90      		pop r13
+ 1348 0752 CF90      		pop r12
+ 1349               	.LVL154:
+ 381:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1350               		.loc 1 381 0
+ 1351 0754 0C94 0000 		jmp test_println
+ 1352               	.LVL155:
+ 1353               	.LFE19:
+ 1356               	bmk5_execute:
+ 1357               	.LFB15:
+ 265:../../test/testbmk.c **** static void bmk5_execute(void) {
+ 1358               		.loc 1 265 0
+ 1359 0758 BF92      		push r11
+ 1360               	.LCFI41:
+ 1361 075a CF92      		push r12
+ 1362               	.LCFI42:
+ 1363 075c DF92      		push r13
+ 1364               	.LCFI43:
+ 1365 075e EF92      		push r14
+ 1366               	.LCFI44:
+ 1367 0760 FF92      		push r15
+ 1368               	.LCFI45:
+ 1369 0762 0F93      		push r16
+ 1370               	.LCFI46:
+ 1371 0764 1F93      		push r17
+ 1372               	.LCFI47:
+ 1373 0766 CF93      		push r28
+ 1374               	.LCFI48:
+ 1375 0768 DF93      		push r29
+ 1376               	.LCFI49:
+ 1377               	/* prologue: function */
+ 1378               	/* frame size = 0 */
+ 1379               	/* stack size = 9 */
+ 1380               	.L__stack_usage = 9
+ 1381               	.LVL156:
+ 268:../../test/testbmk.c ****   void *wap = wa[0];
+ 1382               		.loc 1 268 0
+ 1383 076a C091 0000 		lds r28,wa
+ 1384 076e D091 0000 		lds r29,wa+1
+ 1385               	.LVL157:
+ 269:../../test/testbmk.c ****   tprio_t prio = chThdGetPriority() - 1;
+ 1386               		.loc 1 269 0
+ 1387 0772 E091 0000 		lds r30,rlist+11
+ 1388 0776 F091 0000 		lds r31,rlist+11+1
+ 1389 077a B480      		ldd r11,Z+4
+ 1390 077c BA94      		dec r11
+ 1391               	.LVL158:
+ 270:../../test/testbmk.c ****   test_wait_tick();
+ 1392               		.loc 1 270 0
+ 1393 077e 0E94 0000 		call test_wait_tick
+ 1394               	.LVL159:
+ 271:../../test/testbmk.c ****   test_start_timer(1000);
+ 1395               		.loc 1 271 0
+ 1396 0782 88EE      		ldi r24,lo8(-24)
+ 1397 0784 93E0      		ldi r25,lo8(3)
+ 1398 0786 0E94 0000 		call test_start_timer
+ 1399               	.LVL160:
+ 267:../../test/testbmk.c ****   uint32_t n = 0;
+ 1400               		.loc 1 267 0
+ 1401 078a C12C      		mov r12,__zero_reg__
+ 1402 078c D12C      		mov r13,__zero_reg__
+ 1403 078e 7601      		movw r14,r12
+ 1404               	.LVL161:
+ 1405               	.L65:
+ 273:../../test/testbmk.c ****     chThdWait(chThdCreateStatic(wap, WA_SIZE, prio, thread2, NULL));
+ 1406               		.loc 1 273 0 discriminator 1
+ 1407 0790 00E0      		ldi r16,0
+ 1408 0792 10E0      		ldi r17,0
+ 1409 0794 20E0      		ldi r18,lo8(gs(thread2))
+ 1410 0796 30E0      		ldi r19,hi8(gs(thread2))
+ 1411 0798 4B2D      		mov r20,r11
+ 1412 079a 67E9      		ldi r22,lo8(-105)
+ 1413 079c 70E0      		ldi r23,0
+ 1414 079e CE01      		movw r24,r28
+ 1415 07a0 0E94 0000 		call chThdCreateStatic
+ 1416               	.LVL162:
+ 1417 07a4 0E94 0000 		call chThdWait
+ 1418               	.LVL163:
+ 274:../../test/testbmk.c ****     n++;
+ 1419               		.loc 1 274 0 discriminator 1
+ 1420 07a8 8FEF      		ldi r24,-1
+ 1421 07aa C81A      		sub r12,r24
+ 1422 07ac D80A      		sbc r13,r24
+ 1423 07ae E80A      		sbc r14,r24
+ 1424 07b0 F80A      		sbc r15,r24
+ 1425               	.LVL164:
+ 278:../../test/testbmk.c ****   } while (!test_timer_done);
+ 1426               		.loc 1 278 0 discriminator 1
+ 1427 07b2 8091 0000 		lds r24,test_timer_done
+ 1428 07b6 8823      		tst r24
+ 1429 07b8 01F0      		breq .L65
+ 279:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1430               		.loc 1 279 0
+ 1431 07ba 80E0      		ldi r24,lo8(.LC11)
+ 1432 07bc 90E0      		ldi r25,hi8(.LC11)
+ 1433 07be 0E94 0000 		call test_print
+ 1434               	.LVL165:
+ 280:../../test/testbmk.c ****   test_printn(n);
+ 1435               		.loc 1 280 0
+ 1436 07c2 C701      		movw r24,r14
+ 1437 07c4 B601      		movw r22,r12
+ 1438 07c6 0E94 0000 		call test_printn
+ 1439               	.LVL166:
+ 281:../../test/testbmk.c ****   test_println(" threads/S");
+ 1440               		.loc 1 281 0
+ 1441 07ca 80E0      		ldi r24,lo8(.LC16)
+ 1442 07cc 90E0      		ldi r25,hi8(.LC16)
+ 1443               	/* epilogue start */
+ 282:../../test/testbmk.c **** }
+ 1444               		.loc 1 282 0
+ 1445 07ce DF91      		pop r29
+ 1446 07d0 CF91      		pop r28
+ 1447               	.LVL167:
+ 1448 07d2 1F91      		pop r17
+ 1449 07d4 0F91      		pop r16
+ 1450 07d6 FF90      		pop r15
+ 1451 07d8 EF90      		pop r14
+ 1452 07da DF90      		pop r13
+ 1453 07dc CF90      		pop r12
+ 1454               	.LVL168:
+ 1455 07de BF90      		pop r11
+ 1456               	.LVL169:
+ 281:../../test/testbmk.c ****   test_println(" threads/S");
+ 1457               		.loc 1 281 0
+ 1458 07e0 0C94 0000 		jmp test_println
+ 1459               	.LVL170:
+ 1460               	.LFE15:
+ 1463               	bmk4_execute:
+ 1464               	.LFB14:
+ 217:../../test/testbmk.c **** static void bmk4_execute(void) {
+ 1465               		.loc 1 217 0
+ 1466 07e4 CF92      		push r12
+ 1467               	.LCFI50:
+ 1468 07e6 DF92      		push r13
+ 1469               	.LCFI51:
+ 1470 07e8 EF92      		push r14
+ 1471               	.LCFI52:
+ 1472 07ea FF92      		push r15
+ 1473               	.LCFI53:
+ 1474 07ec 0F93      		push r16
+ 1475               	.LCFI54:
+ 1476 07ee 1F93      		push r17
+ 1477               	.LCFI55:
+ 1478 07f0 CF93      		push r28
+ 1479               	.LCFI56:
+ 1480 07f2 DF93      		push r29
+ 1481               	.LCFI57:
+ 1482               	/* prologue: function */
+ 1483               	/* frame size = 0 */
+ 1484               	/* stack size = 8 */
+ 1485               	.L__stack_usage = 8
+ 221:../../test/testbmk.c ****   tp = threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread4, NULL);
+ 1486               		.loc 1 221 0
+ 1487 07f4 E091 0000 		lds r30,rlist+11
+ 1488 07f8 F091 0000 		lds r31,rlist+11+1
+ 1489 07fc 4481      		ldd r20,Z+4
+ 1490 07fe 4F5F      		subi r20,lo8(-(1))
+ 1491 0800 00E0      		ldi r16,0
+ 1492 0802 10E0      		ldi r17,0
+ 1493 0804 20E0      		ldi r18,lo8(gs(thread4))
+ 1494 0806 30E0      		ldi r19,hi8(gs(thread4))
+ 1495 0808 67E9      		ldi r22,lo8(-105)
+ 1496 080a 70E0      		ldi r23,0
+ 1497 080c 8091 0000 		lds r24,wa
+ 1498 0810 9091 0000 		lds r25,wa+1
+ 1499 0814 0E94 0000 		call chThdCreateStatic
+ 1500               	.LVL171:
+ 1501 0818 EC01      		movw r28,r24
+ 1502 081a 9093 0000 		sts threads+1,r25
+ 1503 081e 8093 0000 		sts threads,r24
+ 1504               	.LVL172:
+ 223:../../test/testbmk.c ****   test_wait_tick();
+ 1505               		.loc 1 223 0
+ 1506 0822 0E94 0000 		call test_wait_tick
+ 1507               	.LVL173:
+ 224:../../test/testbmk.c ****   test_start_timer(1000);
+ 1508               		.loc 1 224 0
+ 1509 0826 88EE      		ldi r24,lo8(-24)
+ 1510 0828 93E0      		ldi r25,lo8(3)
+ 1511 082a 0E94 0000 		call test_start_timer
+ 1512               	.LVL174:
+ 222:../../test/testbmk.c ****   n = 0;
+ 1513               		.loc 1 222 0
+ 1514 082e C12C      		mov r12,__zero_reg__
+ 1515 0830 D12C      		mov r13,__zero_reg__
+ 1516 0832 7601      		movw r14,r12
+ 1517               	.LVL175:
+ 1518               	.L71:
+ 226:../../test/testbmk.c ****     chSysLock();
+ 1519               		.loc 1 226 0 discriminator 1
+ 1520               	/* #APP */
+ 1521               	 ;  226 "../../test/testbmk.c" 1
+ 1522 0834 F894      		cli
+ 1523               	 ;  0 "" 2
+ 227:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 1524               		.loc 1 227 0 discriminator 1
+ 1525               	/* #NOAPP */
+ 1526 0836 60E0      		ldi r22,0
+ 1527 0838 70E0      		ldi r23,0
+ 1528 083a CE01      		movw r24,r28
+ 1529 083c 0E94 0000 		call chSchWakeupS
+ 1530               	.LVL176:
+ 228:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 1531               		.loc 1 228 0 discriminator 1
+ 1532 0840 60E0      		ldi r22,0
+ 1533 0842 70E0      		ldi r23,0
+ 1534 0844 CE01      		movw r24,r28
+ 1535 0846 0E94 0000 		call chSchWakeupS
+ 1536               	.LVL177:
+ 229:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 1537               		.loc 1 229 0 discriminator 1
+ 1538 084a 60E0      		ldi r22,0
+ 1539 084c 70E0      		ldi r23,0
+ 1540 084e CE01      		movw r24,r28
+ 1541 0850 0E94 0000 		call chSchWakeupS
+ 1542               	.LVL178:
+ 230:../../test/testbmk.c ****     chSchWakeupS(tp, RDY_OK);
+ 1543               		.loc 1 230 0 discriminator 1
+ 1544 0854 60E0      		ldi r22,0
+ 1545 0856 70E0      		ldi r23,0
+ 1546 0858 CE01      		movw r24,r28
+ 1547 085a 0E94 0000 		call chSchWakeupS
+ 1548               	.LVL179:
+ 231:../../test/testbmk.c ****     chSysUnlock();
+ 1549               		.loc 1 231 0 discriminator 1
+ 1550               	/* #APP */
+ 1551               	 ;  231 "../../test/testbmk.c" 1
+ 1552 085e 7894      		sei
+ 1553               	 ;  0 "" 2
+ 232:../../test/testbmk.c ****     n += 4;
+ 1554               		.loc 1 232 0 discriminator 1
+ 1555               	/* #NOAPP */
+ 1556 0860 84E0      		ldi r24,4
+ 1557 0862 C80E      		add r12,r24
+ 1558 0864 D11C      		adc r13,__zero_reg__
+ 1559 0866 E11C      		adc r14,__zero_reg__
+ 1560 0868 F11C      		adc r15,__zero_reg__
+ 1561               	.LVL180:
+ 236:../../test/testbmk.c ****   } while (!test_timer_done);
+ 1562               		.loc 1 236 0 discriminator 1
+ 1563 086a 8091 0000 		lds r24,test_timer_done
+ 1564 086e 8823      		tst r24
+ 1565 0870 01F0      		breq .L71
+ 237:../../test/testbmk.c ****   chSysLock();
+ 1566               		.loc 1 237 0
+ 1567               	/* #APP */
+ 1568               	 ;  237 "../../test/testbmk.c" 1
+ 1569 0872 F894      		cli
+ 1570               	 ;  0 "" 2
+ 238:../../test/testbmk.c ****   chSchWakeupS(tp, RDY_TIMEOUT);
+ 1571               		.loc 1 238 0
+ 1572               	/* #NOAPP */
+ 1573 0874 6FEF      		ldi r22,lo8(-1)
+ 1574 0876 7FEF      		ldi r23,lo8(-1)
+ 1575 0878 CE01      		movw r24,r28
+ 1576 087a 0E94 0000 		call chSchWakeupS
+ 1577               	.LVL181:
+ 239:../../test/testbmk.c ****   chSysUnlock();
+ 1578               		.loc 1 239 0
+ 1579               	/* #APP */
+ 1580               	 ;  239 "../../test/testbmk.c" 1
+ 1581 087e 7894      		sei
+ 1582               	 ;  0 "" 2
+ 241:../../test/testbmk.c ****   test_wait_threads();
+ 1583               		.loc 1 241 0
+ 1584               	/* #NOAPP */
+ 1585 0880 0E94 0000 		call test_wait_threads
+ 1586               	.LVL182:
+ 242:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1587               		.loc 1 242 0
+ 1588 0884 80E0      		ldi r24,lo8(.LC11)
+ 1589 0886 90E0      		ldi r25,hi8(.LC11)
+ 1590 0888 0E94 0000 		call test_print
+ 1591               	.LVL183:
+ 243:../../test/testbmk.c ****   test_printn(n * 2);
+ 1592               		.loc 1 243 0
+ 1593 088c C701      		movw r24,r14
+ 1594 088e B601      		movw r22,r12
+ 1595 0890 660F      		lsl r22
+ 1596 0892 771F      		rol r23
+ 1597 0894 881F      		rol r24
+ 1598 0896 991F      		rol r25
+ 1599 0898 0E94 0000 		call test_printn
+ 1600               	.LVL184:
+ 244:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1601               		.loc 1 244 0
+ 1602 089c 80E0      		ldi r24,lo8(.LC17)
+ 1603 089e 90E0      		ldi r25,hi8(.LC17)
+ 1604               	/* epilogue start */
+ 245:../../test/testbmk.c **** }
+ 1605               		.loc 1 245 0
+ 1606 08a0 DF91      		pop r29
+ 1607 08a2 CF91      		pop r28
+ 1608               	.LVL185:
+ 1609 08a4 1F91      		pop r17
+ 1610 08a6 0F91      		pop r16
+ 1611 08a8 FF90      		pop r15
+ 1612 08aa EF90      		pop r14
+ 1613 08ac DF90      		pop r13
+ 1614 08ae CF90      		pop r12
+ 1615               	.LVL186:
+ 244:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1616               		.loc 1 244 0
+ 1617 08b0 0C94 0000 		jmp test_println
+ 1618               	.LVL187:
+ 1619               	.LFE14:
+ 1622               	msg_loop_test:
+ 1623               	.LFB8:
+  80:../../test/testbmk.c **** static unsigned int msg_loop_test(Thread *tp) {
+ 1624               		.loc 1 80 0
+ 1625               	.LVL188:
+ 1626 08b4 CF92      		push r12
+ 1627               	.LCFI58:
+ 1628 08b6 DF92      		push r13
+ 1629               	.LCFI59:
+ 1630 08b8 EF92      		push r14
+ 1631               	.LCFI60:
+ 1632 08ba FF92      		push r15
+ 1633               	.LCFI61:
+ 1634 08bc CF93      		push r28
+ 1635               	.LCFI62:
+ 1636 08be DF93      		push r29
+ 1637               	.LCFI63:
+ 1638               	/* prologue: function */
+ 1639               	/* frame size = 0 */
+ 1640               	/* stack size = 6 */
+ 1641               	.L__stack_usage = 6
+ 1642 08c0 EC01      		movw r28,r24
+ 1643               	.LVL189:
+  83:../../test/testbmk.c ****   test_wait_tick();
+ 1644               		.loc 1 83 0
+ 1645 08c2 0E94 0000 		call test_wait_tick
+ 1646               	.LVL190:
+  84:../../test/testbmk.c ****   test_start_timer(1000);
+ 1647               		.loc 1 84 0
+ 1648 08c6 88EE      		ldi r24,lo8(-24)
+ 1649 08c8 93E0      		ldi r25,lo8(3)
+ 1650 08ca 0E94 0000 		call test_start_timer
+ 1651               	.LVL191:
+  82:../../test/testbmk.c ****   uint32_t n = 0;
+ 1652               		.loc 1 82 0
+ 1653 08ce C12C      		mov r12,__zero_reg__
+ 1654 08d0 D12C      		mov r13,__zero_reg__
+ 1655 08d2 7601      		movw r14,r12
+ 1656               	.LVL192:
+ 1657               	.L77:
+  86:../../test/testbmk.c ****     (void)chMsgSend(tp, 1);
+ 1658               		.loc 1 86 0 discriminator 1
+ 1659 08d4 61E0      		ldi r22,lo8(1)
+ 1660 08d6 70E0      		ldi r23,0
+ 1661 08d8 CE01      		movw r24,r28
+ 1662 08da 0E94 0000 		call chMsgSend
+ 1663               	.LVL193:
+  87:../../test/testbmk.c ****     n++;
+ 1664               		.loc 1 87 0 discriminator 1
+ 1665 08de 8FEF      		ldi r24,-1
+ 1666 08e0 C81A      		sub r12,r24
+ 1667 08e2 D80A      		sbc r13,r24
+ 1668 08e4 E80A      		sbc r14,r24
+ 1669 08e6 F80A      		sbc r15,r24
+ 1670               	.LVL194:
+  91:../../test/testbmk.c ****   } while (!test_timer_done);
+ 1671               		.loc 1 91 0 discriminator 1
+ 1672 08e8 8091 0000 		lds r24,test_timer_done
+ 1673 08ec 8823      		tst r24
+ 1674 08ee 01F0      		breq .L77
+  92:../../test/testbmk.c ****   (void)chMsgSend(tp, 0);
+ 1675               		.loc 1 92 0
+ 1676 08f0 60E0      		ldi r22,0
+ 1677 08f2 70E0      		ldi r23,0
+ 1678 08f4 CE01      		movw r24,r28
+ 1679 08f6 0E94 0000 		call chMsgSend
+ 1680               	.LVL195:
+  94:../../test/testbmk.c **** }
+ 1681               		.loc 1 94 0
+ 1682 08fa C601      		movw r24,r12
+ 1683               	/* epilogue start */
+ 1684 08fc DF91      		pop r29
+ 1685 08fe CF91      		pop r28
+ 1686               	.LVL196:
+ 1687 0900 FF90      		pop r15
+ 1688 0902 EF90      		pop r14
+ 1689 0904 DF90      		pop r13
+ 1690 0906 CF90      		pop r12
+ 1691               	.LVL197:
+ 1692 0908 0895      		ret
+ 1693               	.LFE8:
+ 1695               		.section	.rodata.str1.1
+ 1696               	.LC19:
+ 1697 00ed 206D 7367 		.string	" msgs/S, "
+ 1697      732F 532C 
+ 1697      2000 
+ 1698               		.text
+ 1700               	bmk3_execute:
+ 1701               	.LFB12:
+ 169:../../test/testbmk.c **** static void bmk3_execute(void) {
+ 1702               		.loc 1 169 0
+ 1703 090a CF92      		push r12
+ 1704               	.LCFI64:
+ 1705 090c DF92      		push r13
+ 1706               	.LCFI65:
+ 1707 090e EF92      		push r14
+ 1708               	.LCFI66:
+ 1709 0910 FF92      		push r15
+ 1710               	.LCFI67:
+ 1711 0912 0F93      		push r16
+ 1712               	.LCFI68:
+ 1713 0914 1F93      		push r17
+ 1714               	.LCFI69:
+ 1715 0916 CF93      		push r28
+ 1716               	.LCFI70:
+ 1717 0918 DF93      		push r29
+ 1718               	.LCFI71:
+ 1719               	/* prologue: function */
+ 1720               	/* frame size = 0 */
+ 1721               	/* stack size = 8 */
+ 1722               	.L__stack_usage = 8
+ 172:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
+ 1723               		.loc 1 172 0
+ 1724 091a E091 0000 		lds r30,rlist+11
+ 1725 091e F091 0000 		lds r31,rlist+11+1
+ 1726 0922 4481      		ldd r20,Z+4
+ 1727 0924 4F5F      		subi r20,lo8(-(1))
+ 1728 0926 00E0      		ldi r16,0
+ 1729 0928 10E0      		ldi r17,0
+ 1730 092a 20E0      		ldi r18,lo8(gs(thread1))
+ 1731 092c 30E0      		ldi r19,hi8(gs(thread1))
+ 1732 092e 67E9      		ldi r22,lo8(-105)
+ 1733 0930 70E0      		ldi r23,0
+ 1734 0932 8091 0000 		lds r24,wa
+ 1735 0936 9091 0000 		lds r25,wa+1
+ 1736 093a 0E94 0000 		call chThdCreateStatic
+ 1737               	.LVL198:
+ 1738 093e C0E0      		ldi r28,lo8(threads)
+ 1739 0940 D0E0      		ldi r29,hi8(threads)
+ 1740 0942 9983      		std Y+1,r25
+ 1741 0944 8883      		st Y,r24
+ 173:../../test/testbmk.c ****   threads[1] = chThdCreateStatic(wa[1], WA_SIZE, chThdGetPriority()-2, thread2, NULL);
+ 1742               		.loc 1 173 0
+ 1743 0946 E091 0000 		lds r30,rlist+11
+ 1744 094a F091 0000 		lds r31,rlist+11+1
+ 1745 094e 4481      		ldd r20,Z+4
+ 1746 0950 4250      		subi r20,lo8(-(-2))
+ 1747 0952 20E0      		ldi r18,lo8(gs(thread2))
+ 1748 0954 30E0      		ldi r19,hi8(gs(thread2))
+ 1749 0956 67E9      		ldi r22,lo8(-105)
+ 1750 0958 70E0      		ldi r23,0
+ 1751 095a 8091 0000 		lds r24,wa+2
+ 1752 095e 9091 0000 		lds r25,wa+2+1
+ 1753 0962 0E94 0000 		call chThdCreateStatic
+ 1754               	.LVL199:
+ 1755 0966 9093 0000 		sts threads+2+1,r25
+ 1756 096a 8093 0000 		sts threads+2,r24
+ 174:../../test/testbmk.c ****   threads[2] = chThdCreateStatic(wa[2], WA_SIZE, chThdGetPriority()-3, thread2, NULL);
+ 1757               		.loc 1 174 0
+ 1758 096e E091 0000 		lds r30,rlist+11
+ 1759 0972 F091 0000 		lds r31,rlist+11+1
+ 1760 0976 4481      		ldd r20,Z+4
+ 1761 0978 4350      		subi r20,lo8(-(-3))
+ 1762 097a 20E0      		ldi r18,lo8(gs(thread2))
+ 1763 097c 30E0      		ldi r19,hi8(gs(thread2))
+ 1764 097e 67E9      		ldi r22,lo8(-105)
+ 1765 0980 70E0      		ldi r23,0
+ 1766 0982 8091 0000 		lds r24,wa+4
+ 1767 0986 9091 0000 		lds r25,wa+4+1
+ 1768 098a 0E94 0000 		call chThdCreateStatic
+ 1769               	.LVL200:
+ 1770 098e 9093 0000 		sts threads+4+1,r25
+ 1771 0992 8093 0000 		sts threads+4,r24
+ 175:../../test/testbmk.c ****   threads[3] = chThdCreateStatic(wa[3], WA_SIZE, chThdGetPriority()-4, thread2, NULL);
+ 1772               		.loc 1 175 0
+ 1773 0996 E091 0000 		lds r30,rlist+11
+ 1774 099a F091 0000 		lds r31,rlist+11+1
+ 1775 099e 4481      		ldd r20,Z+4
+ 1776 09a0 4450      		subi r20,lo8(-(-4))
+ 1777 09a2 20E0      		ldi r18,lo8(gs(thread2))
+ 1778 09a4 30E0      		ldi r19,hi8(gs(thread2))
+ 1779 09a6 67E9      		ldi r22,lo8(-105)
+ 1780 09a8 70E0      		ldi r23,0
+ 1781 09aa 8091 0000 		lds r24,wa+6
+ 1782 09ae 9091 0000 		lds r25,wa+6+1
+ 1783 09b2 0E94 0000 		call chThdCreateStatic
+ 1784               	.LVL201:
+ 1785 09b6 9093 0000 		sts threads+6+1,r25
+ 1786 09ba 8093 0000 		sts threads+6,r24
+ 176:../../test/testbmk.c ****   threads[4] = chThdCreateStatic(wa[4], WA_SIZE, chThdGetPriority()-5, thread2, NULL);
+ 1787               		.loc 1 176 0
+ 1788 09be E091 0000 		lds r30,rlist+11
+ 1789 09c2 F091 0000 		lds r31,rlist+11+1
+ 1790 09c6 4481      		ldd r20,Z+4
+ 1791 09c8 4550      		subi r20,lo8(-(-5))
+ 1792 09ca 20E0      		ldi r18,lo8(gs(thread2))
+ 1793 09cc 30E0      		ldi r19,hi8(gs(thread2))
+ 1794 09ce 67E9      		ldi r22,lo8(-105)
+ 1795 09d0 70E0      		ldi r23,0
+ 1796 09d2 8091 0000 		lds r24,wa+8
+ 1797 09d6 9091 0000 		lds r25,wa+8+1
+ 1798 09da 0E94 0000 		call chThdCreateStatic
+ 1799               	.LVL202:
+ 1800 09de 9093 0000 		sts threads+8+1,r25
+ 1801 09e2 8093 0000 		sts threads+8,r24
+ 177:../../test/testbmk.c ****   n = msg_loop_test(threads[0]);
+ 1802               		.loc 1 177 0
+ 1803 09e6 8881      		ld r24,Y
+ 1804 09e8 9981      		ldd r25,Y+1
+ 1805 09ea 0E94 0000 		call msg_loop_test
+ 1806               	.LVL203:
+ 1807 09ee 6C01      		movw r12,r24
+ 1808 09f0 E12C      		mov r14,__zero_reg__
+ 1809 09f2 F12C      		mov r15,__zero_reg__
+ 1810               	.LVL204:
+ 178:../../test/testbmk.c ****   test_wait_threads();
+ 1811               		.loc 1 178 0
+ 1812 09f4 0E94 0000 		call test_wait_threads
+ 1813               	.LVL205:
+ 179:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1814               		.loc 1 179 0
+ 1815 09f8 80E0      		ldi r24,lo8(.LC11)
+ 1816 09fa 90E0      		ldi r25,hi8(.LC11)
+ 1817 09fc 0E94 0000 		call test_print
+ 1818               	.LVL206:
+ 180:../../test/testbmk.c ****   test_printn(n);
+ 1819               		.loc 1 180 0
+ 1820 0a00 C701      		movw r24,r14
+ 1821 0a02 B601      		movw r22,r12
+ 1822 0a04 0E94 0000 		call test_printn
+ 1823               	.LVL207:
+ 181:../../test/testbmk.c ****   test_print(" msgs/S, ");
+ 1824               		.loc 1 181 0
+ 1825 0a08 80E0      		ldi r24,lo8(.LC19)
+ 1826 0a0a 90E0      		ldi r25,hi8(.LC19)
+ 1827 0a0c 0E94 0000 		call test_print
+ 1828               	.LVL208:
+ 182:../../test/testbmk.c ****   test_printn(n << 1);
+ 1829               		.loc 1 182 0
+ 1830 0a10 C701      		movw r24,r14
+ 1831 0a12 B601      		movw r22,r12
+ 1832 0a14 660F      		lsl r22
+ 1833 0a16 771F      		rol r23
+ 1834 0a18 881F      		rol r24
+ 1835 0a1a 991F      		rol r25
+ 1836 0a1c 0E94 0000 		call test_printn
+ 1837               	.LVL209:
+ 183:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1838               		.loc 1 183 0
+ 1839 0a20 80E0      		ldi r24,lo8(.LC17)
+ 1840 0a22 90E0      		ldi r25,hi8(.LC17)
+ 1841               	/* epilogue start */
+ 184:../../test/testbmk.c **** }
+ 1842               		.loc 1 184 0
+ 1843 0a24 DF91      		pop r29
+ 1844 0a26 CF91      		pop r28
+ 1845 0a28 1F91      		pop r17
+ 1846 0a2a 0F91      		pop r16
+ 1847 0a2c FF90      		pop r15
+ 1848 0a2e EF90      		pop r14
+ 1849 0a30 DF90      		pop r13
+ 1850 0a32 CF90      		pop r12
+ 1851               	.LVL210:
+ 183:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1852               		.loc 1 183 0
+ 1853 0a34 0C94 0000 		jmp test_println
+ 1854               	.LVL211:
+ 1855               	.LFE12:
+ 1858               	bmk2_execute:
+ 1859               	.LFB10:
+ 134:../../test/testbmk.c **** static void bmk2_execute(void) {
+ 1860               		.loc 1 134 0
+ 1861 0a38 CF92      		push r12
+ 1862               	.LCFI72:
+ 1863 0a3a DF92      		push r13
+ 1864               	.LCFI73:
+ 1865 0a3c EF92      		push r14
+ 1866               	.LCFI74:
+ 1867 0a3e FF92      		push r15
+ 1868               	.LCFI75:
+ 1869 0a40 0F93      		push r16
+ 1870               	.LCFI76:
+ 1871 0a42 1F93      		push r17
+ 1872               	.LCFI77:
+ 1873               	/* prologue: function */
+ 1874               	/* frame size = 0 */
+ 1875               	/* stack size = 6 */
+ 1876               	.L__stack_usage = 6
+ 137:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
+ 1877               		.loc 1 137 0
+ 1878 0a44 E091 0000 		lds r30,rlist+11
+ 1879 0a48 F091 0000 		lds r31,rlist+11+1
+ 1880 0a4c 4481      		ldd r20,Z+4
+ 1881 0a4e 4F5F      		subi r20,lo8(-(1))
+ 1882 0a50 00E0      		ldi r16,0
+ 1883 0a52 10E0      		ldi r17,0
+ 1884 0a54 20E0      		ldi r18,lo8(gs(thread1))
+ 1885 0a56 30E0      		ldi r19,hi8(gs(thread1))
+ 1886 0a58 67E9      		ldi r22,lo8(-105)
+ 1887 0a5a 70E0      		ldi r23,0
+ 1888 0a5c 8091 0000 		lds r24,wa
+ 1889 0a60 9091 0000 		lds r25,wa+1
+ 1890 0a64 0E94 0000 		call chThdCreateStatic
+ 1891               	.LVL212:
+ 1892 0a68 9093 0000 		sts threads+1,r25
+ 1893 0a6c 8093 0000 		sts threads,r24
+ 138:../../test/testbmk.c ****   n = msg_loop_test(threads[0]);
+ 1894               		.loc 1 138 0
+ 1895 0a70 0E94 0000 		call msg_loop_test
+ 1896               	.LVL213:
+ 1897 0a74 6C01      		movw r12,r24
+ 1898 0a76 E12C      		mov r14,__zero_reg__
+ 1899 0a78 F12C      		mov r15,__zero_reg__
+ 1900               	.LVL214:
+ 139:../../test/testbmk.c ****   test_wait_threads();
+ 1901               		.loc 1 139 0
+ 1902 0a7a 0E94 0000 		call test_wait_threads
+ 1903               	.LVL215:
+ 140:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1904               		.loc 1 140 0
+ 1905 0a7e 80E0      		ldi r24,lo8(.LC11)
+ 1906 0a80 90E0      		ldi r25,hi8(.LC11)
+ 1907 0a82 0E94 0000 		call test_print
+ 1908               	.LVL216:
+ 141:../../test/testbmk.c ****   test_printn(n);
+ 1909               		.loc 1 141 0
+ 1910 0a86 C701      		movw r24,r14
+ 1911 0a88 B601      		movw r22,r12
+ 1912 0a8a 0E94 0000 		call test_printn
+ 1913               	.LVL217:
+ 142:../../test/testbmk.c ****   test_print(" msgs/S, ");
+ 1914               		.loc 1 142 0
+ 1915 0a8e 80E0      		ldi r24,lo8(.LC19)
+ 1916 0a90 90E0      		ldi r25,hi8(.LC19)
+ 1917 0a92 0E94 0000 		call test_print
+ 1918               	.LVL218:
+ 143:../../test/testbmk.c ****   test_printn(n << 1);
+ 1919               		.loc 1 143 0
+ 1920 0a96 C701      		movw r24,r14
+ 1921 0a98 B601      		movw r22,r12
+ 1922 0a9a 660F      		lsl r22
+ 1923 0a9c 771F      		rol r23
+ 1924 0a9e 881F      		rol r24
+ 1925 0aa0 991F      		rol r25
+ 1926 0aa2 0E94 0000 		call test_printn
+ 1927               	.LVL219:
+ 144:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1928               		.loc 1 144 0
+ 1929 0aa6 80E0      		ldi r24,lo8(.LC17)
+ 1930 0aa8 90E0      		ldi r25,hi8(.LC17)
+ 1931               	/* epilogue start */
+ 145:../../test/testbmk.c **** }
+ 1932               		.loc 1 145 0
+ 1933 0aaa 1F91      		pop r17
+ 1934 0aac 0F91      		pop r16
+ 1935 0aae FF90      		pop r15
+ 1936 0ab0 EF90      		pop r14
+ 1937 0ab2 DF90      		pop r13
+ 1938 0ab4 CF90      		pop r12
+ 1939               	.LVL220:
+ 144:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 1940               		.loc 1 144 0
+ 1941 0ab6 0C94 0000 		jmp test_println
+ 1942               	.LVL221:
+ 1943               	.LFE10:
+ 1946               	bmk1_execute:
+ 1947               	.LFB9:
+ 105:../../test/testbmk.c **** static void bmk1_execute(void) {
+ 1948               		.loc 1 105 0
+ 1949 0aba CF92      		push r12
+ 1950               	.LCFI78:
+ 1951 0abc DF92      		push r13
+ 1952               	.LCFI79:
+ 1953 0abe EF92      		push r14
+ 1954               	.LCFI80:
+ 1955 0ac0 FF92      		push r15
+ 1956               	.LCFI81:
+ 1957 0ac2 0F93      		push r16
+ 1958               	.LCFI82:
+ 1959 0ac4 1F93      		push r17
+ 1960               	.LCFI83:
+ 1961               	/* prologue: function */
+ 1962               	/* frame size = 0 */
+ 1963               	/* stack size = 6 */
+ 1964               	.L__stack_usage = 6
+ 108:../../test/testbmk.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()-1, thread1, NULL);
+ 1965               		.loc 1 108 0
+ 1966 0ac6 E091 0000 		lds r30,rlist+11
+ 1967 0aca F091 0000 		lds r31,rlist+11+1
+ 1968 0ace 4481      		ldd r20,Z+4
+ 1969 0ad0 4150      		subi r20,lo8(-(-1))
+ 1970 0ad2 00E0      		ldi r16,0
+ 1971 0ad4 10E0      		ldi r17,0
+ 1972 0ad6 20E0      		ldi r18,lo8(gs(thread1))
+ 1973 0ad8 30E0      		ldi r19,hi8(gs(thread1))
+ 1974 0ada 67E9      		ldi r22,lo8(-105)
+ 1975 0adc 70E0      		ldi r23,0
+ 1976 0ade 8091 0000 		lds r24,wa
+ 1977 0ae2 9091 0000 		lds r25,wa+1
+ 1978 0ae6 0E94 0000 		call chThdCreateStatic
+ 1979               	.LVL222:
+ 1980 0aea 9093 0000 		sts threads+1,r25
+ 1981 0aee 8093 0000 		sts threads,r24
+ 109:../../test/testbmk.c ****   n = msg_loop_test(threads[0]);
+ 1982               		.loc 1 109 0
+ 1983 0af2 0E94 0000 		call msg_loop_test
+ 1984               	.LVL223:
+ 1985 0af6 6C01      		movw r12,r24
+ 1986 0af8 E12C      		mov r14,__zero_reg__
+ 1987 0afa F12C      		mov r15,__zero_reg__
+ 1988               	.LVL224:
+ 110:../../test/testbmk.c ****   test_wait_threads();
+ 1989               		.loc 1 110 0
+ 1990 0afc 0E94 0000 		call test_wait_threads
+ 1991               	.LVL225:
+ 111:../../test/testbmk.c ****   test_print("--- Score : ");
+ 1992               		.loc 1 111 0
+ 1993 0b00 80E0      		ldi r24,lo8(.LC11)
+ 1994 0b02 90E0      		ldi r25,hi8(.LC11)
+ 1995 0b04 0E94 0000 		call test_print
+ 1996               	.LVL226:
+ 112:../../test/testbmk.c ****   test_printn(n);
+ 1997               		.loc 1 112 0
+ 1998 0b08 C701      		movw r24,r14
+ 1999 0b0a B601      		movw r22,r12
+ 2000 0b0c 0E94 0000 		call test_printn
+ 2001               	.LVL227:
+ 113:../../test/testbmk.c ****   test_print(" msgs/S, ");
+ 2002               		.loc 1 113 0
+ 2003 0b10 80E0      		ldi r24,lo8(.LC19)
+ 2004 0b12 90E0      		ldi r25,hi8(.LC19)
+ 2005 0b14 0E94 0000 		call test_print
+ 2006               	.LVL228:
+ 114:../../test/testbmk.c ****   test_printn(n << 1);
+ 2007               		.loc 1 114 0
+ 2008 0b18 C701      		movw r24,r14
+ 2009 0b1a B601      		movw r22,r12
+ 2010 0b1c 660F      		lsl r22
+ 2011 0b1e 771F      		rol r23
+ 2012 0b20 881F      		rol r24
+ 2013 0b22 991F      		rol r25
+ 2014 0b24 0E94 0000 		call test_printn
+ 2015               	.LVL229:
+ 115:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 2016               		.loc 1 115 0
+ 2017 0b28 80E0      		ldi r24,lo8(.LC17)
+ 2018 0b2a 90E0      		ldi r25,hi8(.LC17)
+ 2019               	/* epilogue start */
+ 116:../../test/testbmk.c **** }
+ 2020               		.loc 1 116 0
+ 2021 0b2c 1F91      		pop r17
+ 2022 0b2e 0F91      		pop r16
+ 2023 0b30 FF90      		pop r15
+ 2024 0b32 EF90      		pop r14
+ 2025 0b34 DF90      		pop r13
+ 2026 0b36 CF90      		pop r12
+ 2027               	.LVL230:
+ 115:../../test/testbmk.c ****   test_println(" ctxswc/S");
+ 2028               		.loc 1 115 0
+ 2029 0b38 0C94 0000 		jmp test_println
+ 2030               	.LVL231:
+ 2031               	.LFE9:
+ 2034               	thread1:
+ 2035               	.LFB7:
+  64:../../test/testbmk.c **** static msg_t thread1(void *p) {
+ 2036               		.loc 1 64 0
+ 2037               	.LVL232:
+ 2038 0b3c CF93      		push r28
+ 2039               	.LCFI84:
+ 2040 0b3e DF93      		push r29
+ 2041               	.LCFI85:
+ 2042               	/* prologue: function */
+ 2043               	/* frame size = 0 */
+ 2044               	/* stack size = 2 */
+ 2045               	.L__stack_usage = 2
+ 2046               	.LVL233:
+ 2047               	.L86:
+  70:../../test/testbmk.c ****     tp = chMsgWait();
+ 2048               		.loc 1 70 0 discriminator 1
+ 2049 0b40 0E94 0000 		call chMsgWait
+ 2050               	.LVL234:
+  71:../../test/testbmk.c ****     msg = chMsgGet(tp);
+ 2051               		.loc 1 71 0 discriminator 1
+ 2052 0b44 FC01      		movw r30,r24
+ 2053 0b46 C28D      		ldd r28,Z+26
+ 2054 0b48 D38D      		ldd r29,Z+27
+ 2055               	.LVL235:
+  72:../../test/testbmk.c ****     chMsgRelease(tp, msg);
+ 2056               		.loc 1 72 0 discriminator 1
+ 2057 0b4a BE01      		movw r22,r28
+ 2058 0b4c 0E94 0000 		call chMsgRelease
+ 2059               	.LVL236:
+  73:../../test/testbmk.c ****   } while (msg);
+ 2060               		.loc 1 73 0 discriminator 1
+ 2061 0b50 CD2B      		or r28,r29
+ 2062 0b52 01F4      		brne .L86
+  75:../../test/testbmk.c **** }
+ 2063               		.loc 1 75 0
+ 2064 0b54 80E0      		ldi r24,0
+ 2065 0b56 90E0      		ldi r25,0
+ 2066               	/* epilogue start */
+ 2067 0b58 DF91      		pop r29
+ 2068 0b5a CF91      		pop r28
+ 2069               	.LVL237:
+ 2070 0b5c 0895      		ret
+ 2071               	.LFE7:
+ 2073               	.global	thread4
+ 2075               	thread4:
+ 2076               	.LFB13:
+ 203:../../test/testbmk.c **** msg_t thread4(void *p) {
+ 2077               		.loc 1 203 0
+ 2078               	.LVL238:
+ 2079 0b5e CF93      		push r28
+ 2080               	.LCFI86:
+ 2081 0b60 DF93      		push r29
+ 2082               	.LCFI87:
+ 2083               	/* prologue: function */
+ 2084               	/* frame size = 0 */
+ 2085               	/* stack size = 2 */
+ 2086               	.L__stack_usage = 2
+ 205:../../test/testbmk.c ****   Thread *self = chThdSelf();
+ 2087               		.loc 1 205 0
+ 2088 0b62 C091 0000 		lds r28,rlist+11
+ 2089 0b66 D091 0000 		lds r29,rlist+11+1
+ 2090               	.LVL239:
+ 208:../../test/testbmk.c ****   chSysLock();
+ 2091               		.loc 1 208 0
+ 2092               	/* #APP */
+ 2093               	 ;  208 "../../test/testbmk.c" 1
+ 2094 0b6a F894      		cli
+ 2095               	 ;  0 "" 2
+ 2096               	.LVL240:
+ 2097               	/* #NOAPP */
+ 2098               	.L89:
+ 210:../../test/testbmk.c ****     chSchGoSleepS(THD_STATE_SUSPENDED);
+ 2099               		.loc 1 210 0 discriminator 1
+ 2100 0b6c 82E0      		ldi r24,lo8(2)
+ 2101 0b6e 0E94 0000 		call chSchGoSleepS
+ 2102               	.LVL241:
+ 212:../../test/testbmk.c ****   } while (msg == RDY_OK);
+ 2103               		.loc 1 212 0 discriminator 1
+ 2104 0b72 8A89      		ldd r24,Y+18
+ 2105 0b74 9B89      		ldd r25,Y+19
+ 2106 0b76 892B      		or r24,r25
+ 2107 0b78 01F0      		breq .L89
+ 213:../../test/testbmk.c ****   chSysUnlock();
+ 2108               		.loc 1 213 0
+ 2109               	/* #APP */
+ 2110               	 ;  213 "../../test/testbmk.c" 1
+ 2111 0b7a 7894      		sei
+ 2112               	 ;  0 "" 2
+ 215:../../test/testbmk.c **** }
+ 2113               		.loc 1 215 0
+ 2114               	/* #NOAPP */
+ 2115 0b7c 80E0      		ldi r24,0
+ 2116 0b7e 90E0      		ldi r25,0
+ 2117               	/* epilogue start */
+ 2118 0b80 DF91      		pop r29
+ 2119 0b82 CF91      		pop r28
+ 2120               	.LVL242:
+ 2121 0b84 0895      		ret
+ 2122               	.LFE13:
+ 2124               	.global	patternbmk
+ 2125               		.section	.rodata
+ 2128               	patternbmk:
+ 2129 0000 0000      		.word	testbmk1
+ 2130 0002 0000      		.word	testbmk2
+ 2131 0004 0000      		.word	testbmk3
+ 2132 0006 0000      		.word	testbmk4
+ 2133 0008 0000      		.word	testbmk5
+ 2134 000a 0000      		.word	testbmk6
+ 2135 000c 0000      		.word	testbmk7
+ 2136 000e 0000      		.word	testbmk8
+ 2137 0010 0000      		.word	testbmk9
+ 2138 0012 0000      		.word	testbmk10
+ 2139 0014 0000      		.word	testbmk11
+ 2140 0016 0000      		.word	testbmk12
+ 2141 0018 0000      		.word	testbmk13
+ 2142 001a 0000      		.word	0
+ 2143               	.global	testbmk13
+ 2144               		.section	.rodata.str1.1
+ 2145               	.LC20:
+ 2146 00f7 4265 6E63 		.string	"Benchmark, RAM footprint"
+ 2146      686D 6172 
+ 2146      6B2C 2052 
+ 2146      414D 2066 
+ 2146      6F6F 7470 
+ 2147               		.section	.rodata
+ 2150               	testbmk13:
+ 2151 001c 0000      		.word	.LC20
+ 2152 001e 0000      		.word	0
+ 2153 0020 0000      		.word	0
+ 2154 0022 0000      		.word	gs(bmk13_execute)
+ 2155               	.global	testbmk12
+ 2156               		.section	.rodata.str1.1
+ 2157               	.LC21:
+ 2158 0110 4265 6E63 		.string	"Benchmark, mutexes lock/unlock"
+ 2158      686D 6172 
+ 2158      6B2C 206D 
+ 2158      7574 6578 
+ 2158      6573 206C 
+ 2159               		.section	.rodata
+ 2162               	testbmk12:
+ 2163 0024 0000      		.word	.LC21
+ 2164 0026 0000      		.word	gs(bmk12_setup)
+ 2165 0028 0000      		.word	0
+ 2166 002a 0000      		.word	gs(bmk12_execute)
+ 2167               	.global	testbmk11
+ 2168               		.section	.rodata.str1.1
+ 2169               	.LC22:
+ 2170 012f 4265 6E63 		.string	"Benchmark, semaphores wait/signal"
+ 2170      686D 6172 
+ 2170      6B2C 2073 
+ 2170      656D 6170 
+ 2170      686F 7265 
+ 2171               		.section	.rodata
+ 2174               	testbmk11:
+ 2175 002c 0000      		.word	.LC22
+ 2176 002e 0000      		.word	gs(bmk11_setup)
+ 2177 0030 0000      		.word	0
+ 2178 0032 0000      		.word	gs(bmk11_execute)
+ 2179               	.global	testbmk10
+ 2180               		.section	.rodata.str1.1
+ 2181               	.LC23:
+ 2182 0151 4265 6E63 		.string	"Benchmark, virtual timers set/reset"
+ 2182      686D 6172 
+ 2182      6B2C 2076 
+ 2182      6972 7475 
+ 2182      616C 2074 
+ 2183               		.section	.rodata
+ 2186               	testbmk10:
+ 2187 0034 0000      		.word	.LC23
+ 2188 0036 0000      		.word	0
+ 2189 0038 0000      		.word	0
+ 2190 003a 0000      		.word	gs(bmk10_execute)
+ 2191               	.global	testbmk9
+ 2192               		.section	.rodata.str1.1
+ 2193               	.LC24:
+ 2194 0175 4265 6E63 		.string	"Benchmark, I/O Queues throughput"
+ 2194      686D 6172 
+ 2194      6B2C 2049 
+ 2194      2F4F 2051 
+ 2194      7565 7565 
+ 2195               		.section	.rodata
+ 2198               	testbmk9:
+ 2199 003c 0000      		.word	.LC24
+ 2200 003e 0000      		.word	0
+ 2201 0040 0000      		.word	0
+ 2202 0042 0000      		.word	gs(bmk9_execute)
+ 2203               	.global	testbmk8
+ 2204               		.section	.rodata.str1.1
+ 2205               	.LC25:
+ 2206 0196 4265 6E63 		.string	"Benchmark, round robin context switching"
+ 2206      686D 6172 
+ 2206      6B2C 2072 
+ 2206      6F75 6E64 
+ 2206      2072 6F62 
+ 2207               		.section	.rodata
+ 2210               	testbmk8:
+ 2211 0044 0000      		.word	.LC25
+ 2212 0046 0000      		.word	0
+ 2213 0048 0000      		.word	0
+ 2214 004a 0000      		.word	gs(bmk8_execute)
+ 2215               	.global	testbmk7
+ 2216               		.section	.rodata.str1.1
+ 2217               	.LC26:
+ 2218 01bf 4265 6E63 		.string	"Benchmark, mass reschedule, 5 threads"
+ 2218      686D 6172 
+ 2218      6B2C 206D 
+ 2218      6173 7320 
+ 2218      7265 7363 
+ 2219               		.section	.rodata
+ 2222               	testbmk7:
+ 2223 004c 0000      		.word	.LC26
+ 2224 004e 0000      		.word	gs(bmk7_setup)
+ 2225 0050 0000      		.word	0
+ 2226 0052 0000      		.word	gs(bmk7_execute)
+ 2227               	.global	testbmk6
+ 2228               		.section	.rodata.str1.1
+ 2229               	.LC27:
+ 2230 01e5 4265 6E63 		.string	"Benchmark, threads, create only"
+ 2230      686D 6172 
+ 2230      6B2C 2074 
+ 2230      6872 6561 
+ 2230      6473 2C20 
+ 2231               		.section	.rodata
+ 2234               	testbmk6:
+ 2235 0054 0000      		.word	.LC27
+ 2236 0056 0000      		.word	0
+ 2237 0058 0000      		.word	0
+ 2238 005a 0000      		.word	gs(bmk6_execute)
+ 2239               	.global	testbmk5
+ 2240               		.section	.rodata.str1.1
+ 2241               	.LC28:
+ 2242 0205 4265 6E63 		.string	"Benchmark, threads, full cycle"
+ 2242      686D 6172 
+ 2242      6B2C 2074 
+ 2242      6872 6561 
+ 2242      6473 2C20 
+ 2243               		.section	.rodata
+ 2246               	testbmk5:
+ 2247 005c 0000      		.word	.LC28
+ 2248 005e 0000      		.word	0
+ 2249 0060 0000      		.word	0
+ 2250 0062 0000      		.word	gs(bmk5_execute)
+ 2251               	.global	testbmk4
+ 2252               		.section	.rodata.str1.1
+ 2253               	.LC29:
+ 2254 0224 4265 6E63 		.string	"Benchmark, context switch"
+ 2254      686D 6172 
+ 2254      6B2C 2063 
+ 2254      6F6E 7465 
+ 2254      7874 2073 
+ 2255               		.section	.rodata
+ 2258               	testbmk4:
+ 2259 0064 0000      		.word	.LC29
+ 2260 0066 0000      		.word	0
+ 2261 0068 0000      		.word	0
+ 2262 006a 0000      		.word	gs(bmk4_execute)
+ 2263               	.global	testbmk3
+ 2264               		.section	.rodata.str1.1
+ 2265               	.LC30:
+ 2266 023e 4265 6E63 		.string	"Benchmark, messages #3"
+ 2266      686D 6172 
+ 2266      6B2C 206D 
+ 2266      6573 7361 
+ 2266      6765 7320 
+ 2267               		.section	.rodata
+ 2270               	testbmk3:
+ 2271 006c 0000      		.word	.LC30
+ 2272 006e 0000      		.word	0
+ 2273 0070 0000      		.word	0
+ 2274 0072 0000      		.word	gs(bmk3_execute)
+ 2275               	.global	testbmk2
+ 2276               		.section	.rodata.str1.1
+ 2277               	.LC31:
+ 2278 0255 4265 6E63 		.string	"Benchmark, messages #2"
+ 2278      686D 6172 
+ 2278      6B2C 206D 
+ 2278      6573 7361 
+ 2278      6765 7320 
+ 2279               		.section	.rodata
+ 2282               	testbmk2:
+ 2283 0074 0000      		.word	.LC31
+ 2284 0076 0000      		.word	0
+ 2285 0078 0000      		.word	0
+ 2286 007a 0000      		.word	gs(bmk2_execute)
+ 2287               	.global	testbmk1
+ 2288               		.section	.rodata.str1.1
+ 2289               	.LC32:
+ 2290 026c 4265 6E63 		.string	"Benchmark, messages #1"
+ 2290      686D 6172 
+ 2290      6B2C 206D 
+ 2290      6573 7361 
+ 2290      6765 7320 
+ 2291               		.section	.rodata
+ 2294               	testbmk1:
+ 2295 007c 0000      		.word	.LC32
+ 2296 007e 0000      		.word	0
+ 2297 0080 0000      		.word	0
+ 2298 0082 0000      		.word	gs(bmk1_execute)
+ 2299               		.local	sem1
+ 2300               		.comm	sem1,5,1
+ 2301               		.local	iq.2077
+ 2302               		.comm	iq.2077,18,1
+ 2303               		.local	ib.2076
+ 2304               		.comm	ib.2076,16,1
+ 2305               		.local	vt1.2087
+ 2306               		.comm	vt1.2087,10,1
+ 2307               		.local	vt2.2088
+ 2308               		.comm	vt2.2088,10,1
+ 2309               		.local	mtx1
+ 2310               		.comm	mtx1,8,1
+ 3037               	.Letext0:
+ 3038               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 3039               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 3040               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 3041               		.file 5 "../../os/kernel/include/chlists.h"
+ 3042               		.file 6 "../../os/kernel/include/chthreads.h"
+ 3043               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 3044               		.file 8 "../../os/kernel/include/chvt.h"
+ 3045               		.file 9 "../../os/kernel/include/chschd.h"
+ 3046               		.file 10 "../../os/kernel/include/chsem.h"
+ 3047               		.file 11 "../../os/kernel/include/chmtx.h"
+ 3048               		.file 12 "../../os/kernel/include/chqueues.h"
+ 3049               		.file 13 "../../test/test.h"
+ 3050               		.file 14 "../../os/kernel/include/chmsg.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testbmk.c
+     /tmp/ccEpWAN3.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccEpWAN3.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccEpWAN3.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccEpWAN3.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/ccEpWAN3.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccEpWAN3.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccEpWAN3.s:11     .text:0000000000000000 thread2
+     /tmp/ccEpWAN3.s:25     .text:0000000000000002 tmo
+     /tmp/ccEpWAN3.s:61     .text:0000000000000004 bmk13_execute
+     /tmp/ccEpWAN3.s:247    .text:000000000000011c bmk12_execute
+     /tmp/ccEpWAN3.s:2308   .bss:000000000000003b mtx1
+     /tmp/ccEpWAN3.s:354    .text:00000000000001a8 bmk12_setup
+     /tmp/ccEpWAN3.s:369    .text:00000000000001b0 thread3
+                             .bss:0000000000000000 sem1
+     /tmp/ccEpWAN3.s:403    .text:00000000000001ce bmk11_execute
+     /tmp/ccEpWAN3.s:518    .text:000000000000026a bmk11_setup
+     /tmp/ccEpWAN3.s:534    .text:0000000000000274 bmk7_setup
+     /tmp/ccEpWAN3.s:554    .text:000000000000027e bmk10_execute
+     /tmp/ccEpWAN3.s:2304   .bss:0000000000000027 vt1.2087
+     /tmp/ccEpWAN3.s:2306   .bss:0000000000000031 vt2.2088
+     /tmp/ccEpWAN3.s:673    .text:000000000000030e bmk9_execute
+     /tmp/ccEpWAN3.s:2302   .bss:0000000000000017 ib.2076
+     /tmp/ccEpWAN3.s:2300   .bss:0000000000000005 iq.2077
+     /tmp/ccEpWAN3.s:834    .text:00000000000003e6 bmk6_execute
+     /tmp/ccEpWAN3.s:943    .text:000000000000046e bmk8_execute
+     /tmp/ccEpWAN3.s:1105   .text:00000000000005ae thread8
+     /tmp/ccEpWAN3.s:1166   .text:00000000000005f4 bmk7_execute
+     /tmp/ccEpWAN3.s:1356   .text:0000000000000758 bmk5_execute
+     /tmp/ccEpWAN3.s:1463   .text:00000000000007e4 bmk4_execute
+     /tmp/ccEpWAN3.s:2075   .text:0000000000000b5e thread4
+     /tmp/ccEpWAN3.s:1622   .text:00000000000008b4 msg_loop_test
+     /tmp/ccEpWAN3.s:1700   .text:000000000000090a bmk3_execute
+     /tmp/ccEpWAN3.s:2034   .text:0000000000000b3c thread1
+     /tmp/ccEpWAN3.s:1858   .text:0000000000000a38 bmk2_execute
+     /tmp/ccEpWAN3.s:1946   .text:0000000000000aba bmk1_execute
+     /tmp/ccEpWAN3.s:2128   .rodata:0000000000000000 patternbmk
+     /tmp/ccEpWAN3.s:2294   .rodata:000000000000007c testbmk1
+     /tmp/ccEpWAN3.s:2282   .rodata:0000000000000074 testbmk2
+     /tmp/ccEpWAN3.s:2270   .rodata:000000000000006c testbmk3
+     /tmp/ccEpWAN3.s:2258   .rodata:0000000000000064 testbmk4
+     /tmp/ccEpWAN3.s:2246   .rodata:000000000000005c testbmk5
+     /tmp/ccEpWAN3.s:2234   .rodata:0000000000000054 testbmk6
+     /tmp/ccEpWAN3.s:2222   .rodata:000000000000004c testbmk7
+     /tmp/ccEpWAN3.s:2210   .rodata:0000000000000044 testbmk8
+     /tmp/ccEpWAN3.s:2198   .rodata:000000000000003c testbmk9
+     /tmp/ccEpWAN3.s:2186   .rodata:0000000000000034 testbmk10
+     /tmp/ccEpWAN3.s:2174   .rodata:000000000000002c testbmk11
+     /tmp/ccEpWAN3.s:2162   .rodata:0000000000000024 testbmk12
+     /tmp/ccEpWAN3.s:2150   .rodata:000000000000001c testbmk13
+
+UNDEFINED SYMBOLS
+test_print
+test_printn
+test_println
+test_wait_tick
+test_start_timer
+chMtxLock
+chMtxUnlock
+test_timer_done
+chMtxInit
+chSemWait
+rlist
+chSemSignal
+chSemInit
+chVTSetI
+chVTResetI
+chIQInit
+chIQPutI
+chIQGetTimeout
+wa
+chThdCreateStatic
+threads
+chThdSleep
+test_terminate_threads
+test_wait_threads
+chThdYield
+chSemReset
+chThdWait
+chSchWakeupS
+chMsgSend
+chMsgWait
+chMsgRelease
+chSchGoSleepS
+__do_copy_data
+__do_clear_bss

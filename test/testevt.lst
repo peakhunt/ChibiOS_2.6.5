@@ -1,0 +1,1362 @@
+   1               		.file	"testevt.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  11               	evt3_setup:
+  12               	.LFB16:
+  13               		.file 1 "../../test/testevt.c"
+   1:../../test/testevt.c **** /*
+   2:../../test/testevt.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testevt.c **** 
+   4:../../test/testevt.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testevt.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testevt.c ****     You may obtain a copy of the License at
+   7:../../test/testevt.c **** 
+   8:../../test/testevt.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testevt.c **** 
+  10:../../test/testevt.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testevt.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testevt.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testevt.c ****     See the License for the specific language governing permissions and
+  14:../../test/testevt.c ****     limitations under the License.
+  15:../../test/testevt.c **** */
+  16:../../test/testevt.c **** 
+  17:../../test/testevt.c **** #include "ch.h"
+  18:../../test/testevt.c **** #include "test.h"
+  19:../../test/testevt.c **** 
+  20:../../test/testevt.c **** /**
+  21:../../test/testevt.c ****  * @page test_events Events test
+  22:../../test/testevt.c ****  *
+  23:../../test/testevt.c ****  * File: @ref testevt.c
+  24:../../test/testevt.c ****  *
+  25:../../test/testevt.c ****  * <h2>Description</h2>
+  26:../../test/testevt.c ****  * This module implements the test sequence for the @ref events subsystem.
+  27:../../test/testevt.c ****  *
+  28:../../test/testevt.c ****  * <h2>Objective</h2>
+  29:../../test/testevt.c ****  * Objective of the test module is to cover 100% of the @ref events subsystem.
+  30:../../test/testevt.c ****  *
+  31:../../test/testevt.c ****  * <h2>Preconditions</h2>
+  32:../../test/testevt.c ****  * The module requires the following kernel options:
+  33:../../test/testevt.c ****  * - @p CH_USE_EVENTS
+  34:../../test/testevt.c ****  * - @p CH_USE_EVENTS_TIMEOUT
+  35:../../test/testevt.c ****  * .
+  36:../../test/testevt.c ****  * In case some of the required options are not enabled then some or all tests
+  37:../../test/testevt.c ****  * may be skipped.
+  38:../../test/testevt.c ****  *
+  39:../../test/testevt.c ****  * <h2>Test Cases</h2>
+  40:../../test/testevt.c ****  * - @subpage test_events_001
+  41:../../test/testevt.c ****  * - @subpage test_events_002
+  42:../../test/testevt.c ****  * - @subpage test_events_003
+  43:../../test/testevt.c ****  * .
+  44:../../test/testevt.c ****  * @file testevt.c
+  45:../../test/testevt.c ****  * @brief Events test source file
+  46:../../test/testevt.c ****  * @file testevt.h
+  47:../../test/testevt.c ****  * @brief Events test header file
+  48:../../test/testevt.c ****  */
+  49:../../test/testevt.c **** 
+  50:../../test/testevt.c **** #if CH_USE_EVENTS || defined(__DOXYGEN__)
+  51:../../test/testevt.c **** 
+  52:../../test/testevt.c **** #define ALLOWED_DELAY MS2ST(5)
+  53:../../test/testevt.c **** 
+  54:../../test/testevt.c **** /*
+  55:../../test/testevt.c ****  * Note, the static initializers are not really required because the
+  56:../../test/testevt.c ****  * variables are explicitly initialized in each test case. It is done in order
+  57:../../test/testevt.c ****  * to test the macros.
+  58:../../test/testevt.c ****  */
+  59:../../test/testevt.c **** static EVENTSOURCE_DECL(es1);
+  60:../../test/testevt.c **** static EVENTSOURCE_DECL(es2);
+  61:../../test/testevt.c **** 
+  62:../../test/testevt.c **** /**
+  63:../../test/testevt.c ****  * @page test_events_001 Events registration and dispatch
+  64:../../test/testevt.c ****  *
+  65:../../test/testevt.c ****  * <h2>Description</h2>
+  66:../../test/testevt.c ****  * Two event listeners are registered on an event source and then unregistered
+  67:../../test/testevt.c ****  * in the same order.<br>
+  68:../../test/testevt.c ****  * The test expects that the even source has listeners after the registrations
+  69:../../test/testevt.c ****  * and after the first unregistration, then, after the second unegistration,
+  70:../../test/testevt.c ****  * the test expects no more listeners.<br>
+  71:../../test/testevt.c ****  * In the second part the test dispatches three event flags and verifies that
+  72:../../test/testevt.c ****  * the associated event handlers are invoked in LSb-first order.
+  73:../../test/testevt.c ****  */
+  74:../../test/testevt.c **** 
+  75:../../test/testevt.c **** static void evt1_setup(void) {
+  76:../../test/testevt.c **** 
+  77:../../test/testevt.c ****   chEvtGetAndClearEvents(ALL_EVENTS);
+  78:../../test/testevt.c **** }
+  79:../../test/testevt.c **** 
+  80:../../test/testevt.c **** static void h1(eventid_t id) {(void)id;test_emit_token('A');}
+  81:../../test/testevt.c **** static void h2(eventid_t id) {(void)id;test_emit_token('B');}
+  82:../../test/testevt.c **** static void h3(eventid_t id) {(void)id;test_emit_token('C');}
+  83:../../test/testevt.c **** static ROMCONST evhandler_t evhndl[] = {h1, h2, h3};
+  84:../../test/testevt.c **** 
+  85:../../test/testevt.c **** static void evt1_execute(void) {
+  86:../../test/testevt.c ****   EventListener el1, el2;
+  87:../../test/testevt.c **** 
+  88:../../test/testevt.c ****   /*
+  89:../../test/testevt.c ****    * Testing chEvtRegisterMask() and chEvtUnregister().
+  90:../../test/testevt.c ****    */
+  91:../../test/testevt.c ****   chEvtInit(&es1);
+  92:../../test/testevt.c ****   chEvtRegisterMask(&es1, &el1, 1);
+  93:../../test/testevt.c ****   chEvtRegisterMask(&es1, &el2, 2);
+  94:../../test/testevt.c ****   test_assert(1, chEvtIsListeningI(&es1), "no listener");
+  95:../../test/testevt.c ****   chEvtUnregister(&es1, &el1);
+  96:../../test/testevt.c ****   test_assert(2, chEvtIsListeningI(&es1), "no listener");
+  97:../../test/testevt.c ****   chEvtUnregister(&es1, &el2);
+  98:../../test/testevt.c ****   test_assert(3, !chEvtIsListeningI(&es1), "stuck listener");
+  99:../../test/testevt.c **** 
+ 100:../../test/testevt.c ****   /*
+ 101:../../test/testevt.c ****    * Testing chEvtDispatch().
+ 102:../../test/testevt.c ****    */
+ 103:../../test/testevt.c ****   chEvtDispatch(evhndl, 7);
+ 104:../../test/testevt.c ****   test_assert_sequence(4, "ABC");
+ 105:../../test/testevt.c **** }
+ 106:../../test/testevt.c **** 
+ 107:../../test/testevt.c **** ROMCONST struct testcase testevt1 = {
+ 108:../../test/testevt.c ****   "Events, registration and dispatch",
+ 109:../../test/testevt.c ****   evt1_setup,
+ 110:../../test/testevt.c ****   NULL,
+ 111:../../test/testevt.c ****   evt1_execute
+ 112:../../test/testevt.c **** };
+ 113:../../test/testevt.c **** 
+ 114:../../test/testevt.c **** /**
+ 115:../../test/testevt.c ****  * @page test_events_002 Events wait and broadcast
+ 116:../../test/testevt.c ****  *
+ 117:../../test/testevt.c ****  * <h2>Description</h2>
+ 118:../../test/testevt.c ****  * In this test the following APIs are indipently tested by starting threads
+ 119:../../test/testevt.c ****  * that signal/broadcast events after fixed delays:
+ 120:../../test/testevt.c ****  * - @p chEvtWaitOne()
+ 121:../../test/testevt.c ****  * - @p chEvtWaitAny()
+ 122:../../test/testevt.c ****  * - @p chEvtWaitAll()
+ 123:../../test/testevt.c ****  * .
+ 124:../../test/testevt.c ****  * After each test phase the test verifies that the events have been served at
+ 125:../../test/testevt.c ****  * the expected time and that there are no stuck event flags.
+ 126:../../test/testevt.c ****  */
+ 127:../../test/testevt.c **** 
+ 128:../../test/testevt.c **** static void evt2_setup(void) {
+ 129:../../test/testevt.c **** 
+ 130:../../test/testevt.c ****   chEvtGetAndClearEvents(ALL_EVENTS);
+ 131:../../test/testevt.c **** }
+ 132:../../test/testevt.c **** 
+ 133:../../test/testevt.c **** static msg_t thread1(void *p) {
+ 134:../../test/testevt.c **** 
+ 135:../../test/testevt.c ****   chThdSleepMilliseconds(50);
+ 136:../../test/testevt.c ****   chEvtSignal((Thread *)p, 1);
+ 137:../../test/testevt.c ****   return 0;
+ 138:../../test/testevt.c **** }
+ 139:../../test/testevt.c **** 
+ 140:../../test/testevt.c **** static msg_t thread2(void *p) {
+ 141:../../test/testevt.c **** 
+ 142:../../test/testevt.c ****   (void)p;
+ 143:../../test/testevt.c ****   chEvtBroadcast(&es1);
+ 144:../../test/testevt.c ****   chThdSleepMilliseconds(50);
+ 145:../../test/testevt.c ****   chEvtBroadcast(&es2);
+ 146:../../test/testevt.c ****   return 0;
+ 147:../../test/testevt.c **** }
+ 148:../../test/testevt.c **** 
+ 149:../../test/testevt.c **** static void evt2_execute(void) {
+ 150:../../test/testevt.c ****   eventmask_t m;
+ 151:../../test/testevt.c ****   EventListener el1, el2;
+ 152:../../test/testevt.c ****   systime_t target_time;
+ 153:../../test/testevt.c **** 
+ 154:../../test/testevt.c ****   /*
+ 155:../../test/testevt.c ****    * Test on chEvtWaitOne() without wait.
+ 156:../../test/testevt.c ****    */
+ 157:../../test/testevt.c ****   chEvtAddEvents(5);
+ 158:../../test/testevt.c ****   m = chEvtWaitOne(ALL_EVENTS);
+ 159:../../test/testevt.c ****   test_assert(1, m == 1, "single event error");
+ 160:../../test/testevt.c ****   m = chEvtWaitOne(ALL_EVENTS);
+ 161:../../test/testevt.c ****   test_assert(2, m == 4, "single event error");
+ 162:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 163:../../test/testevt.c ****   test_assert(3, m == 0, "stuck event");
+ 164:../../test/testevt.c **** 
+ 165:../../test/testevt.c ****   /*
+ 166:../../test/testevt.c ****    * Test on chEvtWaitOne() with wait.
+ 167:../../test/testevt.c ****    */
+ 168:../../test/testevt.c ****   test_wait_tick();
+ 169:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 170:../../test/testevt.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 171:../../test/testevt.c ****                                  thread1, chThdSelf());
+ 172:../../test/testevt.c ****   m = chEvtWaitOne(ALL_EVENTS);
+ 173:../../test/testevt.c ****   test_assert_time_window(4, target_time, target_time + ALLOWED_DELAY);
+ 174:../../test/testevt.c ****   test_assert(5, m == 1, "single event error");
+ 175:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 176:../../test/testevt.c ****   test_assert(6, m == 0, "stuck event");
+ 177:../../test/testevt.c ****   test_wait_threads();
+ 178:../../test/testevt.c **** 
+ 179:../../test/testevt.c ****   /*
+ 180:../../test/testevt.c ****    * Test on chEvtWaitAny() without wait.
+ 181:../../test/testevt.c ****    */
+ 182:../../test/testevt.c ****   chEvtAddEvents(5);
+ 183:../../test/testevt.c ****   m = chEvtWaitAny(ALL_EVENTS);
+ 184:../../test/testevt.c ****   test_assert(7, m == 5, "unexpected pending bit");
+ 185:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 186:../../test/testevt.c ****   test_assert(8, m == 0, "stuck event");
+ 187:../../test/testevt.c **** 
+ 188:../../test/testevt.c ****   /*
+ 189:../../test/testevt.c ****    * Test on chEvtWaitAny() with wait.
+ 190:../../test/testevt.c ****    */
+ 191:../../test/testevt.c ****   test_wait_tick();
+ 192:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 193:../../test/testevt.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 194:../../test/testevt.c ****                                  thread1, chThdSelf());
+ 195:../../test/testevt.c ****   m = chEvtWaitAny(ALL_EVENTS);
+ 196:../../test/testevt.c ****   test_assert_time_window(9, target_time, target_time + ALLOWED_DELAY);
+ 197:../../test/testevt.c ****   test_assert(10, m == 1, "single event error");
+ 198:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 199:../../test/testevt.c ****   test_assert(11, m == 0, "stuck event");
+ 200:../../test/testevt.c ****   test_wait_threads();
+ 201:../../test/testevt.c **** 
+ 202:../../test/testevt.c ****   /*
+ 203:../../test/testevt.c ****    * Test on chEvtWaitAll().
+ 204:../../test/testevt.c ****    */
+ 205:../../test/testevt.c ****   chEvtInit(&es1);
+ 206:../../test/testevt.c ****   chEvtInit(&es2);
+ 207:../../test/testevt.c ****   chEvtRegisterMask(&es1, &el1, 1);
+ 208:../../test/testevt.c ****   chEvtRegisterMask(&es2, &el2, 4);
+ 209:../../test/testevt.c ****   test_wait_tick();
+ 210:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 211:../../test/testevt.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 212:../../test/testevt.c ****                                  thread2, "A");
+ 213:../../test/testevt.c ****   m = chEvtWaitAll(5);
+ 214:../../test/testevt.c ****   test_assert_time_window(12, target_time, target_time + ALLOWED_DELAY);
+ 215:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 216:../../test/testevt.c ****   test_assert(13, m == 0, "stuck event");
+ 217:../../test/testevt.c ****   test_wait_threads();
+ 218:../../test/testevt.c ****   chEvtUnregister(&es1, &el1);
+ 219:../../test/testevt.c ****   chEvtUnregister(&es2, &el2);
+ 220:../../test/testevt.c ****   test_assert(14, !chEvtIsListeningI(&es1), "stuck listener");
+ 221:../../test/testevt.c ****   test_assert(15, !chEvtIsListeningI(&es2), "stuck listener");
+ 222:../../test/testevt.c **** }
+ 223:../../test/testevt.c **** 
+ 224:../../test/testevt.c **** ROMCONST struct testcase testevt2 = {
+ 225:../../test/testevt.c ****   "Events, wait and broadcast",
+ 226:../../test/testevt.c ****   evt2_setup,
+ 227:../../test/testevt.c ****   NULL,
+ 228:../../test/testevt.c ****   evt2_execute
+ 229:../../test/testevt.c **** };
+ 230:../../test/testevt.c **** 
+ 231:../../test/testevt.c **** #if CH_USE_EVENTS_TIMEOUT || defined(__DOXYGEN__)
+ 232:../../test/testevt.c **** /**
+ 233:../../test/testevt.c ****  * @page test_events_003 Events timeout
+ 234:../../test/testevt.c ****  *
+ 235:../../test/testevt.c ****  * <h2>Description</h2>
+ 236:../../test/testevt.c ****  * In this test the following APIs are let to timeout twice: immediatly and
+ 237:../../test/testevt.c ****  * after 10ms:
+ 238:../../test/testevt.c ****  * In this test the following APIs are indipently tested by starting threads
+ 239:../../test/testevt.c ****  * that broadcast events after fixed delays:
+ 240:../../test/testevt.c ****  * - @p chEvtWaitOneTimeout()
+ 241:../../test/testevt.c ****  * - @p chEvtWaitAnyTimeout()
+ 242:../../test/testevt.c ****  * - @p chEvtWaitAllTimeout()
+ 243:../../test/testevt.c ****  * .
+ 244:../../test/testevt.c ****  * After each test phase the test verifies that there are no stuck event flags.
+ 245:../../test/testevt.c ****  */
+ 246:../../test/testevt.c **** 
+ 247:../../test/testevt.c **** static void evt3_setup(void) {
+  14               		.loc 1 247 0
+  15               	/* prologue: function */
+  16               	/* frame size = 0 */
+  17               	/* stack size = 0 */
+  18               	.L__stack_usage = 0
+ 248:../../test/testevt.c **** 
+ 249:../../test/testevt.c ****   chEvtGetAndClearEvents(ALL_EVENTS);
+  19               		.loc 1 249 0
+  20 0000 8FEF      		ldi r24,lo8(-1)
+  21 0002 0C94 0000 		jmp chEvtGetAndClearEvents
+  22               	.LVL0:
+  23               	.LFE16:
+  26               	evt2_setup:
+  27               	.LFB12:
+ 128:../../test/testevt.c **** static void evt2_setup(void) {
+  28               		.loc 1 128 0
+  29               	/* prologue: function */
+  30               	/* frame size = 0 */
+  31               	/* stack size = 0 */
+  32               	.L__stack_usage = 0
+ 130:../../test/testevt.c ****   chEvtGetAndClearEvents(ALL_EVENTS);
+  33               		.loc 1 130 0
+  34 0006 8FEF      		ldi r24,lo8(-1)
+  35 0008 0C94 0000 		jmp chEvtGetAndClearEvents
+  36               	.LVL1:
+  37               	.LFE12:
+  40               	evt1_setup:
+  41               	.LFB7:
+  75:../../test/testevt.c **** static void evt1_setup(void) {
+  42               		.loc 1 75 0
+  43               	/* prologue: function */
+  44               	/* frame size = 0 */
+  45               	/* stack size = 0 */
+  46               	.L__stack_usage = 0
+  77:../../test/testevt.c ****   chEvtGetAndClearEvents(ALL_EVENTS);
+  47               		.loc 1 77 0
+  48 000c 8FEF      		ldi r24,lo8(-1)
+  49 000e 0C94 0000 		jmp chEvtGetAndClearEvents
+  50               	.LVL2:
+  51               	.LFE7:
+  53               		.section	.rodata.str1.1,"aMS",@progbits,1
+  54               	.LC0:
+  55 0000 4100      		.string	"A"
+  56               		.text
+  58               	evt2_execute:
+  59               	.LFB15:
+ 149:../../test/testevt.c **** static void evt2_execute(void) {
+  60               		.loc 1 149 0
+  61 0012 CF92      		push r12
+  62               	.LCFI0:
+  63 0014 DF92      		push r13
+  64               	.LCFI1:
+  65 0016 EF92      		push r14
+  66               	.LCFI2:
+  67 0018 FF92      		push r15
+  68               	.LCFI3:
+  69 001a 0F93      		push r16
+  70               	.LCFI4:
+  71 001c 1F93      		push r17
+  72               	.LCFI5:
+  73 001e CF93      		push r28
+  74               	.LCFI6:
+  75 0020 DF93      		push r29
+  76               	.LCFI7:
+  77 0022 CDB7      		in r28,__SP_L__
+  78 0024 DEB7      		in r29,__SP_H__
+  79               	.LCFI8:
+  80 0026 2C97      		sbiw r28,12
+  81               	.LCFI9:
+  82 0028 0FB6      		in __tmp_reg__,__SREG__
+  83 002a F894      		cli
+  84 002c DEBF      		out __SP_H__,r29
+  85 002e 0FBE      		out __SREG__,__tmp_reg__
+  86 0030 CDBF      		out __SP_L__,r28
+  87               	/* prologue: function */
+  88               	/* frame size = 12 */
+  89               	/* stack size = 20 */
+  90               	.L__stack_usage = 20
+ 157:../../test/testevt.c ****   chEvtAddEvents(5);
+  91               		.loc 1 157 0
+  92 0032 85E0      		ldi r24,lo8(5)
+  93 0034 0E94 0000 		call chEvtAddEvents
+  94               	.LVL3:
+ 158:../../test/testevt.c ****   m = chEvtWaitOne(ALL_EVENTS);
+  95               		.loc 1 158 0
+  96 0038 8FEF      		ldi r24,lo8(-1)
+  97 003a 0E94 0000 		call chEvtWaitOne
+  98               	.LVL4:
+ 159:../../test/testevt.c ****   test_assert(1, m == 1, "single event error");
+  99               		.loc 1 159 0
+ 100 003e 61E0      		ldi r22,lo8(1)
+ 101 0040 8130      		cpi r24,lo8(1)
+ 102 0042 01F0      		breq .L5
+ 103 0044 60E0      		ldi r22,0
+ 104               	.L5:
+ 105 0046 81E0      		ldi r24,lo8(1)
+ 106 0048 90E0      		ldi r25,0
+ 107               	.LVL5:
+ 108 004a 0E94 0000 		call _test_assert
+ 109               	.LVL6:
+ 110 004e 8823      		tst r24
+ 111 0050 01F0      		breq .L56
+ 112               	.L4:
+ 113               	/* epilogue start */
+ 222:../../test/testevt.c **** }
+ 114               		.loc 1 222 0
+ 115 0052 2C96      		adiw r28,12
+ 116 0054 0FB6      		in __tmp_reg__,__SREG__
+ 117 0056 F894      		cli
+ 118 0058 DEBF      		out __SP_H__,r29
+ 119 005a 0FBE      		out __SREG__,__tmp_reg__
+ 120 005c CDBF      		out __SP_L__,r28
+ 121 005e DF91      		pop r29
+ 122 0060 CF91      		pop r28
+ 123 0062 1F91      		pop r17
+ 124 0064 0F91      		pop r16
+ 125 0066 FF90      		pop r15
+ 126 0068 EF90      		pop r14
+ 127 006a DF90      		pop r13
+ 128 006c CF90      		pop r12
+ 129 006e 0895      		ret
+ 130               	.L56:
+ 160:../../test/testevt.c ****   m = chEvtWaitOne(ALL_EVENTS);
+ 131               		.loc 1 160 0
+ 132 0070 8FEF      		ldi r24,lo8(-1)
+ 133 0072 0E94 0000 		call chEvtWaitOne
+ 134               	.LVL7:
+ 161:../../test/testevt.c ****   test_assert(2, m == 4, "single event error");
+ 135               		.loc 1 161 0
+ 136 0076 61E0      		ldi r22,lo8(1)
+ 137 0078 8430      		cpi r24,lo8(4)
+ 138 007a 01F0      		breq .L7
+ 139 007c 60E0      		ldi r22,0
+ 140               	.L7:
+ 141 007e 82E0      		ldi r24,lo8(2)
+ 142 0080 90E0      		ldi r25,0
+ 143               	.LVL8:
+ 144 0082 0E94 0000 		call _test_assert
+ 145               	.LVL9:
+ 146 0086 8111      		cpse r24,__zero_reg__
+ 147 0088 00C0      		rjmp .L4
+ 162:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 148               		.loc 1 162 0
+ 149 008a 8FEF      		ldi r24,lo8(-1)
+ 150 008c 0E94 0000 		call chEvtGetAndClearEvents
+ 151               	.LVL10:
+ 163:../../test/testevt.c ****   test_assert(3, m == 0, "stuck event");
+ 152               		.loc 1 163 0
+ 153 0090 61E0      		ldi r22,lo8(1)
+ 154 0092 8111      		cpse r24,__zero_reg__
+ 155 0094 00C0      		rjmp .L57
+ 156               	.L8:
+ 157 0096 83E0      		ldi r24,lo8(3)
+ 158 0098 90E0      		ldi r25,0
+ 159               	.LVL11:
+ 160 009a 0E94 0000 		call _test_assert
+ 161               	.LVL12:
+ 162 009e 8111      		cpse r24,__zero_reg__
+ 163 00a0 00C0      		rjmp .L4
+ 168:../../test/testevt.c ****   test_wait_tick();
+ 164               		.loc 1 168 0
+ 165 00a2 0E94 0000 		call test_wait_tick
+ 166               	.LVL13:
+ 169:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 167               		.loc 1 169 0
+ 168 00a6 E090 0000 		lds r14,vtlist+6
+ 169 00aa F090 0000 		lds r15,vtlist+6+1
+ 170               	.LVL14:
+ 170:../../test/testevt.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 171               		.loc 1 170 0
+ 172 00ae 0091 0000 		lds r16,rlist+11
+ 173 00b2 1091 0000 		lds r17,rlist+11+1
+ 174 00b6 C090 0000 		lds r12,wa
+ 175 00ba D090 0000 		lds r13,wa+1
+ 176 00be F801      		movw r30,r16
+ 177 00c0 4481      		ldd r20,Z+4
+ 178 00c2 4150      		subi r20,lo8(-(-1))
+ 179 00c4 20E0      		ldi r18,lo8(gs(thread1))
+ 180 00c6 30E0      		ldi r19,hi8(gs(thread1))
+ 181 00c8 67E9      		ldi r22,lo8(-105)
+ 182 00ca 70E0      		ldi r23,0
+ 183 00cc C601      		movw r24,r12
+ 184 00ce 0E94 0000 		call chThdCreateStatic
+ 185               	.LVL15:
+ 186 00d2 9093 0000 		sts threads+1,r25
+ 187 00d6 8093 0000 		sts threads,r24
+ 172:../../test/testevt.c ****   m = chEvtWaitOne(ALL_EVENTS);
+ 188               		.loc 1 172 0
+ 189 00da 8FEF      		ldi r24,lo8(-1)
+ 190 00dc 0E94 0000 		call chEvtWaitOne
+ 191               	.LVL16:
+ 192 00e0 182F      		mov r17,r24
+ 193               	.LVL17:
+ 173:../../test/testevt.c ****   test_assert_time_window(4, target_time, target_time + ALLOWED_DELAY);
+ 194               		.loc 1 173 0
+ 195 00e2 A701      		movw r20,r14
+ 196 00e4 495C      		subi r20,-55
+ 197 00e6 5F4F      		sbci r21,-1
+ 169:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 198               		.loc 1 169 0
+ 199 00e8 B701      		movw r22,r14
+ 200 00ea 6E5C      		subi r22,-50
+ 201 00ec 7F4F      		sbci r23,-1
+ 202               	.LVL18:
+ 173:../../test/testevt.c ****   test_assert_time_window(4, target_time, target_time + ALLOWED_DELAY);
+ 203               		.loc 1 173 0
+ 204 00ee 84E0      		ldi r24,lo8(4)
+ 205 00f0 90E0      		ldi r25,0
+ 206 00f2 0E94 0000 		call _test_assert_time_window
+ 207               	.LVL19:
+ 208 00f6 8111      		cpse r24,__zero_reg__
+ 209 00f8 00C0      		rjmp .L4
+ 174:../../test/testevt.c ****   test_assert(5, m == 1, "single event error");
+ 210               		.loc 1 174 0
+ 211 00fa 61E0      		ldi r22,lo8(1)
+ 212 00fc 1130      		cpi r17,lo8(1)
+ 213 00fe 01F0      		breq .L9
+ 214 0100 60E0      		ldi r22,0
+ 215               	.L9:
+ 216 0102 85E0      		ldi r24,lo8(5)
+ 217 0104 90E0      		ldi r25,0
+ 218 0106 0E94 0000 		call _test_assert
+ 219               	.LVL20:
+ 220 010a 8111      		cpse r24,__zero_reg__
+ 221 010c 00C0      		rjmp .L4
+ 175:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 222               		.loc 1 175 0
+ 223 010e 8FEF      		ldi r24,lo8(-1)
+ 224 0110 0E94 0000 		call chEvtGetAndClearEvents
+ 225               	.LVL21:
+ 176:../../test/testevt.c ****   test_assert(6, m == 0, "stuck event");
+ 226               		.loc 1 176 0
+ 227 0114 61E0      		ldi r22,lo8(1)
+ 228 0116 8111      		cpse r24,__zero_reg__
+ 229 0118 60E0      		ldi r22,0
+ 230               	.L10:
+ 231 011a 86E0      		ldi r24,lo8(6)
+ 232 011c 90E0      		ldi r25,0
+ 233               	.LVL22:
+ 234 011e 0E94 0000 		call _test_assert
+ 235               	.LVL23:
+ 236 0122 8111      		cpse r24,__zero_reg__
+ 237 0124 00C0      		rjmp .L4
+ 177:../../test/testevt.c ****   test_wait_threads();
+ 238               		.loc 1 177 0
+ 239 0126 0E94 0000 		call test_wait_threads
+ 240               	.LVL24:
+ 182:../../test/testevt.c ****   chEvtAddEvents(5);
+ 241               		.loc 1 182 0
+ 242 012a 85E0      		ldi r24,lo8(5)
+ 243 012c 0E94 0000 		call chEvtAddEvents
+ 244               	.LVL25:
+ 183:../../test/testevt.c ****   m = chEvtWaitAny(ALL_EVENTS);
+ 245               		.loc 1 183 0
+ 246 0130 8FEF      		ldi r24,lo8(-1)
+ 247 0132 0E94 0000 		call chEvtWaitAny
+ 248               	.LVL26:
+ 184:../../test/testevt.c ****   test_assert(7, m == 5, "unexpected pending bit");
+ 249               		.loc 1 184 0
+ 250 0136 61E0      		ldi r22,lo8(1)
+ 251 0138 8530      		cpi r24,lo8(5)
+ 252 013a 01F0      		breq .L11
+ 253 013c 60E0      		ldi r22,0
+ 254               	.L11:
+ 255 013e 87E0      		ldi r24,lo8(7)
+ 256 0140 90E0      		ldi r25,0
+ 257               	.LVL27:
+ 258 0142 0E94 0000 		call _test_assert
+ 259               	.LVL28:
+ 260 0146 8111      		cpse r24,__zero_reg__
+ 261 0148 00C0      		rjmp .L4
+ 185:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 262               		.loc 1 185 0
+ 263 014a 8FEF      		ldi r24,lo8(-1)
+ 264 014c 0E94 0000 		call chEvtGetAndClearEvents
+ 265               	.LVL29:
+ 186:../../test/testevt.c ****   test_assert(8, m == 0, "stuck event");
+ 266               		.loc 1 186 0
+ 267 0150 61E0      		ldi r22,lo8(1)
+ 268 0152 8111      		cpse r24,__zero_reg__
+ 269 0154 60E0      		ldi r22,0
+ 270               	.L12:
+ 271 0156 88E0      		ldi r24,lo8(8)
+ 272 0158 90E0      		ldi r25,0
+ 273               	.LVL30:
+ 274 015a 0E94 0000 		call _test_assert
+ 275               	.LVL31:
+ 276 015e 8111      		cpse r24,__zero_reg__
+ 277 0160 00C0      		rjmp .L4
+ 191:../../test/testevt.c ****   test_wait_tick();
+ 278               		.loc 1 191 0
+ 279 0162 0E94 0000 		call test_wait_tick
+ 280               	.LVL32:
+ 192:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 281               		.loc 1 192 0
+ 282 0166 E090 0000 		lds r14,vtlist+6
+ 283 016a F090 0000 		lds r15,vtlist+6+1
+ 284               	.LVL33:
+ 193:../../test/testevt.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 285               		.loc 1 193 0
+ 286 016e 0091 0000 		lds r16,rlist+11
+ 287 0172 1091 0000 		lds r17,rlist+11+1
+ 288 0176 F801      		movw r30,r16
+ 289 0178 4481      		ldd r20,Z+4
+ 290 017a 4150      		subi r20,lo8(-(-1))
+ 291 017c 20E0      		ldi r18,lo8(gs(thread1))
+ 292 017e 30E0      		ldi r19,hi8(gs(thread1))
+ 293 0180 67E9      		ldi r22,lo8(-105)
+ 294 0182 70E0      		ldi r23,0
+ 295 0184 C601      		movw r24,r12
+ 296 0186 0E94 0000 		call chThdCreateStatic
+ 297               	.LVL34:
+ 298 018a 9093 0000 		sts threads+1,r25
+ 299 018e 8093 0000 		sts threads,r24
+ 195:../../test/testevt.c ****   m = chEvtWaitAny(ALL_EVENTS);
+ 300               		.loc 1 195 0
+ 301 0192 8FEF      		ldi r24,lo8(-1)
+ 302 0194 0E94 0000 		call chEvtWaitAny
+ 303               	.LVL35:
+ 304 0198 182F      		mov r17,r24
+ 305               	.LVL36:
+ 196:../../test/testevt.c ****   test_assert_time_window(9, target_time, target_time + ALLOWED_DELAY);
+ 306               		.loc 1 196 0
+ 307 019a A701      		movw r20,r14
+ 308 019c 495C      		subi r20,-55
+ 309 019e 5F4F      		sbci r21,-1
+ 192:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 310               		.loc 1 192 0
+ 311 01a0 B701      		movw r22,r14
+ 312 01a2 6E5C      		subi r22,-50
+ 313 01a4 7F4F      		sbci r23,-1
+ 314               	.LVL37:
+ 196:../../test/testevt.c ****   test_assert_time_window(9, target_time, target_time + ALLOWED_DELAY);
+ 315               		.loc 1 196 0
+ 316 01a6 89E0      		ldi r24,lo8(9)
+ 317 01a8 90E0      		ldi r25,0
+ 318 01aa 0E94 0000 		call _test_assert_time_window
+ 319               	.LVL38:
+ 320 01ae 8111      		cpse r24,__zero_reg__
+ 321 01b0 00C0      		rjmp .L4
+ 197:../../test/testevt.c ****   test_assert(10, m == 1, "single event error");
+ 322               		.loc 1 197 0
+ 323 01b2 61E0      		ldi r22,lo8(1)
+ 324 01b4 1130      		cpi r17,lo8(1)
+ 325 01b6 01F0      		breq .L13
+ 326 01b8 60E0      		ldi r22,0
+ 327               	.L13:
+ 328 01ba 8AE0      		ldi r24,lo8(10)
+ 329 01bc 90E0      		ldi r25,0
+ 330 01be 0E94 0000 		call _test_assert
+ 331               	.LVL39:
+ 332 01c2 8111      		cpse r24,__zero_reg__
+ 333 01c4 00C0      		rjmp .L4
+ 198:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 334               		.loc 1 198 0
+ 335 01c6 8FEF      		ldi r24,lo8(-1)
+ 336 01c8 0E94 0000 		call chEvtGetAndClearEvents
+ 337               	.LVL40:
+ 199:../../test/testevt.c ****   test_assert(11, m == 0, "stuck event");
+ 338               		.loc 1 199 0
+ 339 01cc 61E0      		ldi r22,lo8(1)
+ 340 01ce 8111      		cpse r24,__zero_reg__
+ 341 01d0 60E0      		ldi r22,0
+ 342               	.L14:
+ 343 01d2 8BE0      		ldi r24,lo8(11)
+ 344 01d4 90E0      		ldi r25,0
+ 345               	.LVL41:
+ 346 01d6 0E94 0000 		call _test_assert
+ 347               	.LVL42:
+ 348 01da 8111      		cpse r24,__zero_reg__
+ 349 01dc 00C0      		rjmp .L4
+ 200:../../test/testevt.c ****   test_wait_threads();
+ 350               		.loc 1 200 0
+ 351 01de 0E94 0000 		call test_wait_threads
+ 352               	.LVL43:
+ 205:../../test/testevt.c ****   chEvtInit(&es1);
+ 353               		.loc 1 205 0
+ 354 01e2 80E0      		ldi r24,lo8(es1)
+ 355 01e4 90E0      		ldi r25,hi8(es1)
+ 356 01e6 9093 0000 		sts es1+1,r25
+ 357 01ea 8093 0000 		sts es1,r24
+ 206:../../test/testevt.c ****   chEvtInit(&es2);
+ 358               		.loc 1 206 0
+ 359 01ee 80E0      		ldi r24,lo8(es2)
+ 360 01f0 90E0      		ldi r25,hi8(es2)
+ 361 01f2 9093 0000 		sts es2+1,r25
+ 362 01f6 8093 0000 		sts es2,r24
+ 207:../../test/testevt.c ****   chEvtRegisterMask(&es1, &el1, 1);
+ 363               		.loc 1 207 0
+ 364 01fa 41E0      		ldi r20,lo8(1)
+ 365 01fc BE01      		movw r22,r28
+ 366 01fe 695F      		subi r22,-7
+ 367 0200 7F4F      		sbci r23,-1
+ 368 0202 80E0      		ldi r24,lo8(es1)
+ 369 0204 90E0      		ldi r25,hi8(es1)
+ 370 0206 0E94 0000 		call chEvtRegisterMask
+ 371               	.LVL44:
+ 208:../../test/testevt.c ****   chEvtRegisterMask(&es2, &el2, 4);
+ 372               		.loc 1 208 0
+ 373 020a 44E0      		ldi r20,lo8(4)
+ 374 020c BE01      		movw r22,r28
+ 375 020e 6F5F      		subi r22,-1
+ 376 0210 7F4F      		sbci r23,-1
+ 377 0212 80E0      		ldi r24,lo8(es2)
+ 378 0214 90E0      		ldi r25,hi8(es2)
+ 379 0216 0E94 0000 		call chEvtRegisterMask
+ 380               	.LVL45:
+ 209:../../test/testevt.c ****   test_wait_tick();
+ 381               		.loc 1 209 0
+ 382 021a 0E94 0000 		call test_wait_tick
+ 383               	.LVL46:
+ 210:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 384               		.loc 1 210 0
+ 385 021e E090 0000 		lds r14,vtlist+6
+ 386 0222 F090 0000 		lds r15,vtlist+6+1
+ 387               	.LVL47:
+ 211:../../test/testevt.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority() - 1,
+ 388               		.loc 1 211 0
+ 389 0226 E091 0000 		lds r30,rlist+11
+ 390 022a F091 0000 		lds r31,rlist+11+1
+ 391 022e 4481      		ldd r20,Z+4
+ 392 0230 4150      		subi r20,lo8(-(-1))
+ 393 0232 00E0      		ldi r16,lo8(.LC0)
+ 394 0234 10E0      		ldi r17,hi8(.LC0)
+ 395 0236 20E0      		ldi r18,lo8(gs(thread2))
+ 396 0238 30E0      		ldi r19,hi8(gs(thread2))
+ 397 023a 67E9      		ldi r22,lo8(-105)
+ 398 023c 70E0      		ldi r23,0
+ 399 023e C601      		movw r24,r12
+ 400 0240 0E94 0000 		call chThdCreateStatic
+ 401               	.LVL48:
+ 402 0244 9093 0000 		sts threads+1,r25
+ 403 0248 8093 0000 		sts threads,r24
+ 213:../../test/testevt.c ****   m = chEvtWaitAll(5);
+ 404               		.loc 1 213 0
+ 405 024c 85E0      		ldi r24,lo8(5)
+ 406 024e 0E94 0000 		call chEvtWaitAll
+ 407               	.LVL49:
+ 214:../../test/testevt.c ****   test_assert_time_window(12, target_time, target_time + ALLOWED_DELAY);
+ 408               		.loc 1 214 0
+ 409 0252 A701      		movw r20,r14
+ 410 0254 495C      		subi r20,-55
+ 411 0256 5F4F      		sbci r21,-1
+ 210:../../test/testevt.c ****   target_time = chTimeNow() + MS2ST(50);
+ 412               		.loc 1 210 0
+ 413 0258 B701      		movw r22,r14
+ 414 025a 6E5C      		subi r22,-50
+ 415 025c 7F4F      		sbci r23,-1
+ 416               	.LVL50:
+ 214:../../test/testevt.c ****   test_assert_time_window(12, target_time, target_time + ALLOWED_DELAY);
+ 417               		.loc 1 214 0
+ 418 025e 8CE0      		ldi r24,lo8(12)
+ 419 0260 90E0      		ldi r25,0
+ 420 0262 0E94 0000 		call _test_assert_time_window
+ 421               	.LVL51:
+ 422 0266 8111      		cpse r24,__zero_reg__
+ 423 0268 00C0      		rjmp .L4
+ 215:../../test/testevt.c ****   m = chEvtGetAndClearEvents(ALL_EVENTS);
+ 424               		.loc 1 215 0
+ 425 026a 8FEF      		ldi r24,lo8(-1)
+ 426 026c 0E94 0000 		call chEvtGetAndClearEvents
+ 427               	.LVL52:
+ 216:../../test/testevt.c ****   test_assert(13, m == 0, "stuck event");
+ 428               		.loc 1 216 0
+ 429 0270 61E0      		ldi r22,lo8(1)
+ 430 0272 8111      		cpse r24,__zero_reg__
+ 431 0274 60E0      		ldi r22,0
+ 432               	.L15:
+ 433 0276 8DE0      		ldi r24,lo8(13)
+ 434 0278 90E0      		ldi r25,0
+ 435               	.LVL53:
+ 436 027a 0E94 0000 		call _test_assert
+ 437               	.LVL54:
+ 438 027e 8111      		cpse r24,__zero_reg__
+ 439 0280 00C0      		rjmp .L4
+ 217:../../test/testevt.c ****   test_wait_threads();
+ 440               		.loc 1 217 0
+ 441 0282 0E94 0000 		call test_wait_threads
+ 442               	.LVL55:
+ 218:../../test/testevt.c ****   chEvtUnregister(&es1, &el1);
+ 443               		.loc 1 218 0
+ 444 0286 BE01      		movw r22,r28
+ 445 0288 695F      		subi r22,-7
+ 446 028a 7F4F      		sbci r23,-1
+ 447 028c 80E0      		ldi r24,lo8(es1)
+ 448 028e 90E0      		ldi r25,hi8(es1)
+ 449 0290 0E94 0000 		call chEvtUnregister
+ 450               	.LVL56:
+ 219:../../test/testevt.c ****   chEvtUnregister(&es2, &el2);
+ 451               		.loc 1 219 0
+ 452 0294 BE01      		movw r22,r28
+ 453 0296 6F5F      		subi r22,-1
+ 454 0298 7F4F      		sbci r23,-1
+ 455 029a 80E0      		ldi r24,lo8(es2)
+ 456 029c 90E0      		ldi r25,hi8(es2)
+ 457 029e 0E94 0000 		call chEvtUnregister
+ 458               	.LVL57:
+ 220:../../test/testevt.c ****   test_assert(14, !chEvtIsListeningI(&es1), "stuck listener");
+ 459               		.loc 1 220 0
+ 460 02a2 61E0      		ldi r22,lo8(1)
+ 461 02a4 8091 0000 		lds r24,es1
+ 462 02a8 9091 0000 		lds r25,es1+1
+ 463 02ac 8050      		subi r24,lo8(es1)
+ 464 02ae 9040      		sbci r25,hi8(es1)
+ 465 02b0 01F0      		breq .L16
+ 466 02b2 60E0      		ldi r22,0
+ 467               	.L16:
+ 468 02b4 8EE0      		ldi r24,lo8(14)
+ 469 02b6 90E0      		ldi r25,0
+ 470 02b8 0E94 0000 		call _test_assert
+ 471               	.LVL58:
+ 472 02bc 8111      		cpse r24,__zero_reg__
+ 473 02be 00C0      		rjmp .L4
+ 221:../../test/testevt.c ****   test_assert(15, !chEvtIsListeningI(&es2), "stuck listener");
+ 474               		.loc 1 221 0
+ 475 02c0 61E0      		ldi r22,lo8(1)
+ 476 02c2 8091 0000 		lds r24,es2
+ 477 02c6 9091 0000 		lds r25,es2+1
+ 478 02ca 8050      		subi r24,lo8(es2)
+ 479 02cc 9040      		sbci r25,hi8(es2)
+ 480 02ce 01F0      		breq .L17
+ 481 02d0 60E0      		ldi r22,0
+ 482               	.L17:
+ 483 02d2 8FE0      		ldi r24,lo8(15)
+ 484 02d4 90E0      		ldi r25,0
+ 485 02d6 0E94 0000 		call _test_assert
+ 486               	.LVL59:
+ 487 02da 00C0      		rjmp .L4
+ 488               	.LVL60:
+ 489               	.L57:
+ 163:../../test/testevt.c ****   test_assert(3, m == 0, "stuck event");
+ 490               		.loc 1 163 0
+ 491 02dc 60E0      		ldi r22,0
+ 492 02de 00C0      		rjmp .L8
+ 493               	.LFE15:
+ 496               	thread2:
+ 497               	.LFB14:
+ 140:../../test/testevt.c **** static msg_t thread2(void *p) {
+ 498               		.loc 1 140 0
+ 499               	.LVL61:
+ 500               	/* prologue: function */
+ 501               	/* frame size = 0 */
+ 502               	/* stack size = 0 */
+ 503               	.L__stack_usage = 0
+ 143:../../test/testevt.c ****   chEvtBroadcast(&es1);
+ 504               		.loc 1 143 0
+ 505 02e0 60E0      		ldi r22,0
+ 506 02e2 80E0      		ldi r24,lo8(es1)
+ 507 02e4 90E0      		ldi r25,hi8(es1)
+ 508               	.LVL62:
+ 509 02e6 0E94 0000 		call chEvtBroadcastFlags
+ 510               	.LVL63:
+ 144:../../test/testevt.c ****   chThdSleepMilliseconds(50);
+ 511               		.loc 1 144 0
+ 512 02ea 82E3      		ldi r24,lo8(50)
+ 513 02ec 90E0      		ldi r25,0
+ 514 02ee 0E94 0000 		call chThdSleep
+ 515               	.LVL64:
+ 145:../../test/testevt.c ****   chEvtBroadcast(&es2);
+ 516               		.loc 1 145 0
+ 517 02f2 60E0      		ldi r22,0
+ 518 02f4 80E0      		ldi r24,lo8(es2)
+ 519 02f6 90E0      		ldi r25,hi8(es2)
+ 520 02f8 0E94 0000 		call chEvtBroadcastFlags
+ 521               	.LVL65:
+ 147:../../test/testevt.c **** }
+ 522               		.loc 1 147 0
+ 523 02fc 80E0      		ldi r24,0
+ 524 02fe 90E0      		ldi r25,0
+ 525 0300 0895      		ret
+ 526               	.LFE14:
+ 529               	thread1:
+ 530               	.LFB13:
+ 133:../../test/testevt.c **** static msg_t thread1(void *p) {
+ 531               		.loc 1 133 0
+ 532               	.LVL66:
+ 533 0302 CF93      		push r28
+ 534               	.LCFI10:
+ 535 0304 DF93      		push r29
+ 536               	.LCFI11:
+ 537               	/* prologue: function */
+ 538               	/* frame size = 0 */
+ 539               	/* stack size = 2 */
+ 540               	.L__stack_usage = 2
+ 541 0306 EC01      		movw r28,r24
+ 135:../../test/testevt.c ****   chThdSleepMilliseconds(50);
+ 542               		.loc 1 135 0
+ 543 0308 82E3      		ldi r24,lo8(50)
+ 544 030a 90E0      		ldi r25,0
+ 545               	.LVL67:
+ 546 030c 0E94 0000 		call chThdSleep
+ 547               	.LVL68:
+ 136:../../test/testevt.c ****   chEvtSignal((Thread *)p, 1);
+ 548               		.loc 1 136 0
+ 549 0310 61E0      		ldi r22,lo8(1)
+ 550 0312 CE01      		movw r24,r28
+ 551 0314 0E94 0000 		call chEvtSignal
+ 552               	.LVL69:
+ 138:../../test/testevt.c **** }
+ 553               		.loc 1 138 0
+ 554 0318 80E0      		ldi r24,0
+ 555 031a 90E0      		ldi r25,0
+ 556               	/* epilogue start */
+ 557 031c DF91      		pop r29
+ 558 031e CF91      		pop r28
+ 559               	.LVL70:
+ 560 0320 0895      		ret
+ 561               	.LFE13:
+ 563               		.section	.rodata.str1.1
+ 564               	.LC1:
+ 565 0002 4142 4300 		.string	"ABC"
+ 566               		.text
+ 568               	evt1_execute:
+ 569               	.LFB11:
+  85:../../test/testevt.c **** static void evt1_execute(void) {
+ 570               		.loc 1 85 0
+ 571 0322 CF93      		push r28
+ 572               	.LCFI12:
+ 573 0324 DF93      		push r29
+ 574               	.LCFI13:
+ 575 0326 CDB7      		in r28,__SP_L__
+ 576 0328 DEB7      		in r29,__SP_H__
+ 577               	.LCFI14:
+ 578 032a 2C97      		sbiw r28,12
+ 579               	.LCFI15:
+ 580 032c 0FB6      		in __tmp_reg__,__SREG__
+ 581 032e F894      		cli
+ 582 0330 DEBF      		out __SP_H__,r29
+ 583 0332 0FBE      		out __SREG__,__tmp_reg__
+ 584 0334 CDBF      		out __SP_L__,r28
+ 585               	/* prologue: function */
+ 586               	/* frame size = 12 */
+ 587               	/* stack size = 14 */
+ 588               	.L__stack_usage = 14
+  91:../../test/testevt.c ****   chEvtInit(&es1);
+ 589               		.loc 1 91 0
+ 590 0336 80E0      		ldi r24,lo8(es1)
+ 591 0338 90E0      		ldi r25,hi8(es1)
+ 592 033a 9093 0000 		sts es1+1,r25
+ 593 033e 8093 0000 		sts es1,r24
+  92:../../test/testevt.c ****   chEvtRegisterMask(&es1, &el1, 1);
+ 594               		.loc 1 92 0
+ 595 0342 41E0      		ldi r20,lo8(1)
+ 596 0344 BE01      		movw r22,r28
+ 597 0346 695F      		subi r22,-7
+ 598 0348 7F4F      		sbci r23,-1
+ 599 034a 0E94 0000 		call chEvtRegisterMask
+ 600               	.LVL71:
+  93:../../test/testevt.c ****   chEvtRegisterMask(&es1, &el2, 2);
+ 601               		.loc 1 93 0
+ 602 034e 42E0      		ldi r20,lo8(2)
+ 603 0350 BE01      		movw r22,r28
+ 604 0352 6F5F      		subi r22,-1
+ 605 0354 7F4F      		sbci r23,-1
+ 606 0356 80E0      		ldi r24,lo8(es1)
+ 607 0358 90E0      		ldi r25,hi8(es1)
+ 608 035a 0E94 0000 		call chEvtRegisterMask
+ 609               	.LVL72:
+  94:../../test/testevt.c ****   test_assert(1, chEvtIsListeningI(&es1), "no listener");
+ 610               		.loc 1 94 0
+ 611 035e 61E0      		ldi r22,lo8(1)
+ 612 0360 8091 0000 		lds r24,es1
+ 613 0364 9091 0000 		lds r25,es1+1
+ 614 0368 8050      		subi r24,lo8(es1)
+ 615 036a 9040      		sbci r25,hi8(es1)
+ 616 036c 01F0      		breq .L69
+ 617 036e 81E0      		ldi r24,lo8(1)
+ 618 0370 90E0      		ldi r25,0
+ 619 0372 0E94 0000 		call _test_assert
+ 620               	.LVL73:
+ 621 0376 8823      		tst r24
+ 622 0378 01F0      		breq .L70
+ 623               	.L60:
+ 624               	/* epilogue start */
+ 105:../../test/testevt.c **** }
+ 625               		.loc 1 105 0
+ 626 037a 2C96      		adiw r28,12
+ 627 037c 0FB6      		in __tmp_reg__,__SREG__
+ 628 037e F894      		cli
+ 629 0380 DEBF      		out __SP_H__,r29
+ 630 0382 0FBE      		out __SREG__,__tmp_reg__
+ 631 0384 CDBF      		out __SP_L__,r28
+ 632 0386 DF91      		pop r29
+ 633 0388 CF91      		pop r28
+ 634 038a 0895      		ret
+ 635               	.L69:
+  94:../../test/testevt.c ****   test_assert(1, chEvtIsListeningI(&es1), "no listener");
+ 636               		.loc 1 94 0
+ 637 038c 60E0      		ldi r22,0
+ 638 038e 81E0      		ldi r24,lo8(1)
+ 639 0390 90E0      		ldi r25,0
+ 640 0392 0E94 0000 		call _test_assert
+ 641               	.LVL74:
+ 642 0396 8111      		cpse r24,__zero_reg__
+ 643 0398 00C0      		rjmp .L60
+ 644               	.L70:
+  95:../../test/testevt.c ****   chEvtUnregister(&es1, &el1);
+ 645               		.loc 1 95 0
+ 646 039a BE01      		movw r22,r28
+ 647 039c 695F      		subi r22,-7
+ 648 039e 7F4F      		sbci r23,-1
+ 649 03a0 80E0      		ldi r24,lo8(es1)
+ 650 03a2 90E0      		ldi r25,hi8(es1)
+ 651 03a4 0E94 0000 		call chEvtUnregister
+ 652               	.LVL75:
+  96:../../test/testevt.c ****   test_assert(2, chEvtIsListeningI(&es1), "no listener");
+ 653               		.loc 1 96 0
+ 654 03a8 61E0      		ldi r22,lo8(1)
+ 655 03aa 8091 0000 		lds r24,es1
+ 656 03ae 9091 0000 		lds r25,es1+1
+ 657 03b2 8050      		subi r24,lo8(es1)
+ 658 03b4 9040      		sbci r25,hi8(es1)
+ 659 03b6 01F0      		breq .L71
+ 660               	.L63:
+ 661 03b8 82E0      		ldi r24,lo8(2)
+ 662 03ba 90E0      		ldi r25,0
+ 663 03bc 0E94 0000 		call _test_assert
+ 664               	.LVL76:
+ 665 03c0 8111      		cpse r24,__zero_reg__
+ 666 03c2 00C0      		rjmp .L60
+  97:../../test/testevt.c ****   chEvtUnregister(&es1, &el2);
+ 667               		.loc 1 97 0
+ 668 03c4 BE01      		movw r22,r28
+ 669 03c6 6F5F      		subi r22,-1
+ 670 03c8 7F4F      		sbci r23,-1
+ 671 03ca 80E0      		ldi r24,lo8(es1)
+ 672 03cc 90E0      		ldi r25,hi8(es1)
+ 673 03ce 0E94 0000 		call chEvtUnregister
+ 674               	.LVL77:
+  98:../../test/testevt.c ****   test_assert(3, !chEvtIsListeningI(&es1), "stuck listener");
+ 675               		.loc 1 98 0
+ 676 03d2 61E0      		ldi r22,lo8(1)
+ 677 03d4 8091 0000 		lds r24,es1
+ 678 03d8 9091 0000 		lds r25,es1+1
+ 679 03dc 8050      		subi r24,lo8(es1)
+ 680 03de 9040      		sbci r25,hi8(es1)
+ 681 03e0 01F0      		breq .L64
+ 682 03e2 60E0      		ldi r22,0
+ 683               	.L64:
+ 684 03e4 83E0      		ldi r24,lo8(3)
+ 685 03e6 90E0      		ldi r25,0
+ 686 03e8 0E94 0000 		call _test_assert
+ 687               	.LVL78:
+ 688 03ec 8111      		cpse r24,__zero_reg__
+ 689 03ee 00C0      		rjmp .L60
+ 103:../../test/testevt.c ****   chEvtDispatch(evhndl, 7);
+ 690               		.loc 1 103 0
+ 691 03f0 67E0      		ldi r22,lo8(7)
+ 692 03f2 80E0      		ldi r24,lo8(evhndl)
+ 693 03f4 90E0      		ldi r25,hi8(evhndl)
+ 694 03f6 0E94 0000 		call chEvtDispatch
+ 695               	.LVL79:
+ 104:../../test/testevt.c ****   test_assert_sequence(4, "ABC");
+ 696               		.loc 1 104 0
+ 697 03fa 60E0      		ldi r22,lo8(.LC1)
+ 698 03fc 70E0      		ldi r23,hi8(.LC1)
+ 699 03fe 84E0      		ldi r24,lo8(4)
+ 700 0400 90E0      		ldi r25,0
+ 701 0402 0E94 0000 		call _test_assert_sequence
+ 702               	.LVL80:
+ 703 0406 00C0      		rjmp .L60
+ 704               	.L71:
+  96:../../test/testevt.c ****   test_assert(2, chEvtIsListeningI(&es1), "no listener");
+ 705               		.loc 1 96 0
+ 706 0408 60E0      		ldi r22,0
+ 707 040a 00C0      		rjmp .L63
+ 708               	.LFE11:
+ 711               	h3:
+ 712               	.LFB10:
+  82:../../test/testevt.c **** static void h3(eventid_t id) {(void)id;test_emit_token('C');}
+ 713               		.loc 1 82 0
+ 714               	.LVL81:
+ 715               	/* prologue: function */
+ 716               	/* frame size = 0 */
+ 717               	/* stack size = 0 */
+ 718               	.L__stack_usage = 0
+  82:../../test/testevt.c **** static void h3(eventid_t id) {(void)id;test_emit_token('C');}
+ 719               		.loc 1 82 0
+ 720 040c 83E4      		ldi r24,lo8(67)
+ 721               	.LVL82:
+ 722 040e 0C94 0000 		jmp test_emit_token
+ 723               	.LVL83:
+ 724               	.LFE10:
+ 727               	h2:
+ 728               	.LFB9:
+  81:../../test/testevt.c **** static void h2(eventid_t id) {(void)id;test_emit_token('B');}
+ 729               		.loc 1 81 0
+ 730               	.LVL84:
+ 731               	/* prologue: function */
+ 732               	/* frame size = 0 */
+ 733               	/* stack size = 0 */
+ 734               	.L__stack_usage = 0
+  81:../../test/testevt.c **** static void h2(eventid_t id) {(void)id;test_emit_token('B');}
+ 735               		.loc 1 81 0
+ 736 0412 82E4      		ldi r24,lo8(66)
+ 737               	.LVL85:
+ 738 0414 0C94 0000 		jmp test_emit_token
+ 739               	.LVL86:
+ 740               	.LFE9:
+ 743               	h1:
+ 744               	.LFB8:
+  80:../../test/testevt.c **** static void h1(eventid_t id) {(void)id;test_emit_token('A');}
+ 745               		.loc 1 80 0
+ 746               	.LVL87:
+ 747               	/* prologue: function */
+ 748               	/* frame size = 0 */
+ 749               	/* stack size = 0 */
+ 750               	.L__stack_usage = 0
+  80:../../test/testevt.c **** static void h1(eventid_t id) {(void)id;test_emit_token('A');}
+ 751               		.loc 1 80 0
+ 752 0418 81E4      		ldi r24,lo8(65)
+ 753               	.LVL88:
+ 754 041a 0C94 0000 		jmp test_emit_token
+ 755               	.LVL89:
+ 756               	.LFE8:
+ 759               	evt3_execute:
+ 760               	.LFB17:
+ 250:../../test/testevt.c **** }
+ 251:../../test/testevt.c **** 
+ 252:../../test/testevt.c **** static void evt3_execute(void) {
+ 761               		.loc 1 252 0
+ 762               	/* prologue: function */
+ 763               	/* frame size = 0 */
+ 764               	/* stack size = 0 */
+ 765               	.L__stack_usage = 0
+ 253:../../test/testevt.c ****   eventmask_t m;
+ 254:../../test/testevt.c **** 
+ 255:../../test/testevt.c ****   /*
+ 256:../../test/testevt.c ****    * Tests various timeout situations.
+ 257:../../test/testevt.c ****    */
+ 258:../../test/testevt.c ****   m = chEvtWaitOneTimeout(ALL_EVENTS, TIME_IMMEDIATE);
+ 766               		.loc 1 258 0
+ 767 041e 60E0      		ldi r22,0
+ 768 0420 70E0      		ldi r23,0
+ 769 0422 8FEF      		ldi r24,lo8(-1)
+ 770 0424 0E94 0000 		call chEvtWaitOneTimeout
+ 771               	.LVL90:
+ 259:../../test/testevt.c ****   test_assert(1, m == 0, "spurious event");
+ 772               		.loc 1 259 0
+ 773 0428 61E0      		ldi r22,lo8(1)
+ 774 042a 8111      		cpse r24,__zero_reg__
+ 775 042c 60E0      		ldi r22,0
+ 776               	.L76:
+ 777 042e 81E0      		ldi r24,lo8(1)
+ 778 0430 90E0      		ldi r25,0
+ 779               	.LVL91:
+ 780 0432 0E94 0000 		call _test_assert
+ 781               	.LVL92:
+ 782 0436 8111      		cpse r24,__zero_reg__
+ 783               	.L75:
+ 784 0438 0895      		ret
+ 785               	.L103:
+ 260:../../test/testevt.c ****   m = chEvtWaitAnyTimeout(ALL_EVENTS, TIME_IMMEDIATE);
+ 786               		.loc 1 260 0
+ 787 043a 60E0      		ldi r22,0
+ 788 043c 70E0      		ldi r23,0
+ 789 043e 8FEF      		ldi r24,lo8(-1)
+ 790 0440 0E94 0000 		call chEvtWaitAnyTimeout
+ 791               	.LVL93:
+ 261:../../test/testevt.c ****   test_assert(2, m == 0, "spurious event");
+ 792               		.loc 1 261 0
+ 793 0444 61E0      		ldi r22,lo8(1)
+ 794 0446 8111      		cpse r24,__zero_reg__
+ 795 0448 00C0      		rjmp .L104
+ 796 044a 82E0      		ldi r24,lo8(2)
+ 797 044c 90E0      		ldi r25,0
+ 798               	.LVL94:
+ 799 044e 0E94 0000 		call _test_assert
+ 800               	.LVL95:
+ 801 0452 8111      		cpse r24,__zero_reg__
+ 802 0454 00C0      		rjmp .L75
+ 803               	.L106:
+ 262:../../test/testevt.c ****   m = chEvtWaitAllTimeout(ALL_EVENTS, TIME_IMMEDIATE);
+ 804               		.loc 1 262 0
+ 805 0456 60E0      		ldi r22,0
+ 806 0458 70E0      		ldi r23,0
+ 807 045a 8FEF      		ldi r24,lo8(-1)
+ 808 045c 0E94 0000 		call chEvtWaitAllTimeout
+ 809               	.LVL96:
+ 263:../../test/testevt.c ****   test_assert(3, m == 0, "spurious event");
+ 810               		.loc 1 263 0
+ 811 0460 61E0      		ldi r22,lo8(1)
+ 812 0462 8111      		cpse r24,__zero_reg__
+ 813 0464 60E0      		ldi r22,0
+ 814               	.L81:
+ 815 0466 83E0      		ldi r24,lo8(3)
+ 816 0468 90E0      		ldi r25,0
+ 817               	.LVL97:
+ 818 046a 0E94 0000 		call _test_assert
+ 819               	.LVL98:
+ 820 046e 8111      		cpse r24,__zero_reg__
+ 821 0470 00C0      		rjmp .L75
+ 822               	.LBB4:
+ 823               	.LBB5:
+ 264:../../test/testevt.c ****   m = chEvtWaitOneTimeout(ALL_EVENTS, 10);
+ 824               		.loc 1 264 0
+ 825 0472 6AE0      		ldi r22,lo8(10)
+ 826 0474 70E0      		ldi r23,0
+ 827 0476 8FEF      		ldi r24,lo8(-1)
+ 828 0478 0E94 0000 		call chEvtWaitOneTimeout
+ 829               	.LVL99:
+ 265:../../test/testevt.c ****   test_assert(4, m == 0, "spurious event");
+ 830               		.loc 1 265 0
+ 831 047c 61E0      		ldi r22,lo8(1)
+ 832 047e 8111      		cpse r24,__zero_reg__
+ 833 0480 00C0      		rjmp .L105
+ 834               	.L82:
+ 835 0482 84E0      		ldi r24,lo8(4)
+ 836 0484 90E0      		ldi r25,0
+ 837               	.LVL100:
+ 838 0486 0E94 0000 		call _test_assert
+ 839               	.LVL101:
+ 840 048a 8111      		cpse r24,__zero_reg__
+ 841 048c 00C0      		rjmp .L75
+ 266:../../test/testevt.c ****   m = chEvtWaitAnyTimeout(ALL_EVENTS, 10);
+ 842               		.loc 1 266 0
+ 843 048e 6AE0      		ldi r22,lo8(10)
+ 844 0490 70E0      		ldi r23,0
+ 845 0492 8FEF      		ldi r24,lo8(-1)
+ 846 0494 0E94 0000 		call chEvtWaitAnyTimeout
+ 847               	.LVL102:
+ 267:../../test/testevt.c ****   test_assert(5, m == 0, "spurious event");
+ 848               		.loc 1 267 0
+ 849 0498 61E0      		ldi r22,lo8(1)
+ 850 049a 8111      		cpse r24,__zero_reg__
+ 851 049c 60E0      		ldi r22,0
+ 852               	.L83:
+ 853 049e 85E0      		ldi r24,lo8(5)
+ 854 04a0 90E0      		ldi r25,0
+ 855               	.LVL103:
+ 856 04a2 0E94 0000 		call _test_assert
+ 857               	.LVL104:
+ 858 04a6 8111      		cpse r24,__zero_reg__
+ 859 04a8 00C0      		rjmp .L75
+ 268:../../test/testevt.c ****   m = chEvtWaitAllTimeout(ALL_EVENTS, 10);
+ 860               		.loc 1 268 0
+ 861 04aa 6AE0      		ldi r22,lo8(10)
+ 862 04ac 70E0      		ldi r23,0
+ 863 04ae 8FEF      		ldi r24,lo8(-1)
+ 864 04b0 0E94 0000 		call chEvtWaitAllTimeout
+ 865               	.LVL105:
+ 269:../../test/testevt.c ****   test_assert(6, m == 0, "spurious event");
+ 866               		.loc 1 269 0
+ 867 04b4 61E0      		ldi r22,lo8(1)
+ 868 04b6 8111      		cpse r24,__zero_reg__
+ 869 04b8 60E0      		ldi r22,0
+ 870               	.L84:
+ 871 04ba 86E0      		ldi r24,lo8(6)
+ 872 04bc 90E0      		ldi r25,0
+ 873               	.LVL106:
+ 874 04be 0C94 0000 		jmp _test_assert
+ 875               	.LVL107:
+ 876               	.L104:
+ 877               	.LBE5:
+ 878               	.LBE4:
+ 261:../../test/testevt.c ****   test_assert(2, m == 0, "spurious event");
+ 879               		.loc 1 261 0
+ 880 04c2 60E0      		ldi r22,0
+ 881 04c4 82E0      		ldi r24,lo8(2)
+ 882 04c6 90E0      		ldi r25,0
+ 883               	.LVL108:
+ 884 04c8 0E94 0000 		call _test_assert
+ 885               	.LVL109:
+ 886 04cc 8111      		cpse r24,__zero_reg__
+ 887 04ce 00C0      		rjmp .L75
+ 888 04d0 00C0      		rjmp .L106
+ 889               	.LVL110:
+ 890               	.L105:
+ 891               	.LBB7:
+ 892               	.LBB6:
+ 265:../../test/testevt.c ****   test_assert(4, m == 0, "spurious event");
+ 893               		.loc 1 265 0
+ 894 04d2 60E0      		ldi r22,0
+ 895 04d4 00C0      		rjmp .L82
+ 896               	.LBE6:
+ 897               	.LBE7:
+ 898               	.LFE17:
+ 900               	.global	patternevt
+ 901               		.section	.rodata
+ 904               	patternevt:
+ 905 0000 0000      		.word	testevt1
+ 906 0002 0000      		.word	testevt2
+ 907 0004 0000      		.word	testevt3
+ 908 0006 0000      		.word	0
+ 909               	.global	testevt3
+ 910               		.section	.rodata.str1.1
+ 911               	.LC2:
+ 912 0006 4576 656E 		.string	"Events, timeouts"
+ 912      7473 2C20 
+ 912      7469 6D65 
+ 912      6F75 7473 
+ 912      00
+ 913               		.section	.rodata
+ 916               	testevt3:
+ 917 0008 0000      		.word	.LC2
+ 918 000a 0000      		.word	gs(evt3_setup)
+ 919 000c 0000      		.word	0
+ 920 000e 0000      		.word	gs(evt3_execute)
+ 921               	.global	testevt2
+ 922               		.section	.rodata.str1.1
+ 923               	.LC3:
+ 924 0017 4576 656E 		.string	"Events, wait and broadcast"
+ 924      7473 2C20 
+ 924      7761 6974 
+ 924      2061 6E64 
+ 924      2062 726F 
+ 925               		.section	.rodata
+ 928               	testevt2:
+ 929 0010 0000      		.word	.LC3
+ 930 0012 0000      		.word	gs(evt2_setup)
+ 931 0014 0000      		.word	0
+ 932 0016 0000      		.word	gs(evt2_execute)
+ 933               	.global	testevt1
+ 934               		.section	.rodata.str1.1
+ 935               	.LC4:
+ 936 0032 4576 656E 		.string	"Events, registration and dispatch"
+ 936      7473 2C20 
+ 936      7265 6769 
+ 936      7374 7261 
+ 936      7469 6F6E 
+ 937               		.section	.rodata
+ 940               	testevt1:
+ 941 0018 0000      		.word	.LC4
+ 942 001a 0000      		.word	gs(evt1_setup)
+ 943 001c 0000      		.word	0
+ 944 001e 0000      		.word	gs(evt1_execute)
+ 945               		.data
+ 948               	es1:
+ 949 0000 0000      		.word	es1
+ 950               		.section	.rodata
+ 953               	evhndl:
+ 954 0020 0000      		.word	gs(h1)
+ 955 0022 0000      		.word	gs(h2)
+ 956 0024 0000      		.word	gs(h3)
+ 957               		.data
+ 960               	es2:
+ 961 0002 0000      		.word	es2
+ 1156               	.Letext0:
+ 1157               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 1158               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 1159               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 1160               		.file 5 "../../os/kernel/include/chlists.h"
+ 1161               		.file 6 "../../os/kernel/include/chthreads.h"
+ 1162               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 1163               		.file 8 "../../os/kernel/include/chvt.h"
+ 1164               		.file 9 "../../os/kernel/include/chschd.h"
+ 1165               		.file 10 "../../os/kernel/include/chmtx.h"
+ 1166               		.file 11 "../../os/kernel/include/chevents.h"
+ 1167               		.file 12 "../../test/test.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testevt.c
+     /tmp/ccwrItYX.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccwrItYX.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccwrItYX.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccwrItYX.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/ccwrItYX.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccwrItYX.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccwrItYX.s:11     .text:0000000000000000 evt3_setup
+     /tmp/ccwrItYX.s:26     .text:0000000000000006 evt2_setup
+     /tmp/ccwrItYX.s:40     .text:000000000000000c evt1_setup
+     /tmp/ccwrItYX.s:58     .text:0000000000000012 evt2_execute
+     /tmp/ccwrItYX.s:529    .text:0000000000000302 thread1
+     /tmp/ccwrItYX.s:948    .data:0000000000000000 es1
+     /tmp/ccwrItYX.s:960    .data:0000000000000002 es2
+     /tmp/ccwrItYX.s:496    .text:00000000000002e0 thread2
+     /tmp/ccwrItYX.s:568    .text:0000000000000322 evt1_execute
+     /tmp/ccwrItYX.s:953    .rodata:0000000000000020 evhndl
+     /tmp/ccwrItYX.s:711    .text:000000000000040c h3
+     /tmp/ccwrItYX.s:727    .text:0000000000000412 h2
+     /tmp/ccwrItYX.s:743    .text:0000000000000418 h1
+     /tmp/ccwrItYX.s:759    .text:000000000000041e evt3_execute
+     /tmp/ccwrItYX.s:904    .rodata:0000000000000000 patternevt
+     /tmp/ccwrItYX.s:940    .rodata:0000000000000018 testevt1
+     /tmp/ccwrItYX.s:928    .rodata:0000000000000010 testevt2
+     /tmp/ccwrItYX.s:916    .rodata:0000000000000008 testevt3
+
+UNDEFINED SYMBOLS
+chEvtGetAndClearEvents
+chEvtAddEvents
+chEvtWaitOne
+_test_assert
+test_wait_tick
+vtlist
+rlist
+wa
+chThdCreateStatic
+threads
+_test_assert_time_window
+test_wait_threads
+chEvtWaitAny
+chEvtRegisterMask
+chEvtWaitAll
+chEvtUnregister
+chEvtBroadcastFlags
+chThdSleep
+chEvtSignal
+chEvtDispatch
+_test_assert_sequence
+test_emit_token
+chEvtWaitOneTimeout
+chEvtWaitAnyTimeout
+chEvtWaitAllTimeout
+__do_copy_data

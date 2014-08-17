@@ -1,0 +1,1513 @@
+   1               		.file	"testqueues.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__RAMPZ__ = 0x3b
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+  11               	notify:
+  12               	.LFB7:
+  13               		.file 1 "../../test/testqueues.c"
+   1:../../test/testqueues.c **** /*
+   2:../../test/testqueues.c ****     ChibiOS/RT - Copyright (C) 2006-2013 Giovanni Di Sirio
+   3:../../test/testqueues.c **** 
+   4:../../test/testqueues.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../test/testqueues.c ****     you may not use this file except in compliance with the License.
+   6:../../test/testqueues.c ****     You may obtain a copy of the License at
+   7:../../test/testqueues.c **** 
+   8:../../test/testqueues.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../test/testqueues.c **** 
+  10:../../test/testqueues.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../test/testqueues.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../test/testqueues.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../test/testqueues.c ****     See the License for the specific language governing permissions and
+  14:../../test/testqueues.c ****     limitations under the License.
+  15:../../test/testqueues.c **** */
+  16:../../test/testqueues.c **** 
+  17:../../test/testqueues.c **** #include "ch.h"
+  18:../../test/testqueues.c **** #include "test.h"
+  19:../../test/testqueues.c **** 
+  20:../../test/testqueues.c **** /**
+  21:../../test/testqueues.c ****  * @page test_queues I/O Queues test
+  22:../../test/testqueues.c ****  *
+  23:../../test/testqueues.c ****  * File: @ref testqueues.c
+  24:../../test/testqueues.c ****  *
+  25:../../test/testqueues.c ****  * <h2>Description</h2>
+  26:../../test/testqueues.c ****  * This module implements the test sequence for the @ref io_queues subsystem.
+  27:../../test/testqueues.c ****  * The tests are performed by inserting and removing data from queues and by
+  28:../../test/testqueues.c ****  * checking both the queues status and the correct sequence of the extracted
+  29:../../test/testqueues.c ****  * data.
+  30:../../test/testqueues.c ****  *
+  31:../../test/testqueues.c ****  * <h2>Objective</h2>
+  32:../../test/testqueues.c ****  * Objective of the test module is to cover 100% of the @ref io_queues code.<br>
+  33:../../test/testqueues.c ****  * Note that the @ref io_queues subsystem depends on the @ref semaphores
+  34:../../test/testqueues.c ****  * subsystem that has to met its testing objectives as well.
+  35:../../test/testqueues.c ****  *
+  36:../../test/testqueues.c ****  * <h2>Preconditions</h2>
+  37:../../test/testqueues.c ****  * The module requires the following kernel options:
+  38:../../test/testqueues.c ****  * - @p CH_USE_QUEUES (and dependent options)
+  39:../../test/testqueues.c ****  * .
+  40:../../test/testqueues.c ****  * In case some of the required options are not enabled then some or all tests
+  41:../../test/testqueues.c ****  * may be skipped.
+  42:../../test/testqueues.c ****  *
+  43:../../test/testqueues.c ****  * <h2>Test Cases</h2>
+  44:../../test/testqueues.c ****  * - @subpage test_queues_001
+  45:../../test/testqueues.c ****  * - @subpage test_queues_002
+  46:../../test/testqueues.c ****  * .
+  47:../../test/testqueues.c ****  * @file testqueues.c
+  48:../../test/testqueues.c ****  * @brief I/O Queues test source file
+  49:../../test/testqueues.c ****  * @file testqueues.h
+  50:../../test/testqueues.c ****  * @brief I/O Queues test header file
+  51:../../test/testqueues.c ****  */
+  52:../../test/testqueues.c **** 
+  53:../../test/testqueues.c **** #if CH_USE_QUEUES || defined(__DOXYGEN__)
+  54:../../test/testqueues.c **** 
+  55:../../test/testqueues.c **** #define TEST_QUEUES_SIZE 4
+  56:../../test/testqueues.c **** 
+  57:../../test/testqueues.c **** static void notify(GenericQueue *qp) {
+  14               		.loc 1 57 0
+  15               	.LVL0:
+  16               	/* prologue: function */
+  17               	/* frame size = 0 */
+  18               	/* stack size = 0 */
+  19               	.L__stack_usage = 0
+  20 0000 0895      		ret
+  21               	.LFE7:
+  24               	thread2:
+  25               	.LFB12:
+  58:../../test/testqueues.c ****   (void)qp;
+  59:../../test/testqueues.c **** }
+  60:../../test/testqueues.c **** 
+  61:../../test/testqueues.c **** /*
+  62:../../test/testqueues.c ****  * Note, the static initializers are not really required because the
+  63:../../test/testqueues.c ****  * variables are explicitly initialized in each test case. It is done in order
+  64:../../test/testqueues.c ****  * to test the macros.
+  65:../../test/testqueues.c ****  */
+  66:../../test/testqueues.c **** static INPUTQUEUE_DECL(iq, test.wa.T0, TEST_QUEUES_SIZE, notify, NULL);
+  67:../../test/testqueues.c **** static OUTPUTQUEUE_DECL(oq, test.wa.T1, TEST_QUEUES_SIZE, notify, NULL);
+  68:../../test/testqueues.c **** 
+  69:../../test/testqueues.c **** /**
+  70:../../test/testqueues.c ****  * @page test_queues_001 Input Queues functionality and APIs
+  71:../../test/testqueues.c ****  *
+  72:../../test/testqueues.c ****  * <h2>Description</h2>
+  73:../../test/testqueues.c ****  * This test case tests sysnchronos and asynchronous operations on an
+  74:../../test/testqueues.c ****  * @p InputQueue object including timeouts. The queue state must remain
+  75:../../test/testqueues.c ****  * consistent through the whole test.
+  76:../../test/testqueues.c ****  */
+  77:../../test/testqueues.c **** 
+  78:../../test/testqueues.c **** static void queues1_setup(void) {
+  79:../../test/testqueues.c **** 
+  80:../../test/testqueues.c ****   chIQInit(&iq, wa[0], TEST_QUEUES_SIZE, notify, NULL);
+  81:../../test/testqueues.c **** }
+  82:../../test/testqueues.c **** 
+  83:../../test/testqueues.c **** static msg_t thread1(void *p) {
+  84:../../test/testqueues.c **** 
+  85:../../test/testqueues.c ****   (void)p;
+  86:../../test/testqueues.c ****   chIQGetTimeout(&iq, MS2ST(200));
+  87:../../test/testqueues.c ****   return 0;
+  88:../../test/testqueues.c **** }
+  89:../../test/testqueues.c **** 
+  90:../../test/testqueues.c **** static void queues1_execute(void) {
+  91:../../test/testqueues.c ****   unsigned i;
+  92:../../test/testqueues.c ****   size_t n;
+  93:../../test/testqueues.c **** 
+  94:../../test/testqueues.c ****   /* Initial empty state */
+  95:../../test/testqueues.c ****   test_assert_lock(1, chIQIsEmptyI(&iq), "not empty");
+  96:../../test/testqueues.c **** 
+  97:../../test/testqueues.c ****   /* Queue filling */
+  98:../../test/testqueues.c ****   chSysLock();
+  99:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 100:../../test/testqueues.c ****     chIQPutI(&iq, 'A' + i);
+ 101:../../test/testqueues.c ****   chSysUnlock();
+ 102:../../test/testqueues.c ****   test_assert_lock(2, chIQIsFullI(&iq), "still has space");
+ 103:../../test/testqueues.c ****   test_assert_lock(3, chIQPutI(&iq, 0) == Q_FULL, "failed to report Q_FULL");
+ 104:../../test/testqueues.c **** 
+ 105:../../test/testqueues.c ****   /* Queue emptying */
+ 106:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 107:../../test/testqueues.c ****     test_emit_token(chIQGet(&iq));
+ 108:../../test/testqueues.c ****   test_assert_lock(4, chIQIsEmptyI(&iq), "still full");
+ 109:../../test/testqueues.c ****   test_assert_sequence(5, "ABCD");
+ 110:../../test/testqueues.c **** 
+ 111:../../test/testqueues.c ****   /* Queue filling again */
+ 112:../../test/testqueues.c ****   chSysLock();
+ 113:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 114:../../test/testqueues.c ****     chIQPutI(&iq, 'A' + i);
+ 115:../../test/testqueues.c ****   chSysUnlock();
+ 116:../../test/testqueues.c **** 
+ 117:../../test/testqueues.c ****   /* Reading the whole thing */
+ 118:../../test/testqueues.c ****   n = chIQReadTimeout(&iq, wa[1], TEST_QUEUES_SIZE * 2, TIME_IMMEDIATE);
+ 119:../../test/testqueues.c ****   test_assert(6, n == TEST_QUEUES_SIZE, "wrong returned size");
+ 120:../../test/testqueues.c ****   test_assert_lock(7, chIQIsEmptyI(&iq), "still full");
+ 121:../../test/testqueues.c **** 
+ 122:../../test/testqueues.c ****   /* Queue filling again */
+ 123:../../test/testqueues.c ****   chSysLock();
+ 124:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 125:../../test/testqueues.c ****     chIQPutI(&iq, 'A' + i);
+ 126:../../test/testqueues.c ****   chSysUnlock();
+ 127:../../test/testqueues.c **** 
+ 128:../../test/testqueues.c ****   /* Partial reads */
+ 129:../../test/testqueues.c ****   n = chIQReadTimeout(&iq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 130:../../test/testqueues.c ****   test_assert(8, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 131:../../test/testqueues.c ****   n = chIQReadTimeout(&iq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 132:../../test/testqueues.c ****   test_assert(9, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 133:../../test/testqueues.c ****   test_assert_lock(10, chIQIsEmptyI(&iq), "still full");
+ 134:../../test/testqueues.c **** 
+ 135:../../test/testqueues.c ****   /* Testing reset */
+ 136:../../test/testqueues.c ****   chSysLock();
+ 137:../../test/testqueues.c ****   chIQPutI(&iq, 0);
+ 138:../../test/testqueues.c ****   chIQResetI(&iq);
+ 139:../../test/testqueues.c ****   chSysUnlock();
+ 140:../../test/testqueues.c ****   test_assert_lock(11, chIQGetFullI(&iq) == 0, "still full");
+ 141:../../test/testqueues.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
+ 142:../../test/testqueues.c ****   test_assert_lock(12, chIQGetFullI(&iq) == 0, "not empty");
+ 143:../../test/testqueues.c ****   test_wait_threads();
+ 144:../../test/testqueues.c **** 
+ 145:../../test/testqueues.c ****   /* Timeout */
+ 146:../../test/testqueues.c ****   test_assert(13, chIQGetTimeout(&iq, 10) == Q_TIMEOUT, "wrong timeout return");
+ 147:../../test/testqueues.c **** }
+ 148:../../test/testqueues.c **** 
+ 149:../../test/testqueues.c **** ROMCONST struct testcase testqueues1 = {
+ 150:../../test/testqueues.c ****   "Queues, input queues",
+ 151:../../test/testqueues.c ****   queues1_setup,
+ 152:../../test/testqueues.c ****   NULL,
+ 153:../../test/testqueues.c ****   queues1_execute
+ 154:../../test/testqueues.c **** };
+ 155:../../test/testqueues.c **** 
+ 156:../../test/testqueues.c **** /**
+ 157:../../test/testqueues.c ****  * @page test_queues_002 Output Queues functionality and APIs
+ 158:../../test/testqueues.c ****  *
+ 159:../../test/testqueues.c ****  * <h2>Description</h2>
+ 160:../../test/testqueues.c ****  * This test case tests sysnchronos and asynchronous operations on an
+ 161:../../test/testqueues.c ****  * @p OutputQueue object including timeouts. The queue state must remain
+ 162:../../test/testqueues.c ****  * consistent through the whole test.
+ 163:../../test/testqueues.c ****  */
+ 164:../../test/testqueues.c **** 
+ 165:../../test/testqueues.c **** static void queues2_setup(void) {
+ 166:../../test/testqueues.c **** 
+ 167:../../test/testqueues.c ****   chOQInit(&oq, wa[0], TEST_QUEUES_SIZE, notify, NULL);
+ 168:../../test/testqueues.c **** }
+ 169:../../test/testqueues.c **** 
+ 170:../../test/testqueues.c **** static msg_t thread2(void *p) {
+  26               		.loc 1 170 0
+  27               	.LVL1:
+  28               	/* prologue: function */
+  29               	/* frame size = 0 */
+  30               	/* stack size = 0 */
+  31               	.L__stack_usage = 0
+ 171:../../test/testqueues.c **** 
+ 172:../../test/testqueues.c ****   (void)p;
+ 173:../../test/testqueues.c ****   chOQPutTimeout(&oq, 0, MS2ST(200));
+  32               		.loc 1 173 0
+  33 0002 48EC      		ldi r20,lo8(-56)
+  34 0004 50E0      		ldi r21,0
+  35 0006 60E0      		ldi r22,0
+  36 0008 80E0      		ldi r24,lo8(oq)
+  37 000a 90E0      		ldi r25,hi8(oq)
+  38               	.LVL2:
+  39 000c 0E94 0000 		call chOQPutTimeout
+  40               	.LVL3:
+ 174:../../test/testqueues.c ****   return 0;
+ 175:../../test/testqueues.c **** }
+  41               		.loc 1 175 0
+  42 0010 80E0      		ldi r24,0
+  43 0012 90E0      		ldi r25,0
+  44 0014 0895      		ret
+  45               	.LFE12:
+  48               	queues2_setup:
+  49               	.LFB11:
+ 165:../../test/testqueues.c **** static void queues2_setup(void) {
+  50               		.loc 1 165 0
+  51 0016 0F93      		push r16
+  52               	.LCFI0:
+  53 0018 1F93      		push r17
+  54               	.LCFI1:
+  55               	/* prologue: function */
+  56               	/* frame size = 0 */
+  57               	/* stack size = 2 */
+  58               	.L__stack_usage = 2
+ 167:../../test/testqueues.c ****   chOQInit(&oq, wa[0], TEST_QUEUES_SIZE, notify, NULL);
+  59               		.loc 1 167 0
+  60 001a 6091 0000 		lds r22,wa
+  61 001e 7091 0000 		lds r23,wa+1
+  62 0022 00E0      		ldi r16,0
+  63 0024 10E0      		ldi r17,0
+  64 0026 20E0      		ldi r18,lo8(gs(notify))
+  65 0028 30E0      		ldi r19,hi8(gs(notify))
+  66 002a 44E0      		ldi r20,lo8(4)
+  67 002c 50E0      		ldi r21,0
+  68 002e 80E0      		ldi r24,lo8(oq)
+  69 0030 90E0      		ldi r25,hi8(oq)
+  70 0032 0E94 0000 		call chOQInit
+  71               	.LVL4:
+  72               	/* epilogue start */
+ 168:../../test/testqueues.c **** }
+  73               		.loc 1 168 0
+  74 0036 1F91      		pop r17
+  75 0038 0F91      		pop r16
+  76 003a 0895      		ret
+  77               	.LFE11:
+  80               	thread1:
+  81               	.LFB9:
+  83:../../test/testqueues.c **** static msg_t thread1(void *p) {
+  82               		.loc 1 83 0
+  83               	.LVL5:
+  84               	/* prologue: function */
+  85               	/* frame size = 0 */
+  86               	/* stack size = 0 */
+  87               	.L__stack_usage = 0
+  86:../../test/testqueues.c ****   chIQGetTimeout(&iq, MS2ST(200));
+  88               		.loc 1 86 0
+  89 003c 68EC      		ldi r22,lo8(-56)
+  90 003e 70E0      		ldi r23,0
+  91 0040 80E0      		ldi r24,lo8(iq)
+  92 0042 90E0      		ldi r25,hi8(iq)
+  93               	.LVL6:
+  94 0044 0E94 0000 		call chIQGetTimeout
+  95               	.LVL7:
+  88:../../test/testqueues.c **** }
+  96               		.loc 1 88 0
+  97 0048 80E0      		ldi r24,0
+  98 004a 90E0      		ldi r25,0
+  99 004c 0895      		ret
+ 100               	.LFE9:
+ 103               	queues1_setup:
+ 104               	.LFB8:
+  78:../../test/testqueues.c **** static void queues1_setup(void) {
+ 105               		.loc 1 78 0
+ 106 004e 0F93      		push r16
+ 107               	.LCFI2:
+ 108 0050 1F93      		push r17
+ 109               	.LCFI3:
+ 110               	/* prologue: function */
+ 111               	/* frame size = 0 */
+ 112               	/* stack size = 2 */
+ 113               	.L__stack_usage = 2
+  80:../../test/testqueues.c ****   chIQInit(&iq, wa[0], TEST_QUEUES_SIZE, notify, NULL);
+ 114               		.loc 1 80 0
+ 115 0052 6091 0000 		lds r22,wa
+ 116 0056 7091 0000 		lds r23,wa+1
+ 117 005a 00E0      		ldi r16,0
+ 118 005c 10E0      		ldi r17,0
+ 119 005e 20E0      		ldi r18,lo8(gs(notify))
+ 120 0060 30E0      		ldi r19,hi8(gs(notify))
+ 121 0062 44E0      		ldi r20,lo8(4)
+ 122 0064 50E0      		ldi r21,0
+ 123 0066 80E0      		ldi r24,lo8(iq)
+ 124 0068 90E0      		ldi r25,hi8(iq)
+ 125 006a 0E94 0000 		call chIQInit
+ 126               	.LVL8:
+ 127               	/* epilogue start */
+  81:../../test/testqueues.c **** }
+ 128               		.loc 1 81 0
+ 129 006e 1F91      		pop r17
+ 130 0070 0F91      		pop r16
+ 131 0072 0895      		ret
+ 132               	.LFE8:
+ 134               		.section	.rodata.str1.1,"aMS",@progbits,1
+ 135               	.LC0:
+ 136 0000 4142 4344 		.string	"ABCD"
+ 136      00
+ 137               		.text
+ 139               	queues2_execute:
+ 140               	.LFB13:
+ 176:../../test/testqueues.c **** 
+ 177:../../test/testqueues.c **** static void queues2_execute(void) {
+ 141               		.loc 1 177 0
+ 142 0074 0F93      		push r16
+ 143               	.LCFI4:
+ 144 0076 1F93      		push r17
+ 145               	.LCFI5:
+ 146 0078 CF93      		push r28
+ 147               	.LCFI6:
+ 148 007a DF93      		push r29
+ 149               	.LCFI7:
+ 150               	/* prologue: function */
+ 151               	/* frame size = 0 */
+ 152               	/* stack size = 4 */
+ 153               	.L__stack_usage = 4
+ 178:../../test/testqueues.c ****   unsigned i;
+ 179:../../test/testqueues.c ****   size_t n;
+ 180:../../test/testqueues.c **** 
+ 181:../../test/testqueues.c ****   /* Initial empty state */
+ 182:../../test/testqueues.c ****   test_assert_lock(1, chOQIsEmptyI(&oq), "not empty");
+ 154               		.loc 1 182 0
+ 155               	/* #APP */
+ 156               	 ;  182 "../../test/testqueues.c" 1
+ 157 007c F894      		cli
+ 158               	 ;  0 "" 2
+ 159               	/* #NOAPP */
+ 160 007e 2091 0000 		lds r18,oq+10
+ 161 0082 3091 0000 		lds r19,oq+10+1
+ 162 0086 8091 0000 		lds r24,oq+12
+ 163 008a 9091 0000 		lds r25,oq+12+1
+ 164 008e 2817      		cp r18,r24
+ 165 0090 3907      		cpc r19,r25
+ 166 0092 01F4      		brne .+2
+ 167 0094 00C0      		rjmp .L66
+ 168               	.L34:
+ 169 0096 60E0      		ldi r22,0
+ 170               	.L7:
+ 171               		.loc 1 182 0 is_stmt 0 discriminator 4
+ 172 0098 81E0      		ldi r24,lo8(1)
+ 173 009a 90E0      		ldi r25,0
+ 174 009c 0E94 0000 		call _test_assert
+ 175               	.LVL9:
+ 176               	/* #APP */
+ 177               	 ;  182 "../../test/testqueues.c" 1
+ 178 00a0 7894      		sei
+ 179               	 ;  0 "" 2
+ 180               	/* #NOAPP */
+ 181 00a2 8111      		cpse r24,__zero_reg__
+ 182 00a4 00C0      		rjmp .L6
+ 183               	.LVL10:
+ 184               		.loc 1 182 0 discriminator 6
+ 185 00a6 C1E4      		ldi r28,lo8(65)
+ 186               	.LVL11:
+ 187               	.L11:
+ 183:../../test/testqueues.c **** 
+ 184:../../test/testqueues.c ****   /* Queue filling */
+ 185:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 186:../../test/testqueues.c ****     chOQPut(&oq, 'A' + i);
+ 188               		.loc 1 186 0 is_stmt 1 discriminator 2
+ 189 00a8 4FEF      		ldi r20,lo8(-1)
+ 190 00aa 5FEF      		ldi r21,lo8(-1)
+ 191 00ac 6C2F      		mov r22,r28
+ 192 00ae 80E0      		ldi r24,lo8(oq)
+ 193 00b0 90E0      		ldi r25,hi8(oq)
+ 194 00b2 0E94 0000 		call chOQPutTimeout
+ 195               	.LVL12:
+ 196 00b6 CF5F      		subi r28,lo8(-(1))
+ 185:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 197               		.loc 1 185 0 discriminator 2
+ 198 00b8 C534      		cpi r28,lo8(69)
+ 199 00ba 01F4      		brne .L11
+ 187:../../test/testqueues.c ****   test_assert_lock(2, chOQIsFullI(&oq), "still has space");
+ 200               		.loc 1 187 0
+ 201               	/* #APP */
+ 202               	 ;  187 "../../test/testqueues.c" 1
+ 203 00bc F894      		cli
+ 204               	 ;  0 "" 2
+ 205               	/* #NOAPP */
+ 206 00be 61E0      		ldi r22,lo8(1)
+ 207 00c0 8091 0000 		lds r24,oq+4
+ 208 00c4 9091 0000 		lds r25,oq+4+1
+ 209 00c8 892B      		or r24,r25
+ 210 00ca 01F4      		brne .L67
+ 211 00cc 82E0      		ldi r24,lo8(2)
+ 212 00ce 90E0      		ldi r25,0
+ 213 00d0 0E94 0000 		call _test_assert
+ 214               	.LVL13:
+ 215               	/* #APP */
+ 216               	 ;  187 "../../test/testqueues.c" 1
+ 217 00d4 7894      		sei
+ 218               	 ;  0 "" 2
+ 219               	/* #NOAPP */
+ 220 00d6 8111      		cpse r24,__zero_reg__
+ 221 00d8 00C0      		rjmp .L6
+ 222               	.L13:
+ 223               	.LVL14:
+ 224               	.LBB6:
+ 225               	.LBB7:
+ 226 00da C4E0      		ldi r28,lo8(4)
+ 227 00dc D0E0      		ldi r29,0
+ 228               	.LVL15:
+ 229               	.L14:
+ 230               	.LBB8:
+ 188:../../test/testqueues.c **** 
+ 189:../../test/testqueues.c ****   /* Queue emptying */
+ 190:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++) {
+ 191:../../test/testqueues.c ****     char c;
+ 192:../../test/testqueues.c **** 
+ 193:../../test/testqueues.c ****     chSysLock();
+ 231               		.loc 1 193 0
+ 232               	/* #APP */
+ 233               	 ;  193 "../../test/testqueues.c" 1
+ 234 00de F894      		cli
+ 235               	 ;  0 "" 2
+ 194:../../test/testqueues.c ****     c = chOQGetI(&oq);
+ 236               		.loc 1 194 0
+ 237               	/* #NOAPP */
+ 238 00e0 80E0      		ldi r24,lo8(oq)
+ 239 00e2 90E0      		ldi r25,hi8(oq)
+ 240 00e4 0E94 0000 		call chOQGetI
+ 241               	.LVL16:
+ 195:../../test/testqueues.c ****     chSysUnlock();
+ 242               		.loc 1 195 0
+ 243               	/* #APP */
+ 244               	 ;  195 "../../test/testqueues.c" 1
+ 245 00e8 7894      		sei
+ 246               	 ;  0 "" 2
+ 196:../../test/testqueues.c ****     test_emit_token(c);
+ 247               		.loc 1 196 0
+ 248               	/* #NOAPP */
+ 249 00ea 0E94 0000 		call test_emit_token
+ 250               	.LVL17:
+ 251 00ee 2197      		sbiw r28,1
+ 252               	.LBE8:
+ 190:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++) {
+ 253               		.loc 1 190 0
+ 254 00f0 01F4      		brne .L14
+ 197:../../test/testqueues.c ****   }
+ 198:../../test/testqueues.c ****   test_assert_lock(3, chOQIsEmptyI(&oq), "still full");
+ 255               		.loc 1 198 0
+ 256               	/* #APP */
+ 257               	 ;  198 "../../test/testqueues.c" 1
+ 258 00f2 F894      		cli
+ 259               	 ;  0 "" 2
+ 260               	/* #NOAPP */
+ 261 00f4 2091 0000 		lds r18,oq+10
+ 262 00f8 3091 0000 		lds r19,oq+10+1
+ 263 00fc 8091 0000 		lds r24,oq+12
+ 264 0100 9091 0000 		lds r25,oq+12+1
+ 265 0104 2817      		cp r18,r24
+ 266 0106 3907      		cpc r19,r25
+ 267 0108 01F4      		brne .+2
+ 268 010a 00C0      		rjmp .L68
+ 269               	.L35:
+ 270 010c 60E0      		ldi r22,0
+ 271               	.L15:
+ 272 010e 83E0      		ldi r24,lo8(3)
+ 273 0110 90E0      		ldi r25,0
+ 274 0112 0E94 0000 		call _test_assert
+ 275               	.LVL18:
+ 276               	/* #APP */
+ 277               	 ;  198 "../../test/testqueues.c" 1
+ 278 0116 7894      		sei
+ 279               	 ;  0 "" 2
+ 280               	/* #NOAPP */
+ 281 0118 8823      		tst r24
+ 282 011a 01F0      		breq .L17
+ 283               	.L6:
+ 284               	/* epilogue start */
+ 285               	.LBE7:
+ 286               	.LBE6:
+ 199:../../test/testqueues.c ****   test_assert_sequence(4, "ABCD");
+ 200:../../test/testqueues.c ****   test_assert_lock(5, chOQGetI(&oq) == Q_EMPTY, "failed to report Q_EMPTY");
+ 201:../../test/testqueues.c **** 
+ 202:../../test/testqueues.c ****   /* Writing the whole thing */
+ 203:../../test/testqueues.c ****   n = chOQWriteTimeout(&oq, wa[1], TEST_QUEUES_SIZE * 2, TIME_IMMEDIATE);
+ 204:../../test/testqueues.c ****   test_assert(6, n == TEST_QUEUES_SIZE, "wrong returned size");
+ 205:../../test/testqueues.c ****   test_assert_lock(7, chOQIsFullI(&oq), "not full");
+ 206:../../test/testqueues.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread2, NULL);
+ 207:../../test/testqueues.c ****   test_assert_lock(8, chOQGetFullI(&oq) == TEST_QUEUES_SIZE, "not empty");
+ 208:../../test/testqueues.c ****   test_wait_threads();
+ 209:../../test/testqueues.c **** 
+ 210:../../test/testqueues.c ****   /* Testing reset */
+ 211:../../test/testqueues.c ****   chSysLock();
+ 212:../../test/testqueues.c ****   chOQResetI(&oq);
+ 213:../../test/testqueues.c ****   chSysUnlock();
+ 214:../../test/testqueues.c ****   test_assert_lock(9, chOQGetFullI(&oq) == 0, "still full");
+ 215:../../test/testqueues.c **** 
+ 216:../../test/testqueues.c ****   /* Partial writes */
+ 217:../../test/testqueues.c ****   n = chOQWriteTimeout(&oq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 218:../../test/testqueues.c ****   test_assert(10, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 219:../../test/testqueues.c ****   n = chOQWriteTimeout(&oq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 220:../../test/testqueues.c ****   test_assert(11, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 221:../../test/testqueues.c ****   test_assert_lock(12, chOQIsFullI(&oq), "not full");
+ 222:../../test/testqueues.c **** 
+ 223:../../test/testqueues.c ****   /* Timeout */
+ 224:../../test/testqueues.c ****   test_assert(13, chOQPutTimeout(&oq, 0, 10) == Q_TIMEOUT, "wrong timeout return");
+ 225:../../test/testqueues.c **** }
+ 287               		.loc 1 225 0
+ 288 011c DF91      		pop r29
+ 289 011e CF91      		pop r28
+ 290 0120 1F91      		pop r17
+ 291 0122 0F91      		pop r16
+ 292 0124 0895      		ret
+ 293               	.L67:
+ 187:../../test/testqueues.c ****   test_assert_lock(2, chOQIsFullI(&oq), "still has space");
+ 294               		.loc 1 187 0
+ 295 0126 60E0      		ldi r22,0
+ 296 0128 82E0      		ldi r24,lo8(2)
+ 297 012a 90E0      		ldi r25,0
+ 298 012c 0E94 0000 		call _test_assert
+ 299               	.LVL19:
+ 300               	/* #APP */
+ 301               	 ;  187 "../../test/testqueues.c" 1
+ 302 0130 7894      		sei
+ 303               	 ;  0 "" 2
+ 304               	/* #NOAPP */
+ 305 0132 8823      		tst r24
+ 306 0134 01F0      		breq .L13
+ 307 0136 00C0      		rjmp .L6
+ 308               	.L66:
+ 182:../../test/testqueues.c ****   test_assert_lock(1, chOQIsEmptyI(&oq), "not empty");
+ 309               		.loc 1 182 0 discriminator 1
+ 310 0138 61E0      		ldi r22,lo8(1)
+ 311 013a 8091 0000 		lds r24,oq+4
+ 312 013e 9091 0000 		lds r25,oq+4+1
+ 313 0142 892B      		or r24,r25
+ 314 0144 01F0      		breq .+2
+ 315 0146 00C0      		rjmp .L7
+ 316 0148 00C0      		rjmp .L34
+ 317               	.L17:
+ 318               	.LBB11:
+ 319               	.LBB9:
+ 199:../../test/testqueues.c ****   test_assert_sequence(4, "ABCD");
+ 320               		.loc 1 199 0
+ 321 014a 60E0      		ldi r22,lo8(.LC0)
+ 322 014c 70E0      		ldi r23,hi8(.LC0)
+ 323 014e 84E0      		ldi r24,lo8(4)
+ 324 0150 90E0      		ldi r25,0
+ 325 0152 0E94 0000 		call _test_assert_sequence
+ 326               	.LVL20:
+ 327 0156 8111      		cpse r24,__zero_reg__
+ 328 0158 00C0      		rjmp .L6
+ 200:../../test/testqueues.c ****   test_assert_lock(5, chOQGetI(&oq) == Q_EMPTY, "failed to report Q_EMPTY");
+ 329               		.loc 1 200 0
+ 330               	/* #APP */
+ 331               	 ;  200 "../../test/testqueues.c" 1
+ 332 015a F894      		cli
+ 333               	 ;  0 "" 2
+ 334               	/* #NOAPP */
+ 335 015c 80E0      		ldi r24,lo8(oq)
+ 336 015e 90E0      		ldi r25,hi8(oq)
+ 337 0160 0E94 0000 		call chOQGetI
+ 338               	.LVL21:
+ 339 0164 61E0      		ldi r22,lo8(1)
+ 340 0166 0396      		adiw r24,3
+ 341 0168 01F0      		breq .L19
+ 342 016a 60E0      		ldi r22,0
+ 343               	.L19:
+ 344 016c 85E0      		ldi r24,lo8(5)
+ 345 016e 90E0      		ldi r25,0
+ 346 0170 0E94 0000 		call _test_assert
+ 347               	.LVL22:
+ 348               	/* #APP */
+ 349               	 ;  200 "../../test/testqueues.c" 1
+ 350 0174 7894      		sei
+ 351               	 ;  0 "" 2
+ 352               	/* #NOAPP */
+ 353 0176 8111      		cpse r24,__zero_reg__
+ 354 0178 00C0      		rjmp .L6
+ 203:../../test/testqueues.c ****   n = chOQWriteTimeout(&oq, wa[1], TEST_QUEUES_SIZE * 2, TIME_IMMEDIATE);
+ 355               		.loc 1 203 0
+ 356 017a C091 0000 		lds r28,wa+2
+ 357 017e D091 0000 		lds r29,wa+2+1
+ 358 0182 20E0      		ldi r18,0
+ 359 0184 30E0      		ldi r19,0
+ 360 0186 48E0      		ldi r20,lo8(8)
+ 361 0188 50E0      		ldi r21,0
+ 362 018a BE01      		movw r22,r28
+ 363 018c 80E0      		ldi r24,lo8(oq)
+ 364 018e 90E0      		ldi r25,hi8(oq)
+ 365 0190 0E94 0000 		call chOQWriteTimeout
+ 366               	.LVL23:
+ 204:../../test/testqueues.c ****   test_assert(6, n == TEST_QUEUES_SIZE, "wrong returned size");
+ 367               		.loc 1 204 0
+ 368 0194 61E0      		ldi r22,lo8(1)
+ 369 0196 0497      		sbiw r24,4
+ 370 0198 01F0      		breq .L21
+ 371 019a 60E0      		ldi r22,0
+ 372               	.L21:
+ 373 019c 86E0      		ldi r24,lo8(6)
+ 374 019e 90E0      		ldi r25,0
+ 375               	.LVL24:
+ 376 01a0 0E94 0000 		call _test_assert
+ 377               	.LVL25:
+ 378 01a4 8111      		cpse r24,__zero_reg__
+ 379 01a6 00C0      		rjmp .L6
+ 205:../../test/testqueues.c ****   test_assert_lock(7, chOQIsFullI(&oq), "not full");
+ 380               		.loc 1 205 0
+ 381               	/* #APP */
+ 382               	 ;  205 "../../test/testqueues.c" 1
+ 383 01a8 F894      		cli
+ 384               	 ;  0 "" 2
+ 385               	/* #NOAPP */
+ 386 01aa 61E0      		ldi r22,lo8(1)
+ 387 01ac 8091 0000 		lds r24,oq+4
+ 388 01b0 9091 0000 		lds r25,oq+4+1
+ 389 01b4 892B      		or r24,r25
+ 390 01b6 01F0      		breq .L23
+ 391 01b8 60E0      		ldi r22,0
+ 392               	.L23:
+ 393 01ba 87E0      		ldi r24,lo8(7)
+ 394 01bc 90E0      		ldi r25,0
+ 395 01be 0E94 0000 		call _test_assert
+ 396               	.LVL26:
+ 397               	/* #APP */
+ 398               	 ;  205 "../../test/testqueues.c" 1
+ 399 01c2 7894      		sei
+ 400               	 ;  0 "" 2
+ 401               	/* #NOAPP */
+ 402 01c4 8111      		cpse r24,__zero_reg__
+ 403 01c6 00C0      		rjmp .L6
+ 206:../../test/testqueues.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread2, NULL);
+ 404               		.loc 1 206 0
+ 405 01c8 E091 0000 		lds r30,rlist+11
+ 406 01cc F091 0000 		lds r31,rlist+11+1
+ 407 01d0 4481      		ldd r20,Z+4
+ 408 01d2 4F5F      		subi r20,lo8(-(1))
+ 409 01d4 00E0      		ldi r16,0
+ 410 01d6 10E0      		ldi r17,0
+ 411 01d8 20E0      		ldi r18,lo8(gs(thread2))
+ 412 01da 30E0      		ldi r19,hi8(gs(thread2))
+ 413 01dc 67E9      		ldi r22,lo8(-105)
+ 414 01de 70E0      		ldi r23,0
+ 415 01e0 8091 0000 		lds r24,wa
+ 416 01e4 9091 0000 		lds r25,wa+1
+ 417 01e8 0E94 0000 		call chThdCreateStatic
+ 418               	.LVL27:
+ 419 01ec 9093 0000 		sts threads+1,r25
+ 420 01f0 8093 0000 		sts threads,r24
+ 207:../../test/testqueues.c ****   test_assert_lock(8, chOQGetFullI(&oq) == TEST_QUEUES_SIZE, "not empty");
+ 421               		.loc 1 207 0
+ 422               	/* #APP */
+ 423               	 ;  207 "../../test/testqueues.c" 1
+ 424 01f4 F894      		cli
+ 425               	 ;  0 "" 2
+ 426               	/* #NOAPP */
+ 427 01f6 8091 0000 		lds r24,oq+8
+ 428 01fa 9091 0000 		lds r25,oq+8+1
+ 429 01fe 2091 0000 		lds r18,oq+6
+ 430 0202 3091 0000 		lds r19,oq+6+1
+ 431 0206 821B      		sub r24,r18
+ 432 0208 930B      		sbc r25,r19
+ 433 020a 2091 0000 		lds r18,oq+4
+ 434 020e 3091 0000 		lds r19,oq+4+1
+ 435 0212 821B      		sub r24,r18
+ 436 0214 930B      		sbc r25,r19
+ 437 0216 61E0      		ldi r22,lo8(1)
+ 438 0218 0497      		sbiw r24,4
+ 439 021a 01F0      		breq .L25
+ 440 021c 60E0      		ldi r22,0
+ 441               	.L25:
+ 442 021e 88E0      		ldi r24,lo8(8)
+ 443 0220 90E0      		ldi r25,0
+ 444 0222 0E94 0000 		call _test_assert
+ 445               	.LVL28:
+ 446               	/* #APP */
+ 447               	 ;  207 "../../test/testqueues.c" 1
+ 448 0226 7894      		sei
+ 449               	 ;  0 "" 2
+ 450               	/* #NOAPP */
+ 451 0228 8111      		cpse r24,__zero_reg__
+ 452 022a 00C0      		rjmp .L6
+ 208:../../test/testqueues.c ****   test_wait_threads();
+ 453               		.loc 1 208 0
+ 454 022c 0E94 0000 		call test_wait_threads
+ 455               	.LVL29:
+ 211:../../test/testqueues.c ****   chSysLock();
+ 456               		.loc 1 211 0
+ 457               	/* #APP */
+ 458               	 ;  211 "../../test/testqueues.c" 1
+ 459 0230 F894      		cli
+ 460               	 ;  0 "" 2
+ 212:../../test/testqueues.c ****   chOQResetI(&oq);
+ 461               		.loc 1 212 0
+ 462               	/* #NOAPP */
+ 463 0232 80E0      		ldi r24,lo8(oq)
+ 464 0234 90E0      		ldi r25,hi8(oq)
+ 465 0236 0E94 0000 		call chOQResetI
+ 466               	.LVL30:
+ 213:../../test/testqueues.c ****   chSysUnlock();
+ 467               		.loc 1 213 0
+ 468               	/* #APP */
+ 469               	 ;  213 "../../test/testqueues.c" 1
+ 470 023a 7894      		sei
+ 471               	 ;  0 "" 2
+ 214:../../test/testqueues.c ****   test_assert_lock(9, chOQGetFullI(&oq) == 0, "still full");
+ 472               		.loc 1 214 0
+ 473               	 ;  214 "../../test/testqueues.c" 1
+ 474 023c F894      		cli
+ 475               	 ;  0 "" 2
+ 476               	/* #NOAPP */
+ 477 023e 8091 0000 		lds r24,oq+8
+ 478 0242 9091 0000 		lds r25,oq+8+1
+ 479 0246 2091 0000 		lds r18,oq+6
+ 480 024a 3091 0000 		lds r19,oq+6+1
+ 481 024e 821B      		sub r24,r18
+ 482 0250 930B      		sbc r25,r19
+ 483 0252 61E0      		ldi r22,lo8(1)
+ 484 0254 2091 0000 		lds r18,oq+4
+ 485 0258 3091 0000 		lds r19,oq+4+1
+ 486 025c 8217      		cp r24,r18
+ 487 025e 9307      		cpc r25,r19
+ 488 0260 01F0      		breq .L27
+ 489 0262 60E0      		ldi r22,0
+ 490               	.L27:
+ 491 0264 89E0      		ldi r24,lo8(9)
+ 492 0266 90E0      		ldi r25,0
+ 493 0268 0E94 0000 		call _test_assert
+ 494               	.LVL31:
+ 495               	/* #APP */
+ 496               	 ;  214 "../../test/testqueues.c" 1
+ 497 026c 7894      		sei
+ 498               	 ;  0 "" 2
+ 499               	/* #NOAPP */
+ 500 026e 8111      		cpse r24,__zero_reg__
+ 501 0270 00C0      		rjmp .L6
+ 217:../../test/testqueues.c ****   n = chOQWriteTimeout(&oq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 502               		.loc 1 217 0
+ 503 0272 20E0      		ldi r18,0
+ 504 0274 30E0      		ldi r19,0
+ 505 0276 42E0      		ldi r20,lo8(2)
+ 506 0278 50E0      		ldi r21,0
+ 507 027a BE01      		movw r22,r28
+ 508 027c 80E0      		ldi r24,lo8(oq)
+ 509 027e 90E0      		ldi r25,hi8(oq)
+ 510 0280 0E94 0000 		call chOQWriteTimeout
+ 511               	.LVL32:
+ 218:../../test/testqueues.c ****   test_assert(10, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 512               		.loc 1 218 0
+ 513 0284 61E0      		ldi r22,lo8(1)
+ 514 0286 0297      		sbiw r24,2
+ 515 0288 01F0      		breq .L29
+ 516 028a 60E0      		ldi r22,0
+ 517               	.L29:
+ 518 028c 8AE0      		ldi r24,lo8(10)
+ 519 028e 90E0      		ldi r25,0
+ 520               	.LVL33:
+ 521 0290 0E94 0000 		call _test_assert
+ 522               	.LVL34:
+ 523 0294 8111      		cpse r24,__zero_reg__
+ 524 0296 00C0      		rjmp .L6
+ 219:../../test/testqueues.c ****   n = chOQWriteTimeout(&oq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 525               		.loc 1 219 0
+ 526 0298 20E0      		ldi r18,0
+ 527 029a 30E0      		ldi r19,0
+ 528 029c 42E0      		ldi r20,lo8(2)
+ 529 029e 50E0      		ldi r21,0
+ 530 02a0 BE01      		movw r22,r28
+ 531 02a2 80E0      		ldi r24,lo8(oq)
+ 532 02a4 90E0      		ldi r25,hi8(oq)
+ 533 02a6 0E94 0000 		call chOQWriteTimeout
+ 534               	.LVL35:
+ 220:../../test/testqueues.c ****   test_assert(11, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 535               		.loc 1 220 0
+ 536 02aa 61E0      		ldi r22,lo8(1)
+ 537 02ac 0297      		sbiw r24,2
+ 538 02ae 01F0      		breq .L30
+ 539 02b0 60E0      		ldi r22,0
+ 540               	.L30:
+ 541 02b2 8BE0      		ldi r24,lo8(11)
+ 542 02b4 90E0      		ldi r25,0
+ 543               	.LVL36:
+ 544 02b6 0E94 0000 		call _test_assert
+ 545               	.LVL37:
+ 546 02ba 8111      		cpse r24,__zero_reg__
+ 547 02bc 00C0      		rjmp .L6
+ 221:../../test/testqueues.c ****   test_assert_lock(12, chOQIsFullI(&oq), "not full");
+ 548               		.loc 1 221 0
+ 549               	/* #APP */
+ 550               	 ;  221 "../../test/testqueues.c" 1
+ 551 02be F894      		cli
+ 552               	 ;  0 "" 2
+ 553               	/* #NOAPP */
+ 554 02c0 61E0      		ldi r22,lo8(1)
+ 555 02c2 8091 0000 		lds r24,oq+4
+ 556 02c6 9091 0000 		lds r25,oq+4+1
+ 557 02ca 892B      		or r24,r25
+ 558 02cc 01F0      		breq .L31
+ 559 02ce 60E0      		ldi r22,0
+ 560               	.L31:
+ 561 02d0 8CE0      		ldi r24,lo8(12)
+ 562 02d2 90E0      		ldi r25,0
+ 563 02d4 0E94 0000 		call _test_assert
+ 564               	.LVL38:
+ 565               	/* #APP */
+ 566               	 ;  221 "../../test/testqueues.c" 1
+ 567 02d8 7894      		sei
+ 568               	 ;  0 "" 2
+ 569               	/* #NOAPP */
+ 570 02da 8111      		cpse r24,__zero_reg__
+ 571 02dc 00C0      		rjmp .L6
+ 224:../../test/testqueues.c ****   test_assert(13, chOQPutTimeout(&oq, 0, 10) == Q_TIMEOUT, "wrong timeout return");
+ 572               		.loc 1 224 0
+ 573 02de 4AE0      		ldi r20,lo8(10)
+ 574 02e0 50E0      		ldi r21,0
+ 575 02e2 60E0      		ldi r22,0
+ 576 02e4 80E0      		ldi r24,lo8(oq)
+ 577 02e6 90E0      		ldi r25,hi8(oq)
+ 578 02e8 0E94 0000 		call chOQPutTimeout
+ 579               	.LVL39:
+ 580 02ec 61E0      		ldi r22,lo8(1)
+ 581 02ee 0196      		adiw r24,1
+ 582 02f0 01F0      		breq .L33
+ 583 02f2 60E0      		ldi r22,0
+ 584               	.L33:
+ 585 02f4 8DE0      		ldi r24,lo8(13)
+ 586 02f6 90E0      		ldi r25,0
+ 587               	/* epilogue start */
+ 588               	.LBE9:
+ 589               	.LBE11:
+ 590               		.loc 1 225 0
+ 591 02f8 DF91      		pop r29
+ 592 02fa CF91      		pop r28
+ 593 02fc 1F91      		pop r17
+ 594 02fe 0F91      		pop r16
+ 595               	.LBB12:
+ 596               	.LBB10:
+ 224:../../test/testqueues.c ****   test_assert(13, chOQPutTimeout(&oq, 0, 10) == Q_TIMEOUT, "wrong timeout return");
+ 597               		.loc 1 224 0
+ 598 0300 0C94 0000 		jmp _test_assert
+ 599               	.LVL40:
+ 600               	.L68:
+ 198:../../test/testqueues.c ****   test_assert_lock(3, chOQIsEmptyI(&oq), "still full");
+ 601               		.loc 1 198 0
+ 602 0304 61E0      		ldi r22,lo8(1)
+ 603 0306 8091 0000 		lds r24,oq+4
+ 604 030a 9091 0000 		lds r25,oq+4+1
+ 605 030e 892B      		or r24,r25
+ 606 0310 01F0      		breq .+2
+ 607 0312 00C0      		rjmp .L15
+ 608 0314 00C0      		rjmp .L35
+ 609               	.LBE10:
+ 610               	.LBE12:
+ 611               	.LFE13:
+ 614               	queues1_execute:
+ 615               	.LFB10:
+  90:../../test/testqueues.c **** static void queues1_execute(void) {
+ 616               		.loc 1 90 0
+ 617 0316 0F93      		push r16
+ 618               	.LCFI8:
+ 619 0318 1F93      		push r17
+ 620               	.LCFI9:
+ 621 031a CF93      		push r28
+ 622               	.LCFI10:
+ 623 031c DF93      		push r29
+ 624               	.LCFI11:
+ 625               	/* prologue: function */
+ 626               	/* frame size = 0 */
+ 627               	/* stack size = 4 */
+ 628               	.L__stack_usage = 4
+  95:../../test/testqueues.c ****   test_assert_lock(1, chIQIsEmptyI(&iq), "not empty");
+ 629               		.loc 1 95 0
+ 630               	/* #APP */
+ 631               	 ;  95 "../../test/testqueues.c" 1
+ 632 031e F894      		cli
+ 633               	 ;  0 "" 2
+ 634               	/* #NOAPP */
+ 635 0320 61E0      		ldi r22,lo8(1)
+ 636 0322 8091 0000 		lds r24,iq+4
+ 637 0326 9091 0000 		lds r25,iq+4+1
+ 638 032a 892B      		or r24,r25
+ 639 032c 01F0      		breq .L70
+ 640 032e 60E0      		ldi r22,0
+ 641               	.L70:
+ 642 0330 81E0      		ldi r24,lo8(1)
+ 643 0332 90E0      		ldi r25,0
+ 644 0334 0E94 0000 		call _test_assert
+ 645               	.LVL41:
+ 646               	/* #APP */
+ 647               	 ;  95 "../../test/testqueues.c" 1
+ 648 0338 7894      		sei
+ 649               	 ;  0 "" 2
+ 650               	/* #NOAPP */
+ 651 033a 8111      		cpse r24,__zero_reg__
+ 652 033c 00C0      		rjmp .L69
+  98:../../test/testqueues.c ****   chSysLock();
+ 653               		.loc 1 98 0 discriminator 2
+ 654               	/* #APP */
+ 655               	 ;  98 "../../test/testqueues.c" 1
+ 656 033e F894      		cli
+ 657               	 ;  0 "" 2
+ 658               	.LVL42:
+ 100:../../test/testqueues.c ****     chIQPutI(&iq, 'A' + i);
+ 659               		.loc 1 100 0 discriminator 2
+ 660               	/* #NOAPP */
+ 661 0340 61E4      		ldi r22,lo8(65)
+ 662 0342 80E0      		ldi r24,lo8(iq)
+ 663 0344 90E0      		ldi r25,hi8(iq)
+ 664 0346 0E94 0000 		call chIQPutI
+ 665               	.LVL43:
+ 666 034a 62E4      		ldi r22,lo8(66)
+ 667 034c 80E0      		ldi r24,lo8(iq)
+ 668 034e 90E0      		ldi r25,hi8(iq)
+ 669 0350 0E94 0000 		call chIQPutI
+ 670               	.LVL44:
+ 671 0354 63E4      		ldi r22,lo8(67)
+ 672 0356 80E0      		ldi r24,lo8(iq)
+ 673 0358 90E0      		ldi r25,hi8(iq)
+ 674 035a 0E94 0000 		call chIQPutI
+ 675               	.LVL45:
+ 676 035e 64E4      		ldi r22,lo8(68)
+ 677 0360 80E0      		ldi r24,lo8(iq)
+ 678 0362 90E0      		ldi r25,hi8(iq)
+ 679 0364 0E94 0000 		call chIQPutI
+ 680               	.LVL46:
+ 101:../../test/testqueues.c ****   chSysUnlock();
+ 681               		.loc 1 101 0 discriminator 2
+ 682               	/* #APP */
+ 683               	 ;  101 "../../test/testqueues.c" 1
+ 684 0368 7894      		sei
+ 685               	 ;  0 "" 2
+ 102:../../test/testqueues.c ****   test_assert_lock(2, chIQIsFullI(&iq), "still has space");
+ 686               		.loc 1 102 0 discriminator 2
+ 687               	 ;  102 "../../test/testqueues.c" 1
+ 688 036a F894      		cli
+ 689               	 ;  0 "" 2
+ 690               	/* #NOAPP */
+ 691 036c 2091 0000 		lds r18,iq+10
+ 692 0370 3091 0000 		lds r19,iq+10+1
+ 693 0374 8091 0000 		lds r24,iq+12
+ 694 0378 9091 0000 		lds r25,iq+12+1
+ 695 037c 2817      		cp r18,r24
+ 696 037e 3907      		cpc r19,r25
+ 697 0380 01F4      		brne .+2
+ 698 0382 00C0      		rjmp .L130
+ 699               	.L95:
+ 102:../../test/testqueues.c ****   test_assert_lock(2, chIQIsFullI(&iq), "still has space");
+ 700               		.loc 1 102 0 is_stmt 0
+ 701 0384 60E0      		ldi r22,0
+ 702               	.L73:
+ 102:../../test/testqueues.c ****   test_assert_lock(2, chIQIsFullI(&iq), "still has space");
+ 703               		.loc 1 102 0 discriminator 4
+ 704 0386 82E0      		ldi r24,lo8(2)
+ 705 0388 90E0      		ldi r25,0
+ 706 038a 0E94 0000 		call _test_assert
+ 707               	.LVL47:
+ 708               	/* #APP */
+ 709               	 ;  102 "../../test/testqueues.c" 1
+ 710 038e 7894      		sei
+ 711               	 ;  0 "" 2
+ 712               	/* #NOAPP */
+ 713 0390 8823      		tst r24
+ 714 0392 01F0      		breq .L75
+ 715               	.LVL48:
+ 716               	.L69:
+ 717               	/* epilogue start */
+ 147:../../test/testqueues.c **** }
+ 718               		.loc 1 147 0 is_stmt 1
+ 719 0394 DF91      		pop r29
+ 720 0396 CF91      		pop r28
+ 721 0398 1F91      		pop r17
+ 722 039a 0F91      		pop r16
+ 723 039c 0895      		ret
+ 724               	.LVL49:
+ 725               	.L75:
+ 726               	.LBB15:
+ 727               	.LBB16:
+ 103:../../test/testqueues.c ****   test_assert_lock(3, chIQPutI(&iq, 0) == Q_FULL, "failed to report Q_FULL");
+ 728               		.loc 1 103 0
+ 729               	/* #APP */
+ 730               	 ;  103 "../../test/testqueues.c" 1
+ 731 039e F894      		cli
+ 732               	 ;  0 "" 2
+ 733               	/* #NOAPP */
+ 734 03a0 60E0      		ldi r22,0
+ 735 03a2 80E0      		ldi r24,lo8(iq)
+ 736 03a4 90E0      		ldi r25,hi8(iq)
+ 737 03a6 0E94 0000 		call chIQPutI
+ 738               	.LVL50:
+ 739 03aa 61E0      		ldi r22,lo8(1)
+ 740 03ac 0496      		adiw r24,4
+ 741 03ae 01F0      		breq .L76
+ 742 03b0 60E0      		ldi r22,0
+ 743               	.L76:
+ 744 03b2 83E0      		ldi r24,lo8(3)
+ 745 03b4 90E0      		ldi r25,0
+ 746 03b6 0E94 0000 		call _test_assert
+ 747               	.LVL51:
+ 748               	/* #APP */
+ 749               	 ;  103 "../../test/testqueues.c" 1
+ 750 03ba 7894      		sei
+ 751               	 ;  0 "" 2
+ 752               	/* #NOAPP */
+ 753 03bc 8111      		cpse r24,__zero_reg__
+ 754 03be 00C0      		rjmp .L69
+ 755               	.LVL52:
+ 756 03c0 C4E0      		ldi r28,lo8(4)
+ 757 03c2 D0E0      		ldi r29,0
+ 758               	.LVL53:
+ 759               	.L78:
+ 107:../../test/testqueues.c ****     test_emit_token(chIQGet(&iq));
+ 760               		.loc 1 107 0
+ 761 03c4 6FEF      		ldi r22,lo8(-1)
+ 762 03c6 7FEF      		ldi r23,lo8(-1)
+ 763 03c8 80E0      		ldi r24,lo8(iq)
+ 764 03ca 90E0      		ldi r25,hi8(iq)
+ 765 03cc 0E94 0000 		call chIQGetTimeout
+ 766               	.LVL54:
+ 767 03d0 0E94 0000 		call test_emit_token
+ 768               	.LVL55:
+ 769 03d4 2197      		sbiw r28,1
+ 106:../../test/testqueues.c ****   for (i = 0; i < TEST_QUEUES_SIZE; i++)
+ 770               		.loc 1 106 0
+ 771 03d6 01F4      		brne .L78
+ 108:../../test/testqueues.c ****   test_assert_lock(4, chIQIsEmptyI(&iq), "still full");
+ 772               		.loc 1 108 0
+ 773               	/* #APP */
+ 774               	 ;  108 "../../test/testqueues.c" 1
+ 775 03d8 F894      		cli
+ 776               	 ;  0 "" 2
+ 777               	/* #NOAPP */
+ 778 03da 61E0      		ldi r22,lo8(1)
+ 779 03dc 8091 0000 		lds r24,iq+4
+ 780 03e0 9091 0000 		lds r25,iq+4+1
+ 781 03e4 892B      		or r24,r25
+ 782 03e6 01F0      		breq .L79
+ 783 03e8 60E0      		ldi r22,0
+ 784               	.L79:
+ 785 03ea 84E0      		ldi r24,lo8(4)
+ 786 03ec 90E0      		ldi r25,0
+ 787 03ee 0E94 0000 		call _test_assert
+ 788               	.LVL56:
+ 789               	/* #APP */
+ 790               	 ;  108 "../../test/testqueues.c" 1
+ 791 03f2 7894      		sei
+ 792               	 ;  0 "" 2
+ 793               	/* #NOAPP */
+ 794 03f4 8111      		cpse r24,__zero_reg__
+ 795 03f6 00C0      		rjmp .L69
+ 109:../../test/testqueues.c ****   test_assert_sequence(5, "ABCD");
+ 796               		.loc 1 109 0
+ 797 03f8 60E0      		ldi r22,lo8(.LC0)
+ 798 03fa 70E0      		ldi r23,hi8(.LC0)
+ 799 03fc 85E0      		ldi r24,lo8(5)
+ 800 03fe 90E0      		ldi r25,0
+ 801 0400 0E94 0000 		call _test_assert_sequence
+ 802               	.LVL57:
+ 803 0404 8111      		cpse r24,__zero_reg__
+ 804 0406 00C0      		rjmp .L69
+ 112:../../test/testqueues.c ****   chSysLock();
+ 805               		.loc 1 112 0
+ 806               	/* #APP */
+ 807               	 ;  112 "../../test/testqueues.c" 1
+ 808 0408 F894      		cli
+ 809               	 ;  0 "" 2
+ 810               	.LVL58:
+ 114:../../test/testqueues.c ****     chIQPutI(&iq, 'A' + i);
+ 811               		.loc 1 114 0
+ 812               	/* #NOAPP */
+ 813 040a 61E4      		ldi r22,lo8(65)
+ 814 040c 80E0      		ldi r24,lo8(iq)
+ 815 040e 90E0      		ldi r25,hi8(iq)
+ 816 0410 0E94 0000 		call chIQPutI
+ 817               	.LVL59:
+ 818 0414 62E4      		ldi r22,lo8(66)
+ 819 0416 80E0      		ldi r24,lo8(iq)
+ 820 0418 90E0      		ldi r25,hi8(iq)
+ 821 041a 0E94 0000 		call chIQPutI
+ 822               	.LVL60:
+ 823 041e 63E4      		ldi r22,lo8(67)
+ 824 0420 80E0      		ldi r24,lo8(iq)
+ 825 0422 90E0      		ldi r25,hi8(iq)
+ 826 0424 0E94 0000 		call chIQPutI
+ 827               	.LVL61:
+ 828 0428 64E4      		ldi r22,lo8(68)
+ 829 042a 80E0      		ldi r24,lo8(iq)
+ 830 042c 90E0      		ldi r25,hi8(iq)
+ 831 042e 0E94 0000 		call chIQPutI
+ 832               	.LVL62:
+ 115:../../test/testqueues.c ****   chSysUnlock();
+ 833               		.loc 1 115 0
+ 834               	/* #APP */
+ 835               	 ;  115 "../../test/testqueues.c" 1
+ 836 0432 7894      		sei
+ 837               	 ;  0 "" 2
+ 118:../../test/testqueues.c ****   n = chIQReadTimeout(&iq, wa[1], TEST_QUEUES_SIZE * 2, TIME_IMMEDIATE);
+ 838               		.loc 1 118 0
+ 839               	/* #NOAPP */
+ 840 0434 C091 0000 		lds r28,wa+2
+ 841 0438 D091 0000 		lds r29,wa+2+1
+ 842 043c 20E0      		ldi r18,0
+ 843 043e 30E0      		ldi r19,0
+ 844 0440 48E0      		ldi r20,lo8(8)
+ 845 0442 50E0      		ldi r21,0
+ 846 0444 BE01      		movw r22,r28
+ 847 0446 80E0      		ldi r24,lo8(iq)
+ 848 0448 90E0      		ldi r25,hi8(iq)
+ 849 044a 0E94 0000 		call chIQReadTimeout
+ 850               	.LVL63:
+ 119:../../test/testqueues.c ****   test_assert(6, n == TEST_QUEUES_SIZE, "wrong returned size");
+ 851               		.loc 1 119 0
+ 852 044e 61E0      		ldi r22,lo8(1)
+ 853 0450 0497      		sbiw r24,4
+ 854 0452 01F0      		breq .L82
+ 855 0454 60E0      		ldi r22,0
+ 856               	.L82:
+ 857 0456 86E0      		ldi r24,lo8(6)
+ 858 0458 90E0      		ldi r25,0
+ 859               	.LVL64:
+ 860 045a 0E94 0000 		call _test_assert
+ 861               	.LVL65:
+ 862 045e 8111      		cpse r24,__zero_reg__
+ 863 0460 00C0      		rjmp .L69
+ 120:../../test/testqueues.c ****   test_assert_lock(7, chIQIsEmptyI(&iq), "still full");
+ 864               		.loc 1 120 0
+ 865               	/* #APP */
+ 866               	 ;  120 "../../test/testqueues.c" 1
+ 867 0462 F894      		cli
+ 868               	 ;  0 "" 2
+ 869               	/* #NOAPP */
+ 870 0464 61E0      		ldi r22,lo8(1)
+ 871 0466 8091 0000 		lds r24,iq+4
+ 872 046a 9091 0000 		lds r25,iq+4+1
+ 873 046e 892B      		or r24,r25
+ 874 0470 01F0      		breq .L84
+ 875 0472 60E0      		ldi r22,0
+ 876               	.L84:
+ 877 0474 87E0      		ldi r24,lo8(7)
+ 878 0476 90E0      		ldi r25,0
+ 879 0478 0E94 0000 		call _test_assert
+ 880               	.LVL66:
+ 881               	/* #APP */
+ 882               	 ;  120 "../../test/testqueues.c" 1
+ 883 047c 7894      		sei
+ 884               	 ;  0 "" 2
+ 885               	/* #NOAPP */
+ 886 047e 8111      		cpse r24,__zero_reg__
+ 887 0480 00C0      		rjmp .L69
+ 123:../../test/testqueues.c ****   chSysLock();
+ 888               		.loc 1 123 0
+ 889               	/* #APP */
+ 890               	 ;  123 "../../test/testqueues.c" 1
+ 891 0482 F894      		cli
+ 892               	 ;  0 "" 2
+ 893               	.LVL67:
+ 125:../../test/testqueues.c ****     chIQPutI(&iq, 'A' + i);
+ 894               		.loc 1 125 0
+ 895               	/* #NOAPP */
+ 896 0484 61E4      		ldi r22,lo8(65)
+ 897 0486 80E0      		ldi r24,lo8(iq)
+ 898 0488 90E0      		ldi r25,hi8(iq)
+ 899 048a 0E94 0000 		call chIQPutI
+ 900               	.LVL68:
+ 901 048e 62E4      		ldi r22,lo8(66)
+ 902 0490 80E0      		ldi r24,lo8(iq)
+ 903 0492 90E0      		ldi r25,hi8(iq)
+ 904 0494 0E94 0000 		call chIQPutI
+ 905               	.LVL69:
+ 906 0498 63E4      		ldi r22,lo8(67)
+ 907 049a 80E0      		ldi r24,lo8(iq)
+ 908 049c 90E0      		ldi r25,hi8(iq)
+ 909 049e 0E94 0000 		call chIQPutI
+ 910               	.LVL70:
+ 911 04a2 64E4      		ldi r22,lo8(68)
+ 912 04a4 80E0      		ldi r24,lo8(iq)
+ 913 04a6 90E0      		ldi r25,hi8(iq)
+ 914 04a8 0E94 0000 		call chIQPutI
+ 915               	.LVL71:
+ 126:../../test/testqueues.c ****   chSysUnlock();
+ 916               		.loc 1 126 0
+ 917               	/* #APP */
+ 918               	 ;  126 "../../test/testqueues.c" 1
+ 919 04ac 7894      		sei
+ 920               	 ;  0 "" 2
+ 129:../../test/testqueues.c ****   n = chIQReadTimeout(&iq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 921               		.loc 1 129 0
+ 922               	/* #NOAPP */
+ 923 04ae 20E0      		ldi r18,0
+ 924 04b0 30E0      		ldi r19,0
+ 925 04b2 42E0      		ldi r20,lo8(2)
+ 926 04b4 50E0      		ldi r21,0
+ 927 04b6 BE01      		movw r22,r28
+ 928 04b8 80E0      		ldi r24,lo8(iq)
+ 929 04ba 90E0      		ldi r25,hi8(iq)
+ 930 04bc 0E94 0000 		call chIQReadTimeout
+ 931               	.LVL72:
+ 130:../../test/testqueues.c ****   test_assert(8, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 932               		.loc 1 130 0
+ 933 04c0 61E0      		ldi r22,lo8(1)
+ 934 04c2 0297      		sbiw r24,2
+ 935 04c4 01F0      		breq .L86
+ 936 04c6 60E0      		ldi r22,0
+ 937               	.L86:
+ 938 04c8 88E0      		ldi r24,lo8(8)
+ 939 04ca 90E0      		ldi r25,0
+ 940               	.LVL73:
+ 941 04cc 0E94 0000 		call _test_assert
+ 942               	.LVL74:
+ 943 04d0 8111      		cpse r24,__zero_reg__
+ 944 04d2 00C0      		rjmp .L69
+ 131:../../test/testqueues.c ****   n = chIQReadTimeout(&iq, wa[1], TEST_QUEUES_SIZE / 2, TIME_IMMEDIATE);
+ 945               		.loc 1 131 0
+ 946 04d4 20E0      		ldi r18,0
+ 947 04d6 30E0      		ldi r19,0
+ 948 04d8 42E0      		ldi r20,lo8(2)
+ 949 04da 50E0      		ldi r21,0
+ 950 04dc BE01      		movw r22,r28
+ 951 04de 80E0      		ldi r24,lo8(iq)
+ 952 04e0 90E0      		ldi r25,hi8(iq)
+ 953 04e2 0E94 0000 		call chIQReadTimeout
+ 954               	.LVL75:
+ 132:../../test/testqueues.c ****   test_assert(9, n == TEST_QUEUES_SIZE / 2, "wrong returned size");
+ 955               		.loc 1 132 0
+ 956 04e6 61E0      		ldi r22,lo8(1)
+ 957 04e8 0297      		sbiw r24,2
+ 958 04ea 01F0      		breq .L87
+ 959 04ec 60E0      		ldi r22,0
+ 960               	.L87:
+ 961 04ee 89E0      		ldi r24,lo8(9)
+ 962 04f0 90E0      		ldi r25,0
+ 963               	.LVL76:
+ 964 04f2 0E94 0000 		call _test_assert
+ 965               	.LVL77:
+ 966 04f6 8111      		cpse r24,__zero_reg__
+ 967 04f8 00C0      		rjmp .L69
+ 133:../../test/testqueues.c ****   test_assert_lock(10, chIQIsEmptyI(&iq), "still full");
+ 968               		.loc 1 133 0
+ 969               	/* #APP */
+ 970               	 ;  133 "../../test/testqueues.c" 1
+ 971 04fa F894      		cli
+ 972               	 ;  0 "" 2
+ 973               	/* #NOAPP */
+ 974 04fc 61E0      		ldi r22,lo8(1)
+ 975 04fe 8091 0000 		lds r24,iq+4
+ 976 0502 9091 0000 		lds r25,iq+4+1
+ 977 0506 892B      		or r24,r25
+ 978 0508 01F0      		breq .L88
+ 979 050a 60E0      		ldi r22,0
+ 980               	.L88:
+ 981 050c 8AE0      		ldi r24,lo8(10)
+ 982 050e 90E0      		ldi r25,0
+ 983 0510 0E94 0000 		call _test_assert
+ 984               	.LVL78:
+ 985               	/* #APP */
+ 986               	 ;  133 "../../test/testqueues.c" 1
+ 987 0514 7894      		sei
+ 988               	 ;  0 "" 2
+ 989               	/* #NOAPP */
+ 990 0516 8111      		cpse r24,__zero_reg__
+ 991 0518 00C0      		rjmp .L69
+ 136:../../test/testqueues.c ****   chSysLock();
+ 992               		.loc 1 136 0
+ 993               	/* #APP */
+ 994               	 ;  136 "../../test/testqueues.c" 1
+ 995 051a F894      		cli
+ 996               	 ;  0 "" 2
+ 137:../../test/testqueues.c ****   chIQPutI(&iq, 0);
+ 997               		.loc 1 137 0
+ 998               	/* #NOAPP */
+ 999 051c 60E0      		ldi r22,0
+ 1000 051e 80E0      		ldi r24,lo8(iq)
+ 1001 0520 90E0      		ldi r25,hi8(iq)
+ 1002 0522 0E94 0000 		call chIQPutI
+ 1003               	.LVL79:
+ 138:../../test/testqueues.c ****   chIQResetI(&iq);
+ 1004               		.loc 1 138 0
+ 1005 0526 80E0      		ldi r24,lo8(iq)
+ 1006 0528 90E0      		ldi r25,hi8(iq)
+ 1007 052a 0E94 0000 		call chIQResetI
+ 1008               	.LVL80:
+ 139:../../test/testqueues.c ****   chSysUnlock();
+ 1009               		.loc 1 139 0
+ 1010               	/* #APP */
+ 1011               	 ;  139 "../../test/testqueues.c" 1
+ 1012 052e 7894      		sei
+ 1013               	 ;  0 "" 2
+ 140:../../test/testqueues.c ****   test_assert_lock(11, chIQGetFullI(&iq) == 0, "still full");
+ 1014               		.loc 1 140 0
+ 1015               	 ;  140 "../../test/testqueues.c" 1
+ 1016 0530 F894      		cli
+ 1017               	 ;  0 "" 2
+ 1018               	/* #NOAPP */
+ 1019 0532 61E0      		ldi r22,lo8(1)
+ 1020 0534 8091 0000 		lds r24,iq+4
+ 1021 0538 9091 0000 		lds r25,iq+4+1
+ 1022 053c 892B      		or r24,r25
+ 1023 053e 01F0      		breq .L90
+ 1024 0540 60E0      		ldi r22,0
+ 1025               	.L90:
+ 1026 0542 8BE0      		ldi r24,lo8(11)
+ 1027 0544 90E0      		ldi r25,0
+ 1028 0546 0E94 0000 		call _test_assert
+ 1029               	.LVL81:
+ 1030               	/* #APP */
+ 1031               	 ;  140 "../../test/testqueues.c" 1
+ 1032 054a 7894      		sei
+ 1033               	 ;  0 "" 2
+ 1034               	/* #NOAPP */
+ 1035 054c 8111      		cpse r24,__zero_reg__
+ 1036 054e 00C0      		rjmp .L69
+ 141:../../test/testqueues.c ****   threads[0] = chThdCreateStatic(wa[0], WA_SIZE, chThdGetPriority()+1, thread1, NULL);
+ 1037               		.loc 1 141 0
+ 1038 0550 E091 0000 		lds r30,rlist+11
+ 1039 0554 F091 0000 		lds r31,rlist+11+1
+ 1040 0558 4481      		ldd r20,Z+4
+ 1041 055a 4F5F      		subi r20,lo8(-(1))
+ 1042 055c 00E0      		ldi r16,0
+ 1043 055e 10E0      		ldi r17,0
+ 1044 0560 20E0      		ldi r18,lo8(gs(thread1))
+ 1045 0562 30E0      		ldi r19,hi8(gs(thread1))
+ 1046 0564 67E9      		ldi r22,lo8(-105)
+ 1047 0566 70E0      		ldi r23,0
+ 1048 0568 8091 0000 		lds r24,wa
+ 1049 056c 9091 0000 		lds r25,wa+1
+ 1050 0570 0E94 0000 		call chThdCreateStatic
+ 1051               	.LVL82:
+ 1052 0574 9093 0000 		sts threads+1,r25
+ 1053 0578 8093 0000 		sts threads,r24
+ 142:../../test/testqueues.c ****   test_assert_lock(12, chIQGetFullI(&iq) == 0, "not empty");
+ 1054               		.loc 1 142 0
+ 1055               	/* #APP */
+ 1056               	 ;  142 "../../test/testqueues.c" 1
+ 1057 057c F894      		cli
+ 1058               	 ;  0 "" 2
+ 1059               	/* #NOAPP */
+ 1060 057e 61E0      		ldi r22,lo8(1)
+ 1061 0580 8091 0000 		lds r24,iq+4
+ 1062 0584 9091 0000 		lds r25,iq+4+1
+ 1063 0588 892B      		or r24,r25
+ 1064 058a 01F0      		breq .L92
+ 1065 058c 60E0      		ldi r22,0
+ 1066               	.L92:
+ 1067 058e 8CE0      		ldi r24,lo8(12)
+ 1068 0590 90E0      		ldi r25,0
+ 1069 0592 0E94 0000 		call _test_assert
+ 1070               	.LVL83:
+ 1071               	/* #APP */
+ 1072               	 ;  142 "../../test/testqueues.c" 1
+ 1073 0596 7894      		sei
+ 1074               	 ;  0 "" 2
+ 1075               	/* #NOAPP */
+ 1076 0598 8111      		cpse r24,__zero_reg__
+ 1077 059a 00C0      		rjmp .L69
+ 143:../../test/testqueues.c ****   test_wait_threads();
+ 1078               		.loc 1 143 0
+ 1079 059c 0E94 0000 		call test_wait_threads
+ 1080               	.LVL84:
+ 146:../../test/testqueues.c ****   test_assert(13, chIQGetTimeout(&iq, 10) == Q_TIMEOUT, "wrong timeout return");
+ 1081               		.loc 1 146 0
+ 1082 05a0 6AE0      		ldi r22,lo8(10)
+ 1083 05a2 70E0      		ldi r23,0
+ 1084 05a4 80E0      		ldi r24,lo8(iq)
+ 1085 05a6 90E0      		ldi r25,hi8(iq)
+ 1086 05a8 0E94 0000 		call chIQGetTimeout
+ 1087               	.LVL85:
+ 1088 05ac 61E0      		ldi r22,lo8(1)
+ 1089 05ae 0196      		adiw r24,1
+ 1090 05b0 01F0      		breq .L94
+ 1091 05b2 60E0      		ldi r22,0
+ 1092               	.L94:
+ 1093 05b4 8DE0      		ldi r24,lo8(13)
+ 1094 05b6 90E0      		ldi r25,0
+ 1095               	/* epilogue start */
+ 1096               	.LBE16:
+ 1097               	.LBE15:
+ 147:../../test/testqueues.c **** }
+ 1098               		.loc 1 147 0
+ 1099 05b8 DF91      		pop r29
+ 1100 05ba CF91      		pop r28
+ 1101 05bc 1F91      		pop r17
+ 1102 05be 0F91      		pop r16
+ 1103               	.LBB18:
+ 1104               	.LBB17:
+ 146:../../test/testqueues.c ****   test_assert(13, chIQGetTimeout(&iq, 10) == Q_TIMEOUT, "wrong timeout return");
+ 1105               		.loc 1 146 0
+ 1106 05c0 0C94 0000 		jmp _test_assert
+ 1107               	.LVL86:
+ 1108               	.L130:
+ 1109               	.LBE17:
+ 1110               	.LBE18:
+ 102:../../test/testqueues.c ****   test_assert_lock(2, chIQIsFullI(&iq), "still has space");
+ 1111               		.loc 1 102 0 discriminator 1
+ 1112 05c4 61E0      		ldi r22,lo8(1)
+ 1113 05c6 8091 0000 		lds r24,iq+4
+ 1114 05ca 9091 0000 		lds r25,iq+4+1
+ 1115 05ce 892B      		or r24,r25
+ 1116 05d0 01F0      		breq .+2
+ 1117 05d2 00C0      		rjmp .L73
+ 1118 05d4 00C0      		rjmp .L95
+ 1119               	.LFE10:
+ 1121               	.global	patternqueues
+ 1122               		.section	.rodata
+ 1125               	patternqueues:
+ 1126 0000 0000      		.word	testqueues1
+ 1127 0002 0000      		.word	testqueues2
+ 1128 0004 0000      		.word	0
+ 1129               	.global	testqueues2
+ 1130               		.section	.rodata.str1.1
+ 1131               	.LC1:
+ 1132 0005 5175 6575 		.string	"Queues, output queues"
+ 1132      6573 2C20 
+ 1132      6F75 7470 
+ 1132      7574 2071 
+ 1132      7565 7565 
+ 1133               		.section	.rodata
+ 1136               	testqueues2:
+ 1137 0006 0000      		.word	.LC1
+ 1138 0008 0000      		.word	gs(queues2_setup)
+ 1139 000a 0000      		.word	0
+ 1140 000c 0000      		.word	gs(queues2_execute)
+ 1141               	.global	testqueues1
+ 1142               		.section	.rodata.str1.1
+ 1143               	.LC2:
+ 1144 001b 5175 6575 		.string	"Queues, input queues"
+ 1144      6573 2C20 
+ 1144      696E 7075 
+ 1144      7420 7175 
+ 1144      6575 6573 
+ 1145               		.section	.rodata
+ 1148               	testqueues1:
+ 1149 000e 0000      		.word	.LC2
+ 1150 0010 0000      		.word	gs(queues1_setup)
+ 1151 0012 0000      		.word	0
+ 1152 0014 0000      		.word	gs(queues1_execute)
+ 1153               		.data
+ 1156               	iq:
+ 1157 0000 0000      		.word	iq
+ 1158 0002 0000      		.word	iq
+ 1159 0004 0000      		.word	0
+ 1160 0006 0000      		.word	test
+ 1161 0008 0000      		.word	test+4
+ 1162 000a 0000      		.word	test
+ 1163 000c 0000      		.word	test
+ 1164 000e 0000      		.word	gs(notify)
+ 1165 0010 0000      		.word	0
+ 1168               	oq:
+ 1169 0012 0000      		.word	oq
+ 1170 0014 0000      		.word	oq
+ 1171 0016 0400      		.word	4
+ 1172 0018 0000      		.word	test+151
+ 1173 001a 0000      		.word	test+155
+ 1174 001c 0000      		.word	test+151
+ 1175 001e 0000      		.word	test+151
+ 1176 0020 0000      		.word	gs(notify)
+ 1177 0022 0000      		.word	0
+ 1324               	.Letext0:
+ 1325               		.file 2 "/usr/lib/gcc/avr/4.7.2/include/stddef.h"
+ 1326               		.file 3 "/usr/lib/gcc/avr/4.7.2/../../../avr/include/stdint.h"
+ 1327               		.file 4 "../../os/ports/GCC/AVR_MEGA2560/chtypes.h"
+ 1328               		.file 5 "../../os/kernel/include/chlists.h"
+ 1329               		.file 6 "../../os/kernel/include/chthreads.h"
+ 1330               		.file 7 "../../os/ports/GCC/AVR_MEGA2560/chcore.h"
+ 1331               		.file 8 "../../os/kernel/include/chschd.h"
+ 1332               		.file 9 "../../os/kernel/include/chmtx.h"
+ 1333               		.file 10 "../../os/kernel/include/chqueues.h"
+ 1334               		.file 11 "../../test/test.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 testqueues.c
+     /tmp/cc6GySu0.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc6GySu0.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc6GySu0.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc6GySu0.s:5      *ABS*:000000000000003b __RAMPZ__
+     /tmp/cc6GySu0.s:6      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc6GySu0.s:7      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc6GySu0.s:11     .text:0000000000000000 notify
+     /tmp/cc6GySu0.s:24     .text:0000000000000002 thread2
+     /tmp/cc6GySu0.s:1168   .data:0000000000000012 oq
+     /tmp/cc6GySu0.s:48     .text:0000000000000016 queues2_setup
+     /tmp/cc6GySu0.s:80     .text:000000000000003c thread1
+     /tmp/cc6GySu0.s:1156   .data:0000000000000000 iq
+     /tmp/cc6GySu0.s:103    .text:000000000000004e queues1_setup
+     /tmp/cc6GySu0.s:139    .text:0000000000000074 queues2_execute
+     /tmp/cc6GySu0.s:614    .text:0000000000000316 queues1_execute
+     /tmp/cc6GySu0.s:1125   .rodata:0000000000000000 patternqueues
+     /tmp/cc6GySu0.s:1148   .rodata:000000000000000e testqueues1
+     /tmp/cc6GySu0.s:1136   .rodata:0000000000000006 testqueues2
+
+UNDEFINED SYMBOLS
+chOQPutTimeout
+wa
+chOQInit
+chIQGetTimeout
+chIQInit
+_test_assert
+chOQGetI
+test_emit_token
+_test_assert_sequence
+chOQWriteTimeout
+rlist
+chThdCreateStatic
+threads
+test_wait_threads
+chOQResetI
+chIQPutI
+chIQReadTimeout
+chIQResetI
+test
+__do_copy_data
